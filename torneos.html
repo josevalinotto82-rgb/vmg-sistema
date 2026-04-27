@@ -456,25 +456,7 @@
             "https://bnnfolhrqxgxjmobclrm.supabase.co",
             "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
         );
-
-        // 🔐 PROTECCIÓN
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (!session) {
-            window.location.href = "login.html";
-        }
-
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("role, active")
-            .eq("id", session.user.id)
-            .maybeSingle();
-
-        if (!profile || profile.role !== "admin") {
-            alert("Acceso restringido");
-            window.location.href = "panel.html";
-        }
-
+        
         const params = new URLSearchParams(window.location.search);
         const torneoId = (params.get("id") || "").trim();
         const busquedaJugador = params.get("q") || "";
