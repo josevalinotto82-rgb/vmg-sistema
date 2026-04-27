@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Consulta de Torneo Archivado - Villa María Golf</title>
+    <style>
+        :root {
+            --bg: #f5f8f3;
+            --card: #fff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+            --green: #166534;
+            --green2: #14532d;
+            --gold: #d6a14a;
+            --silver: #9ca3af;
+            --bronze: #b7791f;
+            --blue: #2563eb;
+            --red: #b91c1c;
+            --amber: #b45309;
+            --soft: #f9fafb;
+            --soft-green: #dcfce7;
+            --soft-red: #fff1f2;
+            --soft-amber: #fef3c7;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text)
+        }
+
+        .page {
+            max-width: 1220px;
+            margin: 0 auto;
+            padding: 18px
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px
+        }
+
+        h1 {
+            margin: 0 0 4px;
+            font-size: 30px;
+            color: var(--green2)
+        }
+
+        h2 {
+            margin: 0 0 12px;
+            font-size: 20px;
+            color: var(--green2)
+        }
+
+        h3 {
+            margin: 0 0 10px;
+            font-size: 17px;
+            color: var(--green2)
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: 14px
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, .08)
+        }
+
+        .toolbar {
+            display: grid;
+            grid-template-columns: 2fr .7fr .7fr .8fr .8fr;
+            gap: 12px;
+            align-items: end
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .03em
+        }
+
+        select,
+        input {
+            width: 100%;
+            height: 38px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 7px 9px;
+            font-size: 13px;
+            background: white
+        }
+
+        button {
+            border: 0;
+            border-radius: 10px;
+            height: 38px;
+            padding: 0 14px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap
+        }
+
+        button:disabled {
+            opacity: .55;
+            cursor: not-allowed
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: white
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--green2)
+        }
+
+        .btn-secondary {
+            background: var(--blue);
+            color: white
+        }
+
+        .btn-light {
+            background: #edf2ef;
+            color: var(--green2);
+            border: 1px solid #cbd5cf
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #fff
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center
+        }
+
+        .status {
+            font-weight: 700
+        }
+
+        .status.ok {
+            color: var(--green)
+        }
+
+        .status.error {
+            color: var(--red)
+        }
+
+        .status.warn {
+            color: var(--amber)
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 12px
+        }
+
+        .stat {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 12px;
+            background: #fafafa
+        }
+
+        .stat .k {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase
+        }
+
+        .stat .v {
+            font-size: 24px;
+            font-weight: 800;
+            margin-top: 4px
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px
+        }
+
+        .info-item {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 10px;
+            background: #fafafa
+        }
+
+        .info-item b {
+            display: block;
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 4px
+        }
+
+        .info-item span {
+            font-weight: 700
+        }
+
+        .winners-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px
+        }
+
+        .winner-card {
+            border: 1px solid var(--line);
+            border-radius: 15px;
+            overflow: hidden;
+            background: #fff
+        }
+
+        .winner-head {
+            background: var(--green);
+            color: white;
+            padding: 10px 12px;
+            font-weight: 800
+        }
+
+        .winner-head.tee-negra {
+            background: #111827
+        }
+
+        .winner-head.tee-amarilla {
+            background: #f0db1b;
+            color: #111
+        }
+
+        .winner-head.tee-blanca {
+            background: #fcf8e3;
+            color: #111;
+            border-bottom: 1px solid var(--line)
+        }
+
+        .winner-head.tee-roja {
+            background: #b91c1c
+        }
+
+        .winner-head.tee-azul {
+            background: #2563eb
+        }
+
+        .podium {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px
+        }
+
+        .podium-row {
+            display: grid;
+            grid-template-columns: 36px 1fr auto;
+            gap: 8px;
+            align-items: center;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 8px;
+            background: #fafafa
+        }
+
+        .medal {
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 900
+        }
+
+        .medal.gold {
+            background: var(--gold)
+        }
+
+        .medal.silver {
+            background: var(--silver)
+        }
+
+        .medal.bronze {
+            background: var(--bronze)
+        }
+
+        .player {
+            font-weight: 800
+        }
+
+        .small {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px
+        }
+
+        .score {
+            font-weight: 900;
+            color: var(--green2);
+            text-align: right
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid var(--line);
+            padding: 8px 7px;
+            font-size: 12px;
+            text-align: center
+        }
+
+        th {
+            background: var(--green);
+            color: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 1
+        }
+
+        td.left,
+        th.left {
+            text-align: left
+        }
+
+        tbody tr:nth-child(even) {
+            background: #fbfbfb
+        }
+
+        .table-wrap {
+            overflow: auto;
+            border-radius: 12px;
+            border: 1px solid var(--line)
+        }
+
+        .tee-block {
+            margin-top: 16px;
+            break-inside: avoid
+        }
+
+        .tee-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+            background: #eef5ef;
+            border-left: 6px solid var(--green);
+            padding: 10px 12px;
+            border-radius: 12px;
+            margin-bottom: 10px
+        }
+
+        .ranking {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0 18px
+        }
+
+        .rank-pill {
+            border: 1px solid var(--line);
+            background: #fff;
+            border-radius: 999px;
+            padding: 7px 10px;
+            font-size: 12px
+        }
+
+        .rank-pill b {
+            color: var(--green2)
+        }
+
+        .ranking-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin: 12px 0 18px
+        }
+
+        .ranking-col {
+            display: grid;
+            grid-template-rows: repeat(3, auto);
+            gap: 6px
+        }
+
+        .rank-box {
+            border: 1px solid var(--line);
+            background: #fff;
+            border-radius: 10px;
+            padding: 7px;
+            font-size: 12px
+        }
+
+        .rank-box b {
+            color: var(--green2)
+        }
+
+        .print-only {
+            display: none
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 800
+        }
+
+        .tag.ok {
+            background: var(--soft-green);
+            color: var(--green)
+        }
+
+        .tag.warn {
+            background: var(--soft-amber);
+            color: var(--amber)
+        }
+
+        .tag.bad {
+            background: var(--soft-red);
+            color: var(--red)
+        }
+
+        .hidden {
+            display: none !important
+        }
+
+
+        .series-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .series-tab-btn {
+            background: #edf2ef;
+            color: var(--green2);
+            border: 1px solid #cbd5cf;
+        }
+
+        .series-tab-btn.active {
+            background: var(--green);
+            color: white;
+            border-color: var(--green);
+        }
+
+        .series-panel {
+            display: none;
+        }
+
+        .series-panel.active {
+            display: block;
+        }
+
+        .series-note {
+            background: #f9fafb;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .modal-back {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .4);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 30px 12px;
+            z-index: 20
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            max-width: 980px;
+            width: 100%;
+            max-height: 88vh;
+            overflow: auto;
+            padding: 16px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, .25)
+        }
+
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px
+        }
+
+        .grid-list {
+            white-space: pre-wrap;
+            font-family: Arial, sans-serif;
+            background: #fbfbfb;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px;
+            line-height: 1.45
+        }
+
+        @media(max-width:900px) {
+            .toolbar {
+                grid-template-columns: 1fr
+            }
+
+            .info-grid,
+            .stats {
+                grid-template-columns: repeat(2, 1fr)
+            }
+        }
+
+        @media(max-width:600px) {
+            .page {
+                padding: 12px
+            }
+
+            .info-grid,
+            .stats {
+                grid-template-columns: 1fr
+            }
+
+            .podium-row {
+                grid-template-columns: 30px 1fr
+            }
+
+            .score {
+                grid-column: 2;
+                text-align: left
+            }
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 11mm
+            }
+
+            /* GRILLA PRINT MEJORADA */
+            .grid-table {
+                table-layout: fixed;
+                width: 100%;
+            }
+
+            .print-winner.scratch-print {
+                grid-template-columns: minmax(0, 1fr) 120px;
+            }
+
+            .grid-table th:nth-child(1),
+            .grid-table td:nth-child(1) {
+                width: 70px;
+                /* hora más angosta */
+            }
+
+            .grid-table th:nth-child(n+2),
+            .grid-table td:nth-child(n+2) {
+                width: calc((100% - 70px) / 4);
+            }
+
+            .grid-table td {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-size: 10px;
+            }
+
+            body {
+                background: #fff;
+                color: #111
+            }
+
+            .page,
+            .modal-back {
+                display: none !important
+            }
+
+            .print-only {
+                display: block !important
+            }
+
+            .print-page {
+                page-break-after: always;
+                break-after: page;
+                padding: 0;
+                font-family: Arial, sans-serif
+            }
+
+            .print-page:last-child {
+                page-break-after: auto;
+                break-after: auto
+            }
+
+            .print-title {
+                text-align: center;
+                font-size: 26px;
+                font-weight: 900;
+                text-transform: uppercase;
+                margin: 0 0 4px
+            }
+
+            .print-date {
+                text-align: center;
+                font-size: 16px;
+                margin: 0 0 16px;
+                color: #333
+            }
+
+            .print-meta {
+                font-size: 13px;
+                line-height: 1.6;
+                margin: 8px 0 14px
+            }
+
+            .print-section-title {
+                font-size: 17px;
+                font-weight: 900;
+                margin: 14px 0 8px;
+                border-bottom: 2px solid #111;
+                padding-bottom: 4px
+            }
+
+            .print-category {
+                font-size: 14px;
+                font-weight: 900;
+                margin: 12px 0 4px
+            }
+
+            .print-winner {
+                display: grid;
+                grid-template-columns: minmax(0, 1.8fr) 92px 72px 88px;
+                gap: 12px;
+                font-size: 11.5px;
+                padding: 3px 0;
+                border-bottom: 1px solid #ddd;
+                align-items: center
+            }
+
+            .print-winner>div {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: clip
+            }
+
+            .print-grid-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 10px;
+                table-layout: fixed;
+                margin-bottom: 8px;
+            }
+
+            .print-grid-table col.col-hora {
+                width: 48px;
+            }
+
+            .print-grid-table col.col-jugador {
+                width: calc((100% - 48px) / 4);
+            }
+
+            .print-grid-table th,
+            .print-grid-table td {
+                border: 1px solid #16703a;
+                padding: 3px 4px;
+                text-align: center;
+                font-weight: 800;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: clip;
+            }
+
+            .print-grid-table td:first-child {
+                font-size: 9px;
+                padding-left: 2px;
+                padding-right: 2px;
+            }
+
+            .print-grid-table th {
+                background: #e5e7eb;
+                color: #111
+            }
+
+
+
+            .print-series-table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+                font-size: 10.5px;
+                margin: 6px 0 12px;
+            }
+
+            .print-series-table th,
+            .print-series-table td {
+                border: 1px solid #bbb;
+                padding: 4px 5px;
+                text-align: center;
+                vertical-align: middle;
+                overflow: hidden;
+                text-overflow: clip;
+            }
+
+            .print-series-page {
+                page-break-after: always;
+                break-after: page;
+                page-break-inside: avoid;
+                break-inside: avoid;
+                overflow: hidden;
+            }
+
+            .print-series-page .print-title {
+                font-size: 21px;
+                margin-bottom: 2px;
+            }
+
+            .print-series-page .print-date {
+                font-size: 12px;
+                margin-bottom: 6px;
+            }
+
+            .print-series-page .print-section-title {
+                font-size: 13px;
+                margin: 7px 0 4px;
+                padding-bottom: 2px;
+            }
+
+            .print-series-page .print-meta {
+                font-size: 9px;
+                line-height: 1.25;
+                margin: 3px 0 5px;
+            }
+
+            .print-series-page .print-series-table {
+                font-size: 7.6px;
+                margin: 3px 0 6px;
+            }
+
+            .print-series-page .print-series-table th,
+            .print-series-page .print-series-table td {
+                padding: 1.6px 2px;
+                line-height: 1.08;
+                white-space: nowrap;
+            }
+
+            .print-series-table th {
+                background: #e5e7eb;
+                color: #111;
+                font-weight: 900;
+            }
+
+            .print-series-table .left {
+                text-align: left;
+            }
+
+            .print-series-table .comp {
+                font-weight: 900;
+                background: #f4f8f2;
+            }
+
+            .print-hole-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 10px
+            }
+
+            .print-hole-table th,
+            .print-hole-table td {
+                border: 1px solid #ccc;
+                padding: 4px;
+                text-align: center
+            }
+
+            .print-hole-table th {
+                background: #e5e7eb;
+                color: #111
+            }
+
+            .print-rank-grid {
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+                gap: 4px;
+                margin-top: 8px
+            }
+
+            .print-rank-cell {
+                border: 1px solid #ddd;
+                padding: 4px;
+                font-size: 10px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div>
+                <h1>Consulta de torneo archivado</h1>
+                <div class="sub">Ganadores, scratch, informe general y estadísticas hoyo por hoyo.</div>
+            </div>
+            <div class="actions no-print">
+                <button id="btnImprimir" class="btn-primary">Imprimir A4</button>
+            </div>
+        </div>
+
+        <div class="card toolbar-card">
+            <div class="toolbar">
+                <div><label>Torneo archivado</label><select id="torneoSelect"></select></div>
+                <div><label>Ganadores por categoría</label><input id="topCategoria" type="number" min="1" max="10"
+                        value="3"></div>
+                <div><label>Scratch top</label><input id="topScratch" type="number" min="1" max="10" value="3"></div>
+                <div><label>Scratch género</label><select id="scratchGenero">
+                        <option value="all">Todos</option>
+                        <option value="male">Caballeros</option>
+                        <option value="female">Damas</option>
+                    </select></div>
+                <div><label>Acción</label><button id="btnCargar" class="btn-primary" style="width:100%">Cargar
+                        informe</button></div>
+            </div>
+            <div style="margin-top:12px" id="estado" class="status">Conectando...</div>
+        </div>
+
+        <div id="contenido" class="hidden">
+            <div class="card">
+                <h2>Informe general</h2>
+                <div class="info-grid" id="infoGeneral"></div>
+                <div class="stats" id="statsGenerales"></div>
+            </div>
+
+            <div class="card">
+                <h2>Ganadores por categoría</h2>
+                <div id="ganadoresCategorias" class="winners-grid"></div>
+            </div>
+
+            <div id="bloqueSerie" class="card hidden">
+                <h2>Competencia de varias fechas</h2>
+                <div id="serieInfo" class="series-note"></div>
+                <div class="series-tabs">
+                    <button type="button" class="series-tab-btn active" data-serie-tab="acumulado">Acumulado
+                        serie</button>
+                    <button type="button" class="series-tab-btn" data-serie-tab="mejor18">Mejor 18 hoyos</button>
+                    <button type="button" class="series-tab-btn"
+                        data-serie-tab="participaciones">Participaciones</button>
+                </div>
+                <div id="panelSerieAcumulado" class="series-panel active"></div>
+                <div id="panelSerieMejor18" class="series-panel"></div>
+                <div id="panelSerieParticipaciones" class="series-panel"></div>
+            </div>
+
+            <div class="card">
+                <h2>Resumen hoyo por hoyo por Tee</h2>
+                <div id="resumenHoyos"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="printArea" class="print-only"></div>
+
+    <script type="module">
+        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+        console.log("SCRIPT NUEVO CARGADO - VERSION 1");
+
+        const supabase = createClient(
+            "https://bnnfolhrqxgxjmobclrm.supabase.co",
+            "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+        );
+
+        // 🔐 PROTECCIÓN ADMIN
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            window.location.href = "login.html";
+            throw new Error("Usuario no logueado");
+        }
+
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("role, active")
+            .eq("id", session.user.id)
+            .maybeSingle();
+
+        if (!profile || profile.active !== true || profile.role !== "admin") {
+            alert("Acceso restringido");
+            window.location.href = "panel.html";
+            throw new Error("Acceso restringido");
+        }
+
+        const COURSE_HOLES = {
+            1: { par: 4, hcp: 15 }, 2: { par: 4, hcp: 3 }, 3: { par: 3, hcp: 5 }, 4: { par: 4, hcp: 11 }, 5: { par: 3, hcp: 9 }, 6: { par: 4, hcp: 1 },
+            7: { par: 4, hcp: 13 }, 8: { par: 4, hcp: 7 }, 9: { par: 5, hcp: 17 }, 10: { par: 4, hcp: 8 }, 11: { par: 3, hcp: 14 }, 12: { par: 5, hcp: 10 },
+            13: { par: 3, hcp: 2 }, 14: { par: 4, hcp: 16 }, 15: { par: 4, hcp: 18 }, 16: { par: 4, hcp: 6 }, 17: { par: 5, hcp: 12 }, 18: { par: 4, hcp: 4 }
+        };
+
+        const el = (id) => document.getElementById(id);
+        const torneoSelect = el("torneoSelect");
+        const estado = el("estado");
+        const contenido = el("contenido");
+        let torneoActual = null;
+        let scorecards = [];
+        let categorias = [];
+        let grillaBloquesActuales = [];
+        let serieActual = null;
+        let torneosSerie = [];
+        let scorecardsSerie = [];
+        let serieTabActiva = "acumulado";
+
+        el("btnCargar").addEventListener("click", cargarInforme);
+        el("btnImprimir").addEventListener("click", () => window.print());
+        torneoSelect.addEventListener("change", cargarInforme);
+        el("topCategoria").addEventListener("change", renderTodo);
+        el("topScratch").addEventListener("change", renderTodo);
+        el("scratchGenero").addEventListener("change", renderTodo);
+        document.addEventListener("click", (ev) => {
+            const btn = ev.target.closest("[data-serie-tab]");
+            if (!btn) return;
+            serieTabActiva = btn.dataset.serieTab || "acumulado";
+            activarTabSerie(serieTabActiva);
+        });
+
+        function setEstado(txt, tipo = "") { estado.textContent = txt; estado.className = `status ${tipo}`.trim(); }
+        function fechaTexto(v) { if (!v) return "—"; const d = new Date(String(v).slice(0, 10) + "T00:00:00"); return d.toLocaleDateString("es-AR"); }
+        function horaTexto(v) { return v ? String(v).slice(0, 5) : ""; }
+        function n(v) { const x = Number(v); return Number.isFinite(x) ? x : null; }
+        function fmt(v, d = 1) { const x = n(v); return x == null ? "—" : x.toFixed(d).replace(".", ","); }
+        function normalizarGenero(g) { const s = String(g || "").toLowerCase(); if (["male", "m", "caballero", "caballeros", "hombre"].includes(s)) return "male"; if (["female", "f", "dama", "damas", "mujer"].includes(s)) return "female"; return s || null; }
+        function esc(s) { return String(s ?? "").replace(/[&<>'"]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[m])); }
+
+        function formatearNombreCorto(nombre) {
+            const limpio = String(nombre || "").trim();
+            if (!limpio) return "";
+
+            if (limpio.includes(",")) {
+                const [apellido, nombres] = limpio.split(",").map(p => p.trim());
+                const iniciales = nombres
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .map(p => `${p.charAt(0).toUpperCase()}.`)
+                    .join(" ");
+                return iniciales ? `${apellido.toUpperCase()}, ${iniciales}` : apellido.toUpperCase();
+            }
+
+            const partes = limpio.split(/\s+/).filter(Boolean);
+            if (partes.length === 1) return partes[0].toUpperCase();
+
+            const apellido = partes[0].toUpperCase();
+            const iniciales = partes
+                .slice(1)
+                .map(p => `${p.charAt(0).toUpperCase()}.`)
+                .join(" ");
+
+            return `${apellido}, ${iniciales}`;
+        }
+
+        function medalClass(i) { return i === 0 ? "gold" : i === 1 ? "silver" : "bronze"; }
+        function activeHoles(segment) { const s = String(segment || "18").toLowerCase(); if (s.includes("front")) return [1, 2, 3, 4, 5, 6, 7, 8, 9]; if (s.includes("back")) return [10, 11, 12, 13, 14, 15, 16, 17, 18]; return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]; }
+        function compareScore(a, b, field) { const av = n(a[field]); const bv = n(b[field]); if (av == null && bv == null) return String(a.display_name).localeCompare(String(b.display_name)); if (av == null) return 1; if (bv == null) return -1; return av - bv || (n(a.gross) ?? 999) - (n(b.gross) ?? 999) || String(a.display_name).localeCompare(String(b.display_name)); }
+
+        async function init() {
+            try {
+                setEstado("Cargando torneos archivados...");
+                const { data, error } = await supabase
+                    .from("tournaments")
+                    .select("id,name,tournament_date,status,start_type,series_id,series_round_number,game_modes(name,participation_type)")
+                    .eq("status", "archived")
+                    .order("tournament_date", { ascending: false });
+                if (error) throw error;
+                if (!data?.length) { torneoSelect.innerHTML = ""; setEstado("No hay torneos archivados.", "warn"); return; }
+                torneoSelect.innerHTML = data.map(t => `<option value="${t.id}">${esc(t.name)} (${fechaTexto(t.tournament_date)})</option>`).join("");
+                await cargarInforme();
+            } catch (err) { console.error(err); setEstado(err.message || "No se pudieron cargar los torneos.", "error"); }
+        }
+
+        async function cargarInforme() {
+            const tournamentId = torneoSelect.value;
+            if (!tournamentId) return;
+            try {
+                setEstado("Cargando informe..."); contenido.classList.add("hidden");
+                serieActual = null;
+                torneosSerie = [];
+                scorecardsSerie = [];
+
+                const { data: torneo, error: errorTorneo } = await supabase
+                    .from("tournaments")
+                    .select("id,name,tournament_date,status,start_type,hole_count,series_id,series_round_number,game_modes(name,participation_type)")
+                    .eq("id", tournamentId).single();
+                if (errorTorneo) throw errorTorneo;
+                torneoActual = torneo;
+
+                const { data: cards, error: errorCards } = await supabase
+                    .from("scorecards")
+                    .select(`
+            id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,player_gender,
+            category_id,category_name,tee_id,tee_name,official_index,manual_index,playing_handicap,
+            gross,net,total,card_status,hole_segment,hole_scores,starting_time,starting_hole,
+            scorecard_holes(hole_number,strokes,par_value,hole_handicap)
+          `)
+                    .eq("tournament_id", tournamentId)
+                    .order("display_name", { ascending: true });
+                if (errorCards) throw errorCards;
+                scorecards = (cards || []).sort((a, b) => String(a.display_name || "").localeCompare(String(b.display_name || ""), "es"));
+
+                const { data: cats, error: errorCats } = await supabase
+                    .from("tournament_categories")
+                    .select("id,name,index_min,index_max,gender,display_order,tee_id")
+                    .eq("tournament_id", tournamentId)
+                    .order("display_order", { ascending: true });
+                if (errorCats) console.warn("No se pudieron cargar categorías", errorCats);
+                categorias = cats || [];
+
+                await cargarDatosSerie(torneo);
+                await prepararGrilla(tournamentId);
+                renderTodo();
+                contenido.classList.remove("hidden");
+                setEstado(`Informe cargado: ${torneo.name}`, "ok");
+            } catch (err) { console.error(err); setEstado(err.message || "No se pudo cargar el informe.", "error"); }
+        }
+
+        async function cargarDatosSerie(torneo) {
+            if (!torneo?.series_id) return;
+
+            const { data: serie, error: errorSerie } = await supabase
+                .from("tournament_series")
+                .select("id,name,description,required_rounds,scoring_mode,best18_enabled,status")
+                .eq("id", torneo.series_id)
+                .maybeSingle();
+            if (errorSerie) throw errorSerie;
+            serieActual = serie || { id: torneo.series_id, name: "Serie", required_rounds: 0, scoring_mode: "net", best18_enabled: true };
+
+            const { data: torneos, error: errorTorneosSerie } = await supabase
+                .from("tournaments")
+                .select("id,name,tournament_date,status,series_id,series_round_number")
+                .eq("series_id", torneo.series_id)
+                .order("series_round_number", { ascending: true })
+                .order("tournament_date", { ascending: true });
+            if (errorTorneosSerie) throw errorTorneosSerie;
+            torneosSerie = torneos || [];
+
+            const ids = torneosSerie.map(t => t.id);
+            if (!ids.length) return;
+
+            const { data: cardsSerie, error: errorCardsSerie } = await supabase
+                .from("scorecards")
+                .select(`
+                    id,tournament_id,linked_player_id,display_name,aag_member_number,player_gender,
+                    category_name,tee_name,official_index,manual_index,playing_handicap,
+                    gross,net,total,card_status,hole_segment,starting_time,starting_hole
+                `)
+                .in("tournament_id", ids);
+            if (errorCardsSerie) throw errorCardsSerie;
+            scorecardsSerie = cardsSerie || [];
+        }
+
+        function renderTodo() { if (!torneoActual) return; renderInfoGeneral(); renderGanadoresCategorias(); renderSerie(); renderResumenHoyos(); renderPrintReport(); }
+
+
+
+        function esTarjetaValida(sc) {
+            return sc.card_status === "valid" || sc.card_status === "cargada";
+        }
+
+        function torneoSeriePorId(id) {
+            return torneosSerie.find(t => String(t.id) === String(id)) || null;
+        }
+
+        function jugadorKey(sc) {
+            return String(sc.linked_player_id || sc.aag_member_number || normalizarTextoClave(sc.display_name || sc.id));
+        }
+
+        function normalizarTextoClave(txt) {
+            return String(txt || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .trim()
+                .toUpperCase();
+        }
+
+        function getSerieScoringField() {
+            const modo = String(serieActual?.scoring_mode || "net").toLowerCase();
+            if (modo.includes("gross")) return "gross";
+            if (modo.includes("total")) return "total";
+            return "net";
+        }
+
+        function calcularAcumuladoSerie() {
+            const field = getSerieScoringField();
+            const validas = scorecardsSerie.filter(s => esTarjetaValida(s) && n(s[field]) != null);
+            const grupos = new Map();
+
+            for (const sc of validas) {
+                const key = jugadorKey(sc);
+                if (!grupos.has(key)) {
+                    grupos.set(key, {
+                        key,
+                        linked_player_id: sc.linked_player_id,
+                        display_name: sc.display_name,
+                        aag_member_number: sc.aag_member_number,
+                        player_gender: sc.player_gender,
+                        official_index: n(sc.official_index ?? sc.manual_index),
+                        manual_index: n(sc.manual_index),
+                        category_name: sc.category_name,
+                        tee_name: sc.tee_name,
+                        rounds: [],
+                        total_net: 0,
+                        total_gross: 0,
+                        total_total: 0
+                    });
+                }
+                const g = grupos.get(key);
+                if (!g.category_name && sc.category_name) g.category_name = sc.category_name;
+                if (!g.tee_name && sc.tee_name) g.tee_name = sc.tee_name;
+                if (!g.player_gender && sc.player_gender) g.player_gender = sc.player_gender;
+                if (g.official_index == null) g.official_index = n(sc.official_index ?? sc.manual_index);
+                const torneo = torneoSeriePorId(sc.tournament_id);
+                g.rounds.push({
+                    tournament_id: sc.tournament_id,
+                    tournament_name: torneo?.name || "Fecha",
+                    tournament_date: torneo?.tournament_date,
+                    round_number: torneo?.series_round_number,
+                    net: n(sc.net),
+                    gross: n(sc.gross),
+                    total: n(sc.total),
+                    score: n(sc[field])
+                });
+                g.total_net += n(sc.net) || 0;
+                g.total_gross += n(sc.gross) || 0;
+                g.total_total += n(sc.total) || 0;
+            }
+
+            const required = Number(serieActual?.required_rounds || torneosSerie.length || 0);
+            const todos = [...grupos.values()].map(g => {
+                g.rounds.sort((a, b) => (n(a.round_number) ?? 999) - (n(b.round_number) ?? 999) || String(a.tournament_date || "").localeCompare(String(b.tournament_date || "")));
+                g.rounds_played = new Set(g.rounds.map(r => String(r.tournament_id))).size;
+                g.complete = required ? g.rounds_played >= required : true;
+                g.score = field === "gross" ? g.total_gross : field === "total" ? g.total_total : g.total_net;
+                return g;
+            });
+
+            const completos = todos.filter(g => g.complete).sort((a, b) => a.score - b.score || a.total_gross - b.total_gross || String(a.display_name).localeCompare(String(b.display_name), "es"));
+            const incompletos = todos.filter(g => !g.complete).sort((a, b) => b.rounds_played - a.rounds_played || a.score - b.score || String(a.display_name).localeCompare(String(b.display_name), "es"));
+            return { completos, incompletos, required, field };
+        }
+
+        function calcularMejor18Serie() {
+            const field = getSerieScoringField();
+            const validas = scorecardsSerie.filter(s => esTarjetaValida(s) && n(s[field]) != null);
+            const grupos = new Map();
+
+            for (const sc of validas) {
+                const key = jugadorKey(sc);
+                const torneo = torneoSeriePorId(sc.tournament_id);
+                const item = {
+                    key,
+                    display_name: sc.display_name,
+                    tournament_id: sc.tournament_id,
+                    tournament_name: torneo?.name || "Fecha",
+                    tournament_date: torneo?.tournament_date,
+                    round_number: torneo?.series_round_number,
+                    net: n(sc.net),
+                    gross: n(sc.gross),
+                    total: n(sc.total),
+                    score: n(sc[field]),
+                    category_name: sc.category_name
+                };
+
+                if (!grupos.has(key) || item.score < grupos.get(key).score || (item.score === grupos.get(key).score && (item.gross || 999) < (grupos.get(key).gross || 999))) {
+                    grupos.set(key, item);
+                }
+            }
+
+            return [...grupos.values()].sort((a, b) => a.score - b.score || (a.gross || 999) - (b.gross || 999) || String(a.display_name).localeCompare(String(b.display_name), "es"));
+        }
+
+        function activarTabSerie(tab) {
+            document.querySelectorAll("[data-serie-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.serieTab === tab));
+            el("panelSerieAcumulado")?.classList.toggle("active", tab === "acumulado");
+            el("panelSerieMejor18")?.classList.toggle("active", tab === "mejor18");
+            el("panelSerieParticipaciones")?.classList.toggle("active", tab === "participaciones");
+        }
+
+        function renderSerie() {
+            const bloque = el("bloqueSerie");
+            if (!bloque) return;
+
+            if (!torneoActual?.series_id || !serieActual) {
+                bloque.classList.add("hidden");
+                return;
+            }
+
+            bloque.classList.remove("hidden");
+            const field = getSerieScoringField();
+            const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
+            const required = Number(serieActual.required_rounds || torneosSerie.length || 0);
+            el("serieInfo").innerHTML = `
+                <b>${esc(serieActual.name || "Serie")}</b><br>
+                Este torneo es la fecha <b>${esc(torneoActual.series_round_number || "—")}</b> de la serie.
+                Para el acumulado se exige completar <b>${required || "todas las"}</b> fechas.
+                El orden principal se calcula por <b>${labelScore}</b>. El mejor 18 toma la mejor vuelta individual de cada jugador.
+            `;
+
+            renderSerieAcumulado();
+            renderSerieMejor18();
+            renderSerieParticipaciones();
+            activarTabSerie(serieTabActiva);
+        }
+
+        function ordenVisualCategoriaSerie(nombre) {
+            const texto = String(nombre || "").toLowerCase();
+            const meta = categoriaMetaPorNombre(nombre);
+            const min = n(meta?.index_min);
+
+            if (texto.includes("scratch") || texto.includes("scrach")) return -1000;
+            if (texto.includes("negra") || texto.includes("piedra")) return 0 + (min ?? 0);
+            if (texto.includes("amarilla")) return 100 + (min ?? 0);
+            if (texto.includes("blanca")) return 200 + (min ?? 0);
+            if (texto.includes("dama") || texto.includes("roja") || normalizarGenero(meta?.gender || nombre) === "female") return 1000 + (min ?? 0);
+            return ordenCategoria(nombre);
+        }
+
+        function esCategoriaScratch(nombre) {
+            const texto = String(nombre || "").toLowerCase();
+            return texto.includes("scratch") || texto.includes("scrach");
+        }
+
+        function esElegibleScratchSerie(item) {
+            const idx = n(item.official_index ?? item.manual_index);
+            return idx != null && idx >= -6 && idx <= 9;
+        }
+
+        function agruparPorCategoriaOrdenada(items) {
+            const grupos = new Map();
+
+            for (const item of items) {
+                const cat = item.category_name || "Sin categoría";
+                if (esCategoriaScratch(cat)) continue;
+                if (!grupos.has(cat)) grupos.set(cat, []);
+                grupos.get(cat).push(item);
+            }
+
+            return [...grupos.entries()].sort((a, b) => {
+                return ordenVisualCategoriaSerie(a[0]) - ordenVisualCategoriaSerie(b[0]) || a[0].localeCompare(b[0], "es");
+            });
+        }
+
+        function renderTablaSeriePorCategorias({ tipo, items, field, required = null }) {
+            const topCategoria = Math.max(1, Number(el("topCategoria").value || 3));
+            const topScratch = Math.max(1, Number(el("topScratch").value || topCategoria));
+            const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
+            const esMejor18 = tipo === "mejor18";
+
+            const scratchItems = items
+                .filter(esElegibleScratchSerie)
+                .slice()
+                .sort((a, b) => {
+                    const av = esMejor18 ? n(a.gross) : n(a.total_gross);
+                    const bv = esMejor18 ? n(b.gross) : n(b.total_gross);
+                    return (av ?? 9999) - (bv ?? 9999) || String(a.display_name).localeCompare(String(b.display_name), "es");
+                })
+                .slice(0, topScratch);
+
+            const scratchIds = new Set(scratchItems.map(x => String(x.key || x.id || x.linked_player_id || x.display_name)));
+            const itemsParaCategorias = items.filter(x => !scratchIds.has(String(x.key || x.id || x.linked_player_id || x.display_name)));
+            const grupos = agruparPorCategoriaOrdenada(itemsParaCategorias);
+
+            let html = `<div class="table-wrap"><table><thead><tr>`;
+            html += `<th>Competencia</th><th>Pos</th><th class="left">Jugador</th><th>${esMejor18 ? "Mejor " + labelScore : labelScore + " acum."}</th><th>Gross</th>`;
+            html += esMejor18 ? `<th>Fecha</th>` : `<th>Vueltas</th><th>Detalle fechas</th>`;
+            html += `</tr></thead><tbody>`;
+
+            function fila(nombreCompetencia, item, pos) {
+                if (esMejor18) {
+                    return `<tr><td><b>${esc(nombreCompetencia)}</b></td><td><b>${pos}</b></td><td class="left"><b>${esc(item.display_name)}</b></td><td><b>${fmt(item.score, 0)}</b></td><td>${fmt(item.gross, 0)}</td><td>F${esc(item.round_number || "?")} · ${fechaTexto(item.tournament_date)}</td></tr>`;
+                }
+
+                const detalle = (item.rounds || []).map(r => `F${r.round_number || "?"}: ${r.score ?? "—"}`).join(" · ");
+                return `<tr><td><b>${esc(nombreCompetencia)}</b></td><td><b>${pos}</b></td><td class="left"><b>${esc(item.display_name)}</b></td><td><b>${fmt(item.score, 0)}</b></td><td>${fmt(item.total_gross, 0)}</td><td>${item.rounds_played}/${required || item.rounds_played}</td><td>${esc(detalle)}</td></tr>`;
+            }
+
+            scratchItems.forEach((item, i) => html += fila("Scratch", item, i + 1));
+
+            for (const [cat, catItems] of grupos) {
+                catItems
+                    .slice()
+                    .sort((a, b) => n(a.score) - n(b.score) || (n(a.total_gross ?? a.gross) ?? 9999) - (n(b.total_gross ?? b.gross) ?? 9999) || String(a.display_name).localeCompare(String(b.display_name), "es"))
+                    .slice(0, topCategoria)
+                    .forEach((item, i) => html += fila(cat, item, i + 1));
+            }
+
+            if (!scratchItems.length && !grupos.length) {
+                const colspan = esMejor18 ? 6 : 7;
+                html += `<tr><td colspan="${colspan}">Todavía no hay tarjetas válidas para mostrar.</td></tr>`;
+            }
+
+            html += `</tbody></table></div>`;
+            return html;
+        }
+
+        function renderSerieAcumulado() {
+            const { completos, required, field } = calcularAcumuladoSerie();
+            let html = `<div class="series-note">Acumulado de la serie por categoría. Solo aparecen los jugadores que completaron ${required || "todas las"} fechas. Se muestran los mismos puestos configurados arriba.</div>`;
+            html += renderTablaSeriePorCategorias({ tipo: "acumulado", items: completos, field, required });
+            el("panelSerieAcumulado").innerHTML = html;
+        }
+
+        function renderSerieMejor18() {
+            if (serieActual && serieActual.best18_enabled === false) {
+                el("panelSerieMejor18").innerHTML = `<div class="small">La serie no tiene habilitado premio Mejor 18 hoyos.</div>`;
+                return;
+            }
+
+            const field = getSerieScoringField();
+            const items = calcularMejor18Serie();
+            let html = `<div class="series-note">Mejor 18 hoyos por categoría. Entra cualquier jugador con al menos una tarjeta válida en alguna fecha de la serie. Se muestran los mismos puestos configurados arriba.</div>`;
+            html += renderTablaSeriePorCategorias({ tipo: "mejor18", items, field });
+            el("panelSerieMejor18").innerHTML = html;
+        }
+
+        function renderSerieParticipaciones() {
+            const { completos, incompletos, required } = calcularAcumuladoSerie();
+            const todos = [...completos, ...incompletos].sort((a, b) => String(a.display_name).localeCompare(String(b.display_name), "es"));
+            let html = `<div class="table-wrap"><table><thead><tr><th class="left">Jugador</th>`;
+            torneosSerie.forEach(t => html += `<th>F${esc(t.series_round_number || "?")}<br><span style="font-size:10px">${fechaTexto(t.tournament_date)}</span></th>`);
+            html += `<th>Estado</th></tr></thead><tbody>`;
+            todos.forEach(g => {
+                html += `<tr><td class="left"><b>${esc(g.display_name)}</b></td>`;
+                torneosSerie.forEach(t => {
+                    const r = g.rounds.find(x => String(x.tournament_id) === String(t.id));
+                    html += `<td>${r ? fmt(r.score, 0) : "—"}</td>`;
+                });
+                html += `<td>${g.complete ? `<span class="tag ok">Completa</span>` : `<span class="tag warn">${g.rounds_played}/${required}</span>`}</td></tr>`;
+            });
+            if (!todos.length) html += `<tr><td colspan="${torneosSerie.length + 2}">No hay participaciones válidas cargadas.</td></tr>`;
+            html += `</tbody></table></div>`;
+            el("panelSerieParticipaciones").innerHTML = html;
+        }
+        function renderInfoGeneral() {
+            const validas = scorecards.filter(s => s.card_status === "valid" || s.card_status === "cargada");
+            const desc = scorecards.filter(s => s.card_status === "desc");
+            const npt = scorecards.filter(s => s.card_status === "npt" || !s.card_status);
+            const grossAvg = validas.length ? validas.reduce((a, s) => a + (n(s.gross) || 0), 0) / validas.length : null;
+            const netAvg = validas.length ? validas.reduce((a, s) => a + (n(s.net) || 0), 0) / validas.length : null;
+            el("infoGeneral").innerHTML = `
+        <div class="info-item"><b>Nombre del torneo</b><span>${esc(torneoActual.name)}</span></div>
+        <div class="info-item"><b>Fecha</b><span>${fechaTexto(torneoActual.tournament_date)}</span></div>
+        <div class="info-item"><b>Modalidad</b><span>${esc(torneoActual.game_modes?.name || "—")}</span></div>
+        <div class="info-item"><b>Tipo de salida</b><span>${esc(torneoActual.start_type || "—")}</span></div>
+        <div class="info-item"><b>Serie</b><span>${serieActual ? `${esc(serieActual.name)} · Fecha ${esc(torneoActual.series_round_number || "—")}` : "No"}</span></div>
+      `;
+            el("statsGenerales").innerHTML = `
+        <div class="stat"><div class="k">Anotados</div><div class="v">${scorecards.length}</div></div>
+        <div class="stat"><div class="k">Cargadas</div><div class="v">${validas.length}</div></div>
+        <div class="stat"><div class="k">Desc.</div><div class="v">${desc.length}</div></div>
+        <div class="stat"><div class="k">NPT</div><div class="v">${npt.length}</div></div>
+        <div class="stat"><div class="k">Gross promedio</div><div class="v">${fmt(grossAvg, 1)}</div></div>
+        <div class="stat"><div class="k">Neto promedio</div><div class="v">${fmt(netAvg, 1)}</div></div>
+      `;
+        }
+
+        function categoriaMetaPorNombre(nombre) {
+            const objetivo = String(nombre || "").toLowerCase().trim();
+            return categorias.find(c => String(c.name || "").toLowerCase().trim() === objetivo) || null;
+        }
+
+        function claseColorCategoria(nombre, meta = null) {
+            const texto = `${nombre || ""} ${meta?.tee_name || ""}`.toLowerCase();
+            if (texto.includes("negra")) return "tee-negra";
+            if (texto.includes("amarilla")) return "tee-amarilla";
+            if (texto.includes("blanca")) return "tee-blanca";
+            if (texto.includes("roja")) return "tee-roja";
+            if (texto.includes("azul")) return "tee-azul";
+            return "";
+        }
+
+        function ordenCategoria(nombre) {
+            const cat = categoriaMetaPorNombre(nombre);
+            const gen = normalizarGenero(cat?.gender || nombre);
+            const min = n(cat?.index_min);
+            const nombreLower = String(nombre || "").toLowerCase();
+            if (nombreLower.includes("scratch") || nombreLower.includes("scrach")) return -1000;
+            if (gen === "male" || nombreLower.includes("caballero")) return (min ?? 999) + 0;
+            if (gen === "female" || nombreLower.includes("dama")) return 1000 + (min ?? 999);
+            return 500 + (min ?? 999);
+        }
+
+        function renderGanadoresCategorias() {
+            const top = Math.max(1, Number(el("topCategoria").value || 3));
+
+            const scratchItems = obtenerScratchItems(el("scratchGenero").value).slice(0, Math.max(1, Number(el("topScratch").value || top)));
+            const scratchWinnerIds = new Set(
+                scratchItems.map(s => String(s.id))
+            );
+
+            const validas = scorecards.filter(s => {
+                const catName = String(s.category_name || "").toLowerCase();
+                return (s.card_status === "valid" || s.card_status === "cargada") &&
+                    s.category_name &&
+                    n(s.net) != null &&
+                    !catName.includes("scratch") &&
+                    !catName.includes("scrach") &&
+                    !scratchWinnerIds.has(String(s.id))
+            });
+            const grupos = new Map();
+            for (const s of validas) { const key = s.category_name || "Sin categoría"; if (!grupos.has(key)) grupos.set(key, []); grupos.get(key).push(s); }
+            let html = "";
+
+            html += `<div class="winner-card"><div class="winner-head">Scratch · Index -6 a 9 · Gross</div><div class="podium">`;
+            scratchItems.forEach((s, i) => { html += podiumRow(s, i, `Gross ${fmt(s.gross, 0)}`, `Index ${fmt(s.official_index ?? s.manual_index, 1)} · Neto ${fmt(s.net, 0)} · ${esc(s.category_name || "Sin categoría")}`); });
+            if (!scratchItems.length) html += `<div class="small">No hay jugadores que cumplan con el filtro scratch.</div>`;
+            html += `</div></div>`;
+
+            [...grupos.entries()].sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es")).forEach(([cat, items]) => {
+                const meta = categoriaMetaPorNombre(cat);
+                const rango = meta && (meta.index_min != null || meta.index_max != null) ? ` · ${fmt(meta.index_min, 1)} a ${fmt(meta.index_max, 1)}` : "";
+                const gan = items.sort((a, b) => compareScore(a, b, "net")).slice(0, top);
+                const claseTee = claseColorCategoria(cat, meta);
+                html += `<div class="winner-card"><div class="winner-head ${claseTee}">${esc(cat)}${rango}</div><div class="podium">`;
+                gan.forEach((s, i) => { html += podiumRow(s, i, `Neto ${fmt(s.net, 0)}`, `Gross ${fmt(s.gross, 0)} · HCP ${fmt(s.playing_handicap, 0)} · ${esc(s.tee_name || "Tee —")}`); });
+                if (!gan.length) html += `<div class="small">Sin tarjetas válidas.</div>`;
+                html += `</div></div>`;
+            });
+            el("ganadoresCategorias").innerHTML = html || `<div class="small">No hay resultados por categoría para mostrar.</div>`;
+        }
+
+        function obtenerScratchItems(generoFiltro = "all") {
+            let items = scorecards.filter(s => (s.card_status === "valid" || s.card_status === "cargada") && n(s.gross) != null);
+            items = items.filter(s => { const idx = n(s.official_index ?? s.manual_index); return idx != null && idx >= -6 && idx <= 9; });
+            if (generoFiltro !== "all") items = items.filter(s => normalizarGenero(s.player_gender) === generoFiltro);
+            return items.sort((a, b) => compareScore(a, b, "gross"));
+        }
+
+        function renderScratch() {
+            const top = Math.max(1, Number(el("topScratch").value || 3));
+            const genero = el("scratchGenero").value;
+            const items = obtenerScratchItems(genero);
+            const titulo = genero === "male" ? "Scratch Caballeros" : genero === "female" ? "Scratch Damas" : "Scratch General";
+            let html = `<div class="winner-card"><div class="winner-head">${titulo} · Index -6 a 9</div><div class="podium">`;
+            items.slice(0, top).forEach((s, i) => { html += podiumRow(s, i, `Gross ${fmt(s.gross, 0)}`, `Index ${fmt(s.official_index ?? s.manual_index, 1)} · Neto ${fmt(s.net, 0)} · ${esc(s.category_name || "Sin categoría")}`); });
+            if (!items.length) html += `<div class="small">No hay jugadores que cumplan con el filtro scratch.</div>`;
+            html += `</div></div>`;
+            el("ganadoresScratch").innerHTML = html;
+        }
+
+        function podiumRow(s, i, score, extra) {
+            return `<div class="podium-row"><div class="medal ${medalClass(i)}">${i + 1}</div><div><div class="player">${esc(s.display_name || "Sin nombre")}</div><div class="small">${extra}</div></div><div class="score">${score}</div></div>`;
+        }
+
+        function holeRowsForScorecard(sc) {
+            const rows = new Map();
+            (sc.scorecard_holes || []).forEach(h => {
+                rows.set(Number(h.hole_number), { strokes: n(h.strokes), par: n(h.par_value) ?? COURSE_HOLES[h.hole_number]?.par, hcp: n(h.hole_handicap) ?? COURSE_HOLES[h.hole_number]?.hcp });
+            });
+            const json = sc.hole_scores || {};
+            Object.entries(json).forEach(([k, v]) => {
+                const hole = Number(k); if (!hole || rows.has(hole)) return;
+                const strokes = typeof v === "object" && v !== null ? n(v.strokes ?? v.stroke ?? v.score) : n(v);
+                rows.set(hole, { strokes, par: n(v?.par_value) ?? COURSE_HOLES[hole]?.par, hcp: n(v?.hole_handicap) ?? COURSE_HOLES[hole]?.hcp });
+            });
+            return rows;
+        }
+
+        function renderResumenHoyos() {
+            const validas = scorecards.filter(s => s.card_status === "valid" || s.card_status === "cargada");
+            const stats = calcularStatsTee(validas);
+            let html = `<div class="tee-block"><div class="tee-title"><h3>Resumen general de la cancha</h3><span class="tag ok">${validas.length} tarjetas válidas</span></div>`;
+            html += renderRankingHoyos(stats);
+            html += `<div class="table-wrap"><table><thead><tr><th>Hoyo</th><th>Par</th><th>HCP</th><th>Prom. golpes</th><th>Prom. vs Par</th><th>Águilas</th><th>Birdies</th><th>Par</th><th>Bogey</th><th>Doble +</th></tr></thead><tbody>`;
+            stats.forEach(r => {
+                html += `<tr><td><b>H${r.hole}</b></td><td>${r.par}</td><td>${r.hcp}</td><td>${fmt(r.avg, 2)}</td><td>${fmt(r.avgVsPar, 2)}</td><td>${r.eagle}</td><td>${r.birdie}</td><td>${r.parCount}</td><td>${r.bogey}</td><td>${r.doublePlus}</td></tr>`;
+            });
+            html += `</tbody></table></div></div>`;
+            el("resumenHoyos").innerHTML = validas.length ? html : `<div class="small">No hay tarjetas válidas para calcular resumen de hoyos.</div>`;
+        }
+
+        function calcularStatsTee(items) {
+            const base = Array.from({ length: 18 }, (_, i) => ({ hole: i + 1, par: COURSE_HOLES[i + 1].par, hcp: COURSE_HOLES[i + 1].hcp, count: 0, total: 0, eagle: 0, birdie: 0, parCount: 0, bogey: 0, doublePlus: 0, avg: null, avgVsPar: null }));
+            for (const sc of items) {
+                const rows = holeRowsForScorecard(sc);
+                const permitidos = new Set(activeHoles(sc.hole_segment));
+                for (const hole of permitidos) {
+                    const row = rows.get(hole); const strokes = n(row?.strokes); if (strokes == null) continue;
+                    const r = base[hole - 1]; const par = n(row?.par) ?? r.par; const hcp = n(row?.hcp) ?? r.hcp;
+                    r.par = par; r.hcp = hcp; r.count++; r.total += strokes;
+                    const diff = strokes - par;
+                    if (diff <= -2) r.eagle++; else if (diff === -1) r.birdie++; else if (diff === 0) r.parCount++; else if (diff === 1) r.bogey++; else if (diff >= 2) r.doublePlus++;
+                }
+            }
+            return base.map(r => { r.avg = r.count ? r.total / r.count : null; r.avgVsPar = r.count ? r.avg - r.par : null; return r; });
+        }
+
+        function renderRankingHoyos(stats) {
+            // Peor a mejor: el puesto 1 es el hoyo que se jugó peor respecto al par.
+            const orden = stats.filter(r => r.avg != null).sort((a, b) => b.avgVsPar - a.avgVsPar);
+            let html = `<div class="ranking-grid">`;
+            for (let col = 0; col < 6; col++) {
+                html += `<div class="ranking-col">`;
+                for (let row = 0; row < 3; row++) {
+                    const idx = col * 3 + row;
+                    const r = orden[idx];
+                    html += r ? `<div class="rank-box"><b>${idx + 1}° · H${r.hole}</b><br>Prom ${fmt(r.avg, 2)} · vs par ${fmt(r.avgVsPar, 2)}</div>` : `<div></div>`;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        function renderPrintRanking(stats) {
+            const orden = stats.filter(r => r.avg != null).sort((a, b) => b.avgVsPar - a.avgVsPar);
+            let html = `<div class="print-rank-grid">`;
+            for (let col = 0; col < 6; col++) {
+                html += `<div>`;
+                for (let row = 0; row < 3; row++) {
+                    const idx = col * 3 + row; const r = orden[idx];
+                    html += r ? `<div class="print-rank-cell"><b>${idx + 1}° H${r.hole}</b> · ${fmt(r.avg, 2)} · vs par ${fmt(r.avgVsPar, 2)}</div>` : `<div class="print-rank-cell">&nbsp;</div>`;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        async function prepararGrilla(tournamentId) {
+            try {
+                const { data: bloques, error } = await supabase
+                    .from("starting_blocks")
+                    .select(`id,name,start_time,display_order,starting_lines(id,line_time,starting_hole,label,display_order,line_slots(slot_number,display_name,participant_type))`)
+                    .eq("tournament_id", tournamentId)
+                    .order("display_order", { ascending: true });
+                if (error) throw error;
+                grillaBloquesActuales = bloques || [];
+                if (!bloques?.length) { return; }
+                for (const b of bloques) {
+                    const lineas = (b.starting_lines || []).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0) || String(a.line_time || "").localeCompare(String(b.line_time || "")) || (a.starting_hole ?? 0) - (b.starting_hole ?? 0));
+                    for (const l of lineas) {
+                    }
+                }
+            } catch (err) { console.warn("No se pudo cargar la grilla", err); grillaBloquesActuales = []; }
+        }
+
+
+
+        function renderPrintTablaSeriePorCategorias({ tipo, items, field, required = null }) {
+            const topCategoria = Math.max(1, Number(el("topCategoria").value || 3));
+            const topScratch = Math.max(1, Number(el("topScratch").value || topCategoria));
+            const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
+            const esMejor18 = tipo === "mejor18";
+
+            const scratchItems = items
+                .filter(esElegibleScratchSerie)
+                .slice()
+                .sort((a, b) => {
+                    const av = esMejor18 ? n(a.gross) : n(a.total_gross);
+                    const bv = esMejor18 ? n(b.gross) : n(b.total_gross);
+                    return (av ?? 9999) - (bv ?? 9999) || String(a.display_name).localeCompare(String(b.display_name), "es");
+                })
+                .slice(0, topScratch);
+
+            const scratchIds = new Set(scratchItems.map(x => String(x.key || x.id || x.linked_player_id || x.display_name)));
+            const itemsParaCategorias = items.filter(x => !scratchIds.has(String(x.key || x.id || x.linked_player_id || x.display_name)));
+            const grupos = agruparPorCategoriaOrdenada(itemsParaCategorias);
+
+            let html = `<table class="print-series-table"><thead><tr>`;
+            html += `<th style="width:21%">Competencia</th><th style="width:7%">Pos</th><th class="left" style="width:29%">Jugador</th><th style="width:12%">${esMejor18 ? "Mejor " + labelScore : labelScore + " acum."}</th><th style="width:10%">Gross</th>`;
+            html += esMejor18 ? `<th style="width:21%">Fecha</th>` : `<th style="width:9%">Vueltas</th><th style="width:12%">Detalle</th>`;
+            html += `</tr></thead><tbody>`;
+
+            function fila(nombreCompetencia, item, pos) {
+                if (esMejor18) {
+                    return `<tr><td class="comp">${esc(nombreCompetencia)}</td><td><b>${pos}</b></td><td class="left"><b>${esc(item.display_name)}</b></td><td><b>${fmt(item.score, 0)}</b></td><td>${fmt(item.gross, 0)}</td><td>F${esc(item.round_number || "?")} · ${fechaTexto(item.tournament_date)}</td></tr>`;
+                }
+                const detalle = (item.rounds || []).map(r => `F${r.round_number || "?"}: ${r.score ?? "—"}`).join(" · ");
+                return `<tr><td class="comp">${esc(nombreCompetencia)}</td><td><b>${pos}</b></td><td class="left"><b>${esc(item.display_name)}</b></td><td><b>${fmt(item.score, 0)}</b></td><td>${fmt(item.total_gross, 0)}</td><td>${item.rounds_played}/${required || item.rounds_played}</td><td>${esc(detalle)}</td></tr>`;
+            }
+
+            scratchItems.forEach((item, i) => html += fila("Scratch", item, i + 1));
+
+            for (const [cat, catItems] of grupos) {
+                catItems
+                    .slice()
+                    .sort((a, b) => n(a.score) - n(b.score) || (n(a.total_gross ?? a.gross) ?? 9999) - (n(b.total_gross ?? b.gross) ?? 9999) || String(a.display_name).localeCompare(String(b.display_name), "es"))
+                    .slice(0, topCategoria)
+                    .forEach((item, i) => html += fila(cat, item, i + 1));
+            }
+
+            if (!scratchItems.length && !grupos.length) {
+                html += `<tr><td colspan="${esMejor18 ? 6 : 7}">Todavía no hay tarjetas válidas para mostrar.</td></tr>`;
+            }
+
+            html += `</tbody></table>`;
+            return html;
+        }
+
+        function renderPrintSeriesPage() {
+            const acumulado = calcularAcumuladoSerie();
+            const field = acumulado.field || getSerieScoringField();
+            const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
+            const tituloSerie = serieActual?.name || "Competencia de varias fechas";
+
+            let html = `<div class="print-page print-series-page">`;
+            html += `<div class="print-title">${esc(tituloSerie)}</div>`;
+            html += `<div class="print-date">Competencia de varias fechas · ${esc(torneoActual.name || "")}</div>`;
+
+            html += `<div class="print-section-title">Acumulado serie</div>`;
+            html += `<div class="print-meta">Orden: Scratch, Negras, Amarillas, Blancas y Damas. Acumulado por <b>${labelScore}</b>. Exige completar <b>${acumulado.required || "todas las"}</b> fechas.</div>`;
+            html += renderPrintTablaSeriePorCategorias({ tipo: "acumulado", items: acumulado.completos, field, required: acumulado.required });
+
+            if (serieActual.best18_enabled !== false) {
+                const mejor18 = calcularMejor18Serie();
+                html += `<div class="print-section-title">Mejor 18 hoyos</div>`;
+                html += `<div class="print-meta">Entra cualquier jugador con al menos una tarjeta válida. Se imprimen los mismos puestos configurados arriba.</div>`;
+                html += renderPrintTablaSeriePorCategorias({ tipo: "mejor18", items: mejor18, field });
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        function renderPrintReport() {
+            const validas = scorecards.filter(s => s.card_status === "valid" || s.card_status === "cargada");
+            const desc = scorecards.filter(s => s.card_status === "desc");
+            const npt = scorecards.filter(s => s.card_status === "npt" || !s.card_status);
+            const grossAvg = validas.length ? validas.reduce((a, s) => a + (n(s.gross) || 0), 0) / validas.length : null;
+            const netAvg = validas.length ? validas.reduce((a, s) => a + (n(s.net) || 0), 0) / validas.length : null;
+            const top = Math.max(1, Number(el("topCategoria").value || 3));
+            let html = `<div class="print-page">`;
+            html += `<div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">${fechaTexto(torneoActual.tournament_date)}</div>`;
+            html += `<div class="print-meta">Modalidad: <b>${esc(torneoActual.game_modes?.name || "—")}</b><br>Tipo de Salida: <b>${esc(torneoActual.start_type || "—")}</b><br>Anotados: <b>${scorecards.length}</b><br>Tarjetas presentadas: <b>${validas.length}</b><br>NPT: <b>${npt.length}</b><br>DSC.: <b>${desc.length}</b><br>Gross Promedio: <b>${fmt(grossAvg, 1)}</b><br>Neto Promedio: <b>${fmt(netAvg, 1)}</b></div>`;
+            html += `<div class="print-section-title">Ganadores por Categoría</div>`;
+            const scratch = obtenerScratchItems(el("scratchGenero").value).slice(0, Math.max(1, Number(el("topScratch").value || top)));
+            const scratchWinnerIds = new Set(
+                scratch.slice(0, 1).map(s => String(s.id))
+            );
+            html += `<div class="print-category">Scratch · Index -6 a 9:</div>`;
+
+            scratch.forEach(s => {
+                html += `
+                 <div class="print-winner scratch-print">
+                 <div>${esc(s.display_name)}</div>
+                 <div>Gross: ${fmt(s.gross, 0)}</div>
+                 </div>
+             `;
+            });
+            const grupos = new Map();
+            scorecards
+                .filter(s => {
+                    const catName = String(s.category_name || "").toLowerCase();
+
+                    return (s.card_status === "valid" || s.card_status === "cargada") &&
+                        s.category_name &&
+                        n(s.net) != null &&
+                        !catName.includes("scratch") &&
+                        !catName.includes("scrach") &&
+                        !scratchWinnerIds.has(String(s.id));
+                })
+                .forEach(s => { const key = s.category_name || "Sin categoría"; if (!grupos.has(key)) grupos.set(key, []); grupos.get(key).push(s); });
+            [...grupos.entries()].sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es")).forEach(([cat, items]) => {
+                const meta = categoriaMetaPorNombre(cat);
+                const rango = meta && (meta.index_min != null || meta.index_max != null) ? ` ${fmt(meta.index_min, 1)} a ${fmt(meta.index_max, 1)}` : "";
+                html += `<div class="print-category">${esc(cat)}${rango}:</div>`;
+                items.sort((a, b) => compareScore(a, b, "net")).slice(0, top).forEach(s => html += `<div class="print-winner"><div>${esc(s.display_name)}</div><div>Gross: ${fmt(s.gross, 0)}</div><div>HCP: ${fmt(s.playing_handicap, 0)}</div><div>Neto: ${fmt(s.net, 0)}</div></div>`);
+            });
+
+            html += `</div>`;
+
+            if (serieActual) {
+                html += renderPrintSeriesPage();
+            }
+            html += `<div class="print-page"><div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">Grilla de anotados</div>${renderPrintGrilla()}</div>`;
+            const stats = calcularStatsTee(validas);
+            html += `<div class="print-page"><div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">Resumen general hoyo por hoyo</div>`;
+            html += `<div class="print-section-title">Ranking de hoyos · Peor a mejor</div>${renderPrintRanking(stats)}`;
+            html += `<div class="print-section-title">Detalle por hoyo</div><table class="print-hole-table"><thead><tr><th>Hoyo</th><th>Par</th><th>HCP</th><th>Prom.</th><th>Vs Par</th><th>Águilas</th><th>Birdies</th><th>Par</th><th>Bogey</th><th>Doble+</th></tr></thead><tbody>`;
+            stats.forEach(r => html += `<tr><td>H${r.hole}</td><td>${r.par}</td><td>${r.hcp}</td><td>${fmt(r.avg, 2)}</td><td>${fmt(r.avgVsPar, 2)}</td><td>${r.eagle}</td><td>${r.birdie}</td><td>${r.parCount}</td><td>${r.bogey}</td><td>${r.doublePlus}</td></tr>`);
+            html += `</tbody></table></div>`;
+            el("printArea").innerHTML = html;
+        }
+
+        function renderPrintGrilla() {
+            if (!grillaBloquesActuales?.length) {
+                return `<div>No hay grilla disponible.</div>`;
+            }
+
+            let html = "";
+
+            for (const b of grillaBloquesActuales) {
+                html += `
+                    <table class="print-grid-table">
+                        <colgroup>
+                            <col class="col-hora">
+                            <col class="col-jugador">
+                            <col class="col-jugador">
+                            <col class="col-jugador">
+                            <col class="col-jugador">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th colspan="5">
+                                    ${esc(b.name || "Salida")}${b.start_time ? " · " + horaTexto(b.start_time) : ""}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                const lineas = (b.starting_lines || []).sort((a, b) => {
+                    return (a.display_order ?? 0) - (b.display_order ?? 0) ||
+                        String(a.line_time || "").localeCompare(String(b.line_time || "")) ||
+                        (a.starting_hole ?? 0) - (b.starting_hole ?? 0);
+                });
+
+                for (const linea of lineas) {
+                    const cabecera = linea.line_time
+                        ? horaTexto(linea.line_time)
+                        : (linea.starting_hole ? `H${linea.starting_hole}` : (linea.label || ""));
+
+                    const slots = (linea.line_slots || [])
+                        .sort((a, b) => (a.slot_number || 0) - (b.slot_number || 0))
+                        .map(slot => formatearNombreCorto(slot.display_name || ""));
+
+                    while (slots.length < 4) slots.push("");
+
+                    html += `
+                        <tr>
+                            <td>${esc(cabecera)}</td>
+                            <td>${esc(slots[0])}</td>
+                            <td>${esc(slots[1])}</td>
+                            <td>${esc(slots[2])}</td>
+                            <td>${esc(slots[3])}</td>
+                        </tr>
+                    `;
+                }
+
+                html += `
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            return html;
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
