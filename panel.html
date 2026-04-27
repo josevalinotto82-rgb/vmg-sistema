@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Panel VMGC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f8f3;
+            color: #1f2937;
+        }
+
+        .page {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            margin: 0;
+            color: #14532d;
+        }
+
+        .sub {
+            color: #6b7280;
+            margin-top: 6px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+        }
+
+        .card h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+            color: #166534;
+        }
+
+        .card p {
+            margin: 0 0 14px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        a.button,
+        button {
+            display: inline-block;
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+            text-decoration: none;
+            background: #166534;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button.logout {
+            width: auto;
+            background: #b91c1c;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            color: #6b7280;
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <div class="header">
+            <div>
+                <h1>Panel Villa María Golf</h1>
+                <div class="sub" id="userInfo">Verificando usuario...</div>
+            </div>
+            <button class="logout" id="logoutBtn">Cerrar sesión</button>
+        </div>
+
+        <div id="adminPanel" class="hidden">
+            <h2>Administrador</h2>
+            <div class="grid">
+                <div class="card">
+                    <h2>Crear torneos</h2>
+                    <p>Alta, edición y configuración de torneos.</p>
+                    <a class="button" href="admin_torneos.html">Entrar</a>
+                </div>
+
+                <div class="card">
+                    <h2>Grilla</h2>
+                    <p>Inscripción y manejo de horarios/hoyos.</p>
+                    <a class="button" href="grilla_interactiva.html">Entrar</a>
+                </div>
+
+                <div class="card">
+                    <h2>Oficialización</h2>
+                    <p>Categorías, tees, HCP e impresión de tarjetas.</p>
+                    <a class="button" href="admin_oficializacion.html">Entrar</a>
+                </div>
+
+                <div class="card">
+                    <h2>Carga de tarjetas</h2>
+                    <p>Cargar golpes, NPT, DESC y resultados.</p>
+                    <a class="button" href="carga_tarjeta.html">Entrar</a>
+                </div>
+
+                <div class="card">
+                    <h2>Consulta completa</h2>
+                    <p>Informe A4, ganadores, varias fechas y mejor 18.</p>
+                    <a class="button" href="consulta.html">Entrar</a>
+                </div>
+
+                <div class="card">
+                    <h2>Resultados públicos</h2>
+                    <p>Vista pública de torneos jugados.</p>
+                    <a class="button" href="index.html">Entrar</a>
+                </div>
+            </div>
+        </div>
+
+        <div id="playerPanel" class="hidden">
+            <h2>Jugador</h2>
+            <div class="grid">
+                <div class="card">
+                    <h2>Torneos abiertos</h2>
+                    <p>Inscripción a torneos disponibles.</p>
+                    <a class="button" href="grilla_interactiva.html">Entrar</a>
+                </div>
+
+                <div class="card">
+                    <h2>Resultados</h2>
+                    <p>Consultar torneos jugados y tarjetas.</p>
+                    <a class="button" href="index.html">Entrar</a>
+                </div>
+            </div>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+        const supabase = createClient(
+            "https://bnnfolhrqxgxjmobclrm.supabase.co",
+            "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+        );
+
+        // 🔐 PROTECCIÓN
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            window.location.href = "login.html";
+        }
+
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("role, active")
+            .eq("id", session.user.id)
+            .maybeSingle();
+
+        if (!profile || profile.role !== "admin") {
+            alert("Acceso restringido");
+            window.location.href = "panel.html";
+        }
+
+        const userInfo = document.getElementById("userInfo");
+        const adminPanel = document.getElementById("adminPanel");
+        const playerPanel = document.getElementById("playerPanel");
+        const statusEl = document.getElementById("status");
+
+        async function init() {
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            const user = session.user;
+
+            const { data: profile, error } = await supabase
+                .from("profiles")
+                .select("role, active")
+                .eq("id", user.id)
+                .maybeSingle();
+
+            if (error) {
+                console.error(error);
+                statusEl.textContent = "No se pudo cargar el perfil del usuario.";
+                return;
+            }
+
+            if (!profile || profile.active !== true) {
+                statusEl.textContent = "Usuario sin perfil activo.";
+                return;
+            }
+
+            userInfo.textContent = `${user.email} · Rol: ${profile.role}`;
+
+            if (profile.role === "admin") {
+                adminPanel.classList.remove("hidden");
+            } else {
+                playerPanel.classList.remove("hidden");
+            }
+        }
+
+        document.getElementById("logoutBtn").addEventListener("click", async () => {
+            await supabase.auth.signOut();
+            window.location.href = "login.html";
+        });
+
+        init();
+    </script>
+</body>
+
+</html>
