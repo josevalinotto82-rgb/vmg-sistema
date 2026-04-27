@@ -80,17 +80,6 @@
             "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
         );
 
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("role, active")
-            .eq("id", session.user.id)
-            .maybeSingle();
-
-        if (!profile || profile.role !== "admin") {
-            alert("Acceso restringido");
-            window.location.href = "panel.html";
-        }
-
         const emailEl = document.getElementById("email");
         const passwordEl = document.getElementById("password");
         const loginBtn = document.getElementById("loginBtn");
