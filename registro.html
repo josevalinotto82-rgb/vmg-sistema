@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Registro VMGC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f5f8f3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            width: 340px;
+        }
+
+        h2 {
+            margin: 0 0 20px;
+            color: #166534;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: #166534;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .info {
+            background: #ecfdf5;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #065f46;
+        }
+
+        .error {
+            color: red;
+            font-size: 13px;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+        <h2>Registro</h2>
+
+        <input id="matricula" placeholder="Matrícula AAG">
+
+        <div id="datosJugador" class="info" style="display:none;"></div>
+
+        <input id="email" type="email" placeholder="Email">
+        <input id="telefono" placeholder="Teléfono">
+        <input id="password" type="password" placeholder="Contraseña">
+
+        <button id="btnBuscar">Validar matrícula</button>
+        <button id="btnRegistrar" style="margin-top:10px;">Registrarme</button>
+
+        <div id="msg" class="error"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+        const supabase = createClient(
+            "https://bnnfolhrqxgxjmobclrm.supabase.co",
+            "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+        );
+
+        let jugadorEncontrado = null;
+
+        const matriculaEl = document.getElementById("matricula");
+        const datosJugadorEl = document.getElementById("datosJugador");
+        const emailEl = document.getElementById("email");
+        const telefonoEl = document.getElementById("telefono");
+        const passwordEl = document.getElementById("password");
+        const msg = document.getElementById("msg");
+
+        document.getElementById("btnBuscar").addEventListener("click", async () => {
+            msg.textContent = "";
+            datosJugadorEl.style.display = "none";
+
+            const matricula = matriculaEl.value.trim();
+
+            if (!matricula) {
+                msg.textContent = "Ingresá la matrícula.";
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from("players")
+                .select("*")
+                .eq("aag_member_number", matricula)
+                .maybeSingle();
+
+            if (error || !data) {
+                msg.textContent = "Matrícula no encontrada.";
+                return;
+            }
+
+            if (data.profile_id) {
+                msg.textContent = "Esta matrícula ya está registrada.";
+                return;
+            }
+
+            jugadorEncontrado = data;
+
+            datosJugadorEl.innerHTML = `
+    <b>${data.full_name}</b><br>
+    Confirmá que sos vos
+  `;
+
+            datosJugadorEl.style.display = "block";
+        });
+
+        document.getElementById("btnRegistrar").addEventListener("click", async () => {
+            msg.textContent = "";
+
+            if (!jugadorEncontrado) {
+                msg.textContent = "Primero validá la matrícula.";
+                return;
+            }
+
+            const email = emailEl.value.trim();
+            const telefono = telefonoEl.value.trim();
+            const password = passwordEl.value;
+
+            if (!email || !password) {
+                msg.textContent = "Completá email y contraseña.";
+                return;
+            }
+
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    emailRedirectTo: "https://josevalinotto82-rgb.github.io/vmg-sistema/login.html"
+                }
+            });
+
+            if (authError) {
+                msg.style.color = "#166534";
+                msg.textContent = "Iniciado. Revisá tu email y confirmá.";
+                return;
+            }
+
+            const userId = authData.user.id;
+
+            await supabase.from("profiles").insert({
+                id: userId,
+                role: "member",
+                active: true
+            });
+
+            await supabase.from("players").update({
+                profile_id: userId,
+                email,
+                phone: telefono
+            }).eq("id", jugadorEncontrado.id);
+
+            msg.style.color = "#166534";
+            msg.textContent = "Registrado. Revisá tu correo y confirmá tu e-mail para ingresar.";
+
+            setTimeout(() => {
+                window.location.href = "login.html";
+            }, 5000);
+        });
+    </script>
+
+</body>
+
+</html>
