@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scorecard libre - Villa María Golf</title>
+
+    <style>
+        :root {
+            --bg: #f5f8f3;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+            --green: #166534;
+            --green2: #14532d;
+            --blue: #2563eb;
+            --gold: #d6a14a;
+            --red: #b91c1c;
+            --amber: #b45309;
+            --soft-green: #dcfce7;
+            --soft-red: #fff1f2;
+            --soft-amber: #fef3c7;
+            --soft-gray: #f3f4f6;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 18px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            margin: 0 0 4px;
+            font-size: 28px;
+            color: var(--green2);
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+            margin-bottom: 16px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 420px minmax(0, 1fr);
+            gap: 16px;
+            align-items: start;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(130px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+
+        .form-grid-compact {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .03em;
+        }
+
+        input,
+        select {
+            width: 100%;
+            height: 38px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 7px 9px;
+            font-size: 13px;
+            background: #fff;
+        }
+
+        input[readonly] {
+            background: #f9fafb;
+            color: #374151;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 10px;
+            height: 38px;
+            padding: 0 14px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .btn:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--green2);
+        }
+
+        .btn-secondary {
+            background: var(--blue);
+            color: #fff;
+        }
+
+        .btn-light {
+            background: var(--gold);
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+        }
+
+        .btn-gray {
+            background: #374151;
+            color: #fff;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .status-text {
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .status-text.ok {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .status-text.error {
+            color: var(--red);
+            font-weight: 700;
+        }
+
+        .status-text.warn {
+            color: var(--amber);
+            font-weight: 700;
+        }
+
+        .section-title {
+            margin: 0 0 12px;
+            color: var(--green2);
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .help {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.35;
+            margin-top: 8px;
+        }
+
+        .search-results {
+            margin-top: 10px;
+            max-height: 360px;
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .player-card {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 11px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            background: #fff;
+            transition: .12s ease;
+        }
+
+        .player-card:hover {
+            border-color: #9ca3af;
+            transform: translateY(-1px);
+        }
+
+        .player-card.active {
+            border-color: var(--green);
+            box-shadow: 0 0 0 2px rgba(22, 101, 52, .12);
+        }
+
+        .player-name {
+            font-weight: 800;
+            font-size: 14px;
+            line-height: 1.25;
+            margin-bottom: 5px;
+        }
+
+        .player-extra {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.35;
+        }
+
+        .selected-title {
+            font-size: 22px;
+            font-weight: 900;
+            color: var(--green2);
+            margin-bottom: 5px;
+        }
+
+        .selected-sub {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(110px, 1fr));
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .summary-box {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 10px;
+            background: #fafafa;
+        }
+
+        .summary-box .k {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-bottom: 4px;
+        }
+
+        .summary-box .v {
+            font-size: 19px;
+            font-weight: 900;
+            color: var(--green2);
+        }
+
+        .alert {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .alert.warn {
+            background: var(--soft-amber);
+            color: var(--amber);
+        }
+
+        .alert.error {
+            background: var(--soft-red);
+            color: var(--red);
+        }
+
+        .alert.ok {
+            background: var(--soft-green);
+            color: var(--green);
+        }
+
+        .score-grid-wrap {
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .score-grid {
+            min-width: 900px;
+            display: grid;
+            grid-template-columns: repeat(18, 1fr);
+            gap: 6px;
+        }
+
+        .hole {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 7px 5px;
+            background: #fff;
+            text-align: center;
+        }
+
+        .hole-label {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--green2);
+        }
+
+        .hole-meta {
+            font-size: 10px;
+            color: var(--muted);
+            line-height: 1.25;
+            margin: 3px 0 6px;
+        }
+
+        .hole input {
+            height: 36px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 800;
+            padding: 4px;
+        }
+
+        .sumas-control {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(120px, 1fr));
+            gap: 10px;
+            margin: 10px 0 14px;
+        }
+
+        .suma-box {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 10px;
+            background: #fafafa;
+            text-align: center;
+        }
+
+        .suma-box .label {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-bottom: 4px;
+        }
+
+        .suma-box .valor {
+            font-size: 22px;
+            font-weight: 900;
+            color: var(--green2);
+        }
+
+        .empty {
+            padding: 18px;
+            color: var(--muted);
+            background: #fff;
+            border-radius: 12px;
+            border: 1px dashed #d1d5db;
+        }
+
+        .home-btn {
+            position: fixed;
+            top: 30px;
+            right: 27px;
+            width: 38px;
+            height: 38px;
+            border-radius: 6px;
+            background: #166534;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+            z-index: 9999;
+            transition: transform 0.15s, background 0.15s;
+        }
+
+        .home-btn:hover {
+            background: #14532d;
+            transform: scale(1.05);
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #print-root,
+            #print-root * {
+                visibility: visible;
+            }
+
+            #print-root {
+                position: absolute;
+                inset: 0;
+                background: white;
+
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+        }
+
+        @media(max-width:1100px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid {
+                grid-template-columns: repeat(2, minmax(130px, 1fr));
+            }
+
+            .summary-grid {
+                grid-template-columns: repeat(2, minmax(110px, 1fr));
+            }
+        }
+
+        @media(max-width:700px) {
+            .page {
+                padding: 12px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .form-grid,
+            .form-grid-compact,
+            .summary-grid,
+            .sumas-control {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="home-btn" id="btnHome" title="Volver al panel">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+                stroke-width="2" />
+        </svg>
+    </div>
+
+    <div class="page">
+        <div class="topbar">
+            <div>
+                <h1>Scorecard libre</h1>
+                <div class="sub">Generar tarjeta sin torneo, calcular tee/HCP, imprimir y cargar resultado semanal si
+                    tiene matrícula válida.</div>
+            </div>
+        </div>
+
+        <div class="card status-bar">
+            <div id="estado" class="status-text">Conectando...</div>
+            <button id="btnReset" class="btn btn-secondary">Nueva tarjeta</button>
+        </div>
+
+        <div class="card status-bar">
+            <div class="form-grid"
+                style="width:100%; grid-template-columns: minmax(180px,.5fr) minmax(220px,1fr) auto auto;">
+                <div class="field">
+                    <label for="greenfeePrecio">Precio green fee</label>
+                    <input id="greenfeePrecio" type="text" value="" placeholder="$ 0,00" />
+                </div>
+                <div>
+                    <b>Cuponera:</b> <span id="sucursalActual">No configurada</span>
+                    <div class="help" style="margin-top:4px;">El cupón usa la sucursal guardada en esta computadora.
+                    </div>
+                </div>
+                <button id="btnSucursalS1" class="btn btn-secondary">Laura</button>
+                <button id="btnSucursalS2" class="btn btn-secondary">Gisela</button>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div>
+                <div class="card">
+                    <h2 class="section-title">Buscar jugador</h2>
+                    <div class="field">
+                        <label for="buscadorJugador">Nombre, apellido o matrícula</label>
+                        <input id="buscadorJugador" placeholder="Ej: PEREZ o 123456" autocomplete="off" />
+                    </div>
+                    <div class="actions">
+                        <button id="btnBuscar" class="btn btn-primary">Buscar</button>
+                    </div>
+                    <div class="help">Busca en la tabla <b>players</b>. Podés seleccionar un socio/jugador ya cargado o
+                        crear uno manual para imprimir.</div>
+                    <div id="resultadosBusqueda" class="search-results"></div>
+                </div>
+
+                <div class="card">
+                    <h2 class="section-title">Jugador manual</h2>
+                    <div class="form-grid-compact">
+                        <div class="field">
+                            <label for="manualApellido">Apellido</label>
+                            <input id="manualApellido" placeholder="Apellido" />
+                        </div>
+                        <div class="field">
+                            <label for="manualNombre">Nombre</label>
+                            <input id="manualNombre" placeholder="Nombre" />
+                        </div>
+                        <div class="field">
+                            <label for="manualMatricula">Matrícula</label>
+                            <input id="manualMatricula" placeholder="Opcional" />
+                        </div>
+                        <div class="field">
+                            <label for="manualIndex">Index</label>
+                            <input id="manualIndex" placeholder="Ej: 18.2" inputmode="decimal" />
+                        </div>
+                        <div class="field">
+                            <label for="manualGenero">Género</label>
+                            <select id="manualGenero">
+                                <option value="male">Caballero</option>
+                                <option value="female">Dama</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="manualPais">País / club</label>
+                            <input id="manualPais" placeholder="Ej: Chile" />
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button id="btnUsarManual" class="btn btn-light">Usar jugador manual</button>
+                    </div>
+                    <div class="help">Si no cargás matrícula, se puede imprimir la tarjeta, pero no guardar el resultado
+                        como tarjeta válida.</div>
+                </div>
+            </div>
+
+            <div>
+                <div class="card">
+                    <h2 class="section-title">Datos de juego</h2>
+                    <div id="panelJugador">
+                        <div class="empty">Buscá o cargá un jugador manual para generar una tarjeta.</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="section-title">Carga de resultado</h2>
+                    <div id="panelCarga">
+                        <div class="empty">Primero generá los datos de juego.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="print-root"></div>
+
+    <script type="module">
+        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+        const CLUB_NOMBRE = "Villa María Golf Club";
+
+        const supabase = createClient(
+            "https://bnnfolhrqxgxjmobclrm.supabase.co",
+            "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+        );
+
+        const COURSE_HOLES = {
+            1: { par: 4, hcp: 15 }, 2: { par: 4, hcp: 3 }, 3: { par: 3, hcp: 5 }, 4: { par: 4, hcp: 11 }, 5: { par: 3, hcp: 9 }, 6: { par: 4, hcp: 1 },
+            7: { par: 4, hcp: 13 }, 8: { par: 4, hcp: 7 }, 9: { par: 5, hcp: 17 }, 10: { par: 4, hcp: 8 }, 11: { par: 3, hcp: 14 }, 12: { par: 5, hcp: 10 },
+            13: { par: 3, hcp: 2 }, 14: { par: 4, hcp: 16 }, 15: { par: 4, hcp: 18 }, 16: { par: 4, hcp: 6 }, 17: { par: 5, hcp: 12 }, 18: { par: 4, hcp: 4 }
+        };
+
+        const $ = (id) => document.getElementById(id);
+
+        const estado = $("estado");
+        const buscadorJugador = $("buscadorJugador");
+        const resultadosBusqueda = $("resultadosBusqueda");
+        const panelJugador = $("panelJugador");
+        const panelCarga = $("panelCarga");
+        const printRoot = $("print-root");
+        const greenfeePrecio = $("greenfeePrecio");
+        const sucursalActual = $("sucursalActual");
+
+        const ARS_FORMATTER = new Intl.NumberFormat("es-AR", {
+            style: "currency",
+            currency: "ARS",
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        let tees = [];
+        let teeRules = [];
+        let jugadorActual = null;
+        let scoreActual = null;
+        let searchTimer = null;
+
+        function setEstado(texto, tipo = "") {
+            estado.textContent = texto;
+            estado.className = `status-text ${tipo}`.trim();
+        }
+
+
+        function money(v) {
+            return ARS_FORMATTER.format(Number(v || 0));
+        }
+
+        function formatearPesosInput(valor) {
+            if (!valor) return "";
+            const limpio = String(valor).replace(/[^\d]/g, "");
+            if (!limpio) return "";
+            const numero = Number(limpio) / 100;
+            return money(numero);
+        }
+
+        function obtenerPrecioGreenfee() {
+            const limpio = String(greenfeePrecio?.value || "").replace(/[^\d]/g, "");
+            if (!limpio) return 0;
+            return Number(limpio) / 100;
+        }
+
+        function setSucursal(codigo) {
+            localStorage.setItem("ticket_branch_code", codigo);
+            mostrarSucursal();
+            alert("Sucursal configurada: " + codigo);
+        }
+
+        function mostrarSucursal() {
+            const s = localStorage.getItem("ticket_branch_code") || "NO CONFIGURADA";
+            if (sucursalActual) sucursalActual.textContent = s;
+        }
+        function normalizarTexto(txt) {
+            return String(txt || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .trim();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function toNumber(value) {
+            if (value == null || value === "") return null;
+            const n = Number(String(value).replace(",", "."));
+            return Number.isNaN(n) ? null : n;
+        }
+
+        function roundHalfUp(value) {
+            const n = Number(value);
+            if (Number.isNaN(n)) return null;
+            return Math.floor(n + 0.5);
+        }
+
+        function formatIndex(value) {
+            const n = toNumber(value);
+            return n == null ? "" : n.toFixed(1);
+        }
+
+        function normalizarGenero(gender) {
+            const g = String(gender || "").toLowerCase().trim();
+            if (["male", "caballero", "caballeros", "hombre", "masculino", "m"].includes(g)) return "male";
+            if (["female", "dama", "damas", "mujer", "femenino", "f"].includes(g)) return "female";
+            return g || "male";
+        }
+
+        function generoTexto(g) {
+            return normalizarGenero(g) === "female" ? "Dama" : "Caballero";
+        }
+
+        function fechaHoyTexto() {
+            const d = new Date();
+            const dia = String(d.getDate()).padStart(2, "0");
+            const mes = String(d.getMonth() + 1).padStart(2, "0");
+            const anio = d.getFullYear();
+            return `${dia}/${mes}/${anio}`;
+        }
+
+        function normalizarSegmento(segment) {
+            const s = String(segment || "18").toLowerCase().trim();
+            if (["front9", "front 9", "primeros 9", "ida", "9", "9h", "9 hoyos"].includes(s)) return "front9";
+            if (["back9", "back 9", "segundos 9", "vuelta"].includes(s)) return "back9";
+            return "18";
+        }
+
+        function hoyosHabilitados(segment) {
+            const seg = normalizarSegmento(segment);
+            if (seg === "front9") return [1, 2, 3, 4, 5, 6, 7, 8, 9];
+            if (seg === "back9") return [10, 11, 12, 13, 14, 15, 16, 17, 18];
+            return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+        }
+
+        function etiquetaSegmento(seg) {
+            const s = normalizarSegmento(seg);
+            if (s === "front9") return "Front 9 · hoyos 1 al 9";
+            if (s === "back9") return "Back 9 · hoyos 10 al 18";
+            return "18 hoyos";
+        }
+
+        async function protegerAdmin() {
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                window.location.href = "login.html";
+                throw new Error("Usuario no logueado");
+            }
+
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("role, active")
+                .eq("id", session.user.id)
+                .maybeSingle();
+
+            if (!profile || profile.active !== true || profile.role !== "admin") {
+                alert("Acceso restringido");
+                window.location.href = "panel.html";
+                throw new Error("Acceso restringido");
+            }
+        }
+
+        async function cargarTeesYReglas() {
+            setEstado("Cargando tees y reglas...");
+
+            const [teesRes, rulesRes] = await Promise.all([
+                supabase.from("tees").select("id, name, display_order").order("display_order", { ascending: true }),
+                supabase.from("tee_handicap_rules").select("id, tee_id, gender, segment, slope, course_rating, par")
+            ]);
+
+            if (teesRes.error) throw teesRes.error;
+            if (rulesRes.error) throw rulesRes.error;
+
+            tees = teesRes.data || [];
+            teeRules = rulesRes.data || [];
+
+            setEstado("Listo para generar scorecards libres.", "ok");
+        }
+
+        function buscarTeePorNombre(nombreObjetivo) {
+            const objetivo = normalizarTexto(nombreObjetivo);
+            return tees.find(t => normalizarTexto(t.name) === objetivo)
+                || tees.find(t => normalizarTexto(t.name).includes(objetivo))
+                || null;
+        }
+
+        function sugerirTeeDesdeIndex(index, gender) {
+            const idx = toNumber(index);
+            const genero = normalizarGenero(gender);
+
+            if (genero === "female") return buscarTeePorNombre("ROJA");
+            if (idx == null) return null;
+
+            if (idx >= -6 && idx <= 9) return buscarTeePorNombre("NEGRA");
+            if (idx >= 9.1 && idx <= 15) return buscarTeePorNombre("AMARILLA");
+            if (idx >= 15.1 && idx <= 21) return buscarTeePorNombre("BLANCA A") || buscarTeePorNombre("BLANCA");
+            if (idx >= 21.1 && idx <= 54) return buscarTeePorNombre("BLANCA B") || buscarTeePorNombre("BLANCA");
+
+            return null;
+        }
+
+        function getRuleForTee(teeId, gender, segment = "18") {
+            const genero = normalizarGenero(gender);
+            const seg = normalizarSegmento(segment);
+
+            return teeRules.find(r =>
+                String(r.tee_id) === String(teeId) &&
+                normalizarGenero(r.gender) === genero &&
+                normalizarSegmento(r.segment) === seg
+            ) || teeRules.find(r =>
+                String(r.tee_id) === String(teeId) &&
+                normalizarSegmento(r.segment) === seg
+            ) || null;
+        }
+
+        function calcularHcpJuego(index, rule) {
+            const idx = toNumber(index);
+            if (idx == null || !rule) return null;
+
+            const slope = toNumber(rule.slope);
+            const courseRating = toNumber(rule.course_rating);
+            const par = toNumber(rule.par);
+            if ([slope, courseRating, par].some(v => v == null)) return null;
+
+            const valor = (idx * (slope / 113)) + (courseRating - par);
+            const hcp = roundHalfUp(valor);
+            return hcp == null ? null : Math.min(hcp, 54);
+        }
+
+        function nombreDesdePlayer(p) {
+            return p.full_name || [p.last_name, p.first_name].filter(Boolean).join(", ") || "Sin nombre";
+        }
+
+        function matriculaValida(matricula) {
+            return String(matricula || "").trim().length >= 3;
+        }
+
+        async function buscarJugadores() {
+            const qRaw = buscadorJugador.value.trim();
+            const q = qRaw.replaceAll("'", "");
+
+            if (q.length < 2) {
+                resultadosBusqueda.innerHTML = `<div class="empty">Escribí al menos 2 caracteres.</div>`;
+                return;
+            }
+
+            try {
+                setEstado("Buscando jugadores...");
+
+                const filtro = `full_name.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%,aag_member_number.ilike.%${q}%`;
+                const { data, error } = await supabase
+                    .from("players")
+                    .select("id, first_name, last_name, full_name, gender, current_index, aag_member_number, country, is_club_member")
+                    .or(filtro)
+                    .order("last_name", { ascending: true })
+                    .limit(30);
+
+                if (error) throw error;
+
+                renderResultados(data || []);
+                setEstado(`Encontrados ${data?.length || 0} jugadores.`, "ok");
+            } catch (err) {
+                console.error(err);
+                resultadosBusqueda.innerHTML = `<div class="empty">Error buscando jugadores.</div>`;
+                setEstado(err.message || "Error buscando jugadores.", "error");
+            }
+        }
+
+        function renderResultados(items) {
+            if (!items.length) {
+                resultadosBusqueda.innerHTML = `<div class="empty">No encontré jugadores. Podés cargarlo manualmente.</div>`;
+                return;
+            }
+
+            resultadosBusqueda.innerHTML = items.map(p => `
+        <div class="player-card" data-player-id="${p.id}">
+          <div class="player-name">${escapeHtml(nombreDesdePlayer(p))}</div>
+          <div class="player-extra">
+            Matrícula: ${escapeHtml(p.aag_member_number || "—")} · Index: ${formatIndex(p.current_index) || "—"}<br>
+            Género: ${generoTexto(p.gender)} · ${p.is_club_member ? "Socio VMGC" : "No socio / invitado"}
+          </div>
+        </div>
+      `).join("");
+
+            resultadosBusqueda.querySelectorAll("[data-player-id]").forEach(card => {
+                card.addEventListener("click", () => {
+                    const p = items.find(x => String(x.id) === String(card.dataset.playerId));
+                    if (p) seleccionarJugadorDesdePlayers(p);
+                });
+            });
+        }
+
+        function seleccionarJugadorDesdePlayers(p) {
+            jugadorActual = {
+                source: "players",
+                player_id: p.id,
+                first_name: p.first_name || "",
+                last_name: p.last_name || "",
+                display_name: nombreDesdePlayer(p),
+                gender: normalizarGenero(p.gender),
+                official_index: toNumber(p.current_index),
+                aag_member_number: p.aag_member_number || "",
+                country: p.country || "Argentina",
+                club_name: p.is_club_member ? CLUB_NOMBRE : ""
+            };
+
+            crearScorecardBase();
+        }
+
+        function seleccionarJugadorManual() {
+            const apellido = normalizarTexto($("manualApellido").value);
+            const nombre = normalizarTexto($("manualNombre").value);
+            const index = toNumber($("manualIndex").value);
+
+            if (!apellido || !nombre) {
+                alert("Cargá apellido y nombre.");
+                return;
+            }
+
+            if (index == null) {
+                alert("Cargá el index del jugador manual.");
+                return;
+            }
+
+            jugadorActual = {
+                source: "manual",
+                player_id: null,
+                first_name: nombre,
+                last_name: apellido,
+                display_name: `${apellido}, ${nombre}`,
+                gender: normalizarGenero($("manualGenero").value),
+                official_index: index,
+                aag_member_number: $("manualMatricula").value.trim(),
+                country: $("manualPais").value.trim() || "",
+                club_name: $("manualPais").value.trim() || ""
+            };
+
+            crearScorecardBase();
+        }
+
+        function crearScorecardBase() {
+            const tee = sugerirTeeDesdeIndex(jugadorActual.official_index, jugadorActual.gender);
+            const segment = "18";
+            const rule = tee ? getRuleForTee(tee.id, jugadorActual.gender, segment) : null;
+            const hcp = calcularHcpJuego(jugadorActual.official_index, rule);
+
+            scoreActual = {
+                player_id: jugadorActual.player_id,
+                display_name: jugadorActual.display_name,
+                first_name: jugadorActual.first_name,
+                last_name: jugadorActual.last_name,
+                aag_member_number: jugadorActual.aag_member_number,
+                country: jugadorActual.country,
+                club_name: jugadorActual.club_name,
+                gender: jugadorActual.gender,
+                official_index: jugadorActual.official_index,
+                tee_id: tee?.id || "",
+                tee_name: tee?.name || "",
+                hole_segment: segment,
+                slope: rule?.slope ?? null,
+                course_rating: rule?.course_rating ?? null,
+                par: rule?.par ?? null,
+                playing_handicap: hcp,
+                gross: null,
+                net: null,
+                total: null,
+                card_status: "npt",
+                hole_scores: {},
+                export_ready: false
+            };
+
+            renderPanelJugador();
+            renderPanelCarga();
+            setEstado(`Tarjeta preparada para ${jugadorActual.display_name}.`, "ok");
+        }
+
+        function renderPanelJugador() {
+            if (!scoreActual) {
+                panelJugador.innerHTML = `<div class="empty">Buscá o cargá un jugador manual para generar una tarjeta.</div>`;
+                return;
+            }
+
+            const puedeGuardar = matriculaValida(scoreActual.aag_member_number);
+
+            panelJugador.innerHTML = `
+        <div class="selected-title">${escapeHtml(scoreActual.display_name)}</div>
+        <div class="selected-sub">
+          Matrícula: ${escapeHtml(scoreActual.aag_member_number || "Sin matrícula")} · Género: ${generoTexto(scoreActual.gender)} · Origen: ${jugadorActual.source === "players" ? "Players" : "Manual"}
+        </div>
+
+        <div class="form-grid" style="margin-top:14px;">
+          <div class="field">
+            <label>Index</label>
+            <input id="scoreIndex" value="${formatIndex(scoreActual.official_index)}" inputmode="decimal" />
+          </div>
+          <div class="field">
+            <label>Segmento</label>
+            <select id="scoreSegmento">
+              <option value="18" ${scoreActual.hole_segment === "18" ? "selected" : ""}>18 hoyos</option>
+              <option value="front9" ${scoreActual.hole_segment === "front9" ? "selected" : ""}>Front 9</option>
+              <option value="back9" ${scoreActual.hole_segment === "back9" ? "selected" : ""}>Back 9</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Tee</label>
+            <select id="scoreTee">
+              <option value="">Seleccionar</option>
+              ${tees.map(t => `<option value="${t.id}" ${String(t.id) === String(scoreActual.tee_id) ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field">
+            <label>Matrícula</label>
+            <input id="scoreMatricula" value="${escapeHtml(scoreActual.aag_member_number || "")}" placeholder="Requerida para cargar resultado" />
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-box"><div class="k">Tee</div><div class="v" id="sumTee">${escapeHtml(scoreActual.tee_name || "—")}</div></div>
+          <div class="summary-box"><div class="k">HCP</div><div class="v" id="sumHcp">${scoreActual.playing_handicap ?? "—"}</div></div>
+          <div class="summary-box"><div class="k">Slope</div><div class="v" id="sumSlope">${scoreActual.slope ?? "—"}</div></div>
+          <div class="summary-box"><div class="k">Rating</div><div class="v" id="sumRating">${scoreActual.course_rating ?? "—"}</div></div>
+          <div class="summary-box"><div class="k">Par</div><div class="v" id="sumPar">${scoreActual.par ?? "—"}</div></div>
+          <div class="summary-box"><div class="k">Resultado</div><div class="v" id="sumResultado">${scoreActual.net ?? "—"}</div></div>
+        </div>
+
+        ${puedeGuardar
+                    ? `<div class="alert ok">Tiene matrícula: se podrá guardar resultado si la tarjeta está completa.</div>`
+                    : `<div class="alert warn">Sin matrícula válida: podés imprimir, pero no guardar resultado semanal.</div>`}
+
+        <div class="actions">
+          <button id="btnRecalcular" class="btn btn-primary">Recalcular HCP</button>
+          <button id="btnAutoTee" class="btn btn-secondary">Auto tee</button>
+          <button id="btnImprimir" class="btn btn-light">Imprimir tarjeta</button>
+          <button id="btnImprimirCupon" class="btn btn-gray">Imprimir cupón</button>
+        </div>
+      `;
+
+            $("scoreIndex").addEventListener("input", recalcularDesdeInputs);
+            $("scoreSegmento").addEventListener("change", () => { recalcularDesdeInputs(); renderPanelCarga(); });
+            $("scoreTee").addEventListener("change", recalcularDesdeInputs);
+            $("scoreMatricula").addEventListener("input", () => { scoreActual.aag_member_number = $("scoreMatricula").value.trim(); renderPanelJugador(); renderPanelCarga(); });
+            $("btnRecalcular").addEventListener("click", recalcularDesdeInputs);
+            $("btnAutoTee").addEventListener("click", aplicarAutoTee);
+            $("btnImprimir").addEventListener("click", imprimirTarjeta);
+            $("btnImprimirCupon").addEventListener("click", imprimirCupon);
+        }
+
+        function recalcularDesdeInputs() {
+            if (!scoreActual) return;
+
+            scoreActual.official_index = toNumber($("scoreIndex")?.value);
+            scoreActual.hole_segment = $("scoreSegmento")?.value || "18";
+            scoreActual.tee_id = $("scoreTee")?.value || "";
+            scoreActual.aag_member_number = $("scoreMatricula")?.value.trim() || "";
+
+            const tee = tees.find(t => String(t.id) === String(scoreActual.tee_id)) || null;
+            const rule = tee ? getRuleForTee(tee.id, scoreActual.gender, scoreActual.hole_segment) : null;
+
+            scoreActual.tee_name = tee?.name || "";
+            scoreActual.slope = rule?.slope ?? null;
+            scoreActual.course_rating = rule?.course_rating ?? null;
+            scoreActual.par = rule?.par ?? null;
+            scoreActual.playing_handicap = calcularHcpJuego(scoreActual.official_index, rule);
+
+            const { holes } = leerInputsTarjeta();
+            Object.assign(scoreActual, calcularResultado(holes));
+
+            renderPanelJugador();
+            renderPanelCarga();
+        }
+
+        function aplicarAutoTee() {
+            if (!scoreActual) return;
+            const tee = sugerirTeeDesdeIndex($("scoreIndex")?.value ?? scoreActual.official_index, scoreActual.gender);
+            if (!tee) {
+                alert("No pude encontrar el tee sugerido. Revisá que existan los tees Negra, Amarilla, Blanca A, Blanca B y Roja.");
+                return;
+            }
+            scoreActual.tee_id = tee.id;
+            renderPanelJugador();
+            recalcularDesdeInputs();
+        }
+
+        function mapaStrokes() {
+            const mapa = {};
+            const hs = scoreActual?.hole_scores || {};
+            for (const [hole, val] of Object.entries(hs)) {
+                if (val && typeof val === "object") mapa[Number(hole)] = val.strokes;
+                else mapa[Number(hole)] = val;
+            }
+            return mapa;
+        }
+
+        function renderPanelCarga() {
+            if (!scoreActual) {
+                panelCarga.innerHTML = `<div class="empty">Primero generá los datos de juego.</div>`;
+                return;
+            }
+
+            const seg = normalizarSegmento(scoreActual.hole_segment);
+            const habilitados = hoyosHabilitados(seg);
+            const strokes = mapaStrokes();
+            const puedeGuardar = matriculaValida(scoreActual.aag_member_number);
+
+            panelCarga.innerHTML = `
+        <div class="selected-sub">
+          Segmento: ${etiquetaSegmento(seg)} · HCP juego: ${scoreActual.playing_handicap ?? "—"} · Tee: ${escapeHtml(scoreActual.tee_name || "—")}
+        </div>
+
+        <div class="sumas-control">
+          <div class="suma-box"><div class="label">Suma hoyos 1 al 9</div><div class="valor" id="sumaIdaPreview">—</div></div>
+          <div class="suma-box"><div class="label">Suma hoyos 10 al 18</div><div class="valor" id="sumaVueltaPreview">—</div></div>
+          <div class="suma-box"><div class="label">Total cargado</div><div class="valor" id="sumaTotalPreview">—</div></div>
+        </div>
+
+        <div class="score-grid-wrap">
+          <div class="score-grid">
+            ${habilitados.map(hole => `
+              <div class="hole">
+                <div class="hole-label">H${hole}</div>
+                <div class="hole-meta">Par ${COURSE_HOLES[hole].par}<br>HCP ${COURSE_HOLES[hole].hcp}</div>
+                <input id="h${hole}" data-hole-input inputmode="numeric" value="${strokes[hole] ?? ""}" />
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-box"><div class="k">Gross</div><div class="v" id="grossPreview">—</div></div>
+          <div class="summary-box"><div class="k">Neto</div><div class="v" id="netPreview">—</div></div>
+          <div class="summary-box"><div class="k">Estado</div><div class="v" id="estadoPreview">NPT</div></div>
+          <div class="summary-box"><div class="k">Export</div><div class="v" id="exportPreview">No</div></div>
+        </div>
+
+        ${puedeGuardar
+                    ? `<div class="alert ok">Resultado habilitado para guardar.</div>`
+                    : `<div class="alert warn">Para guardar resultado semanal cargá una matrícula válida. La impresión sigue habilitada.</div>`}
+
+        <div class="actions">
+          <button id="btnGuardarResultado" class="btn btn-primary" ${puedeGuardar ? "" : "disabled"}>Guardar resultado</button>
+          <button id="btnLimpiarHoyos" class="btn btn-gray">Limpiar hoyos</button>
+          <button id="btnMarcarNpt" class="btn btn-danger" ${puedeGuardar ? "" : "disabled"}>Guardar NPT</button>
+        </div>
+      `;
+
+            panelCarga.querySelectorAll("[data-hole-input]").forEach(inp => {
+                inp.addEventListener("input", actualizarPreviewLocal);
+                inp.addEventListener("keydown", async (e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    const inputs = Array.from(panelCarga.querySelectorAll("[data-hole-input]"));
+                    const pos = inputs.indexOf(inp);
+                    if (pos >= 0 && pos < inputs.length - 1) {
+                        inputs[pos + 1].focus();
+                        inputs[pos + 1].select?.();
+                    } else if (matriculaValida(scoreActual.aag_member_number)) {
+                        await guardarResultado();
+                    }
+                });
+            });
+
+            $("btnGuardarResultado")?.addEventListener("click", guardarResultado);
+            $("btnLimpiarHoyos")?.addEventListener("click", () => {
+                panelCarga.querySelectorAll("[data-hole-input]").forEach(i => i.value = "");
+                actualizarPreviewLocal();
+            });
+            $("btnMarcarNpt")?.addEventListener("click", guardarNpt);
+
+            actualizarPreviewLocal();
+        }
+
+        function sumarHoyos(holes, desde, hasta) {
+            return holes
+                .filter(h => h.hole_number >= desde && h.hole_number <= hasta && h.strokes != null)
+                .reduce((sum, h) => sum + Number(h.strokes || 0), 0);
+        }
+
+        function contarHoyosCargados(holes, desde, hasta) {
+            return holes.filter(h => h.hole_number >= desde && h.hole_number <= hasta && h.strokes != null).length;
+        }
+
+        function textoSuma(sum, cargados) {
+            return cargados > 0 ? String(sum) : "—";
+        }
+
+        function leerInputsTarjeta() {
+            const seg = normalizarSegmento(scoreActual?.hole_segment || "18");
+            const habilitados = hoyosHabilitados(seg);
+            const holes = [];
+
+            for (const hole of habilitados) {
+                const input = document.getElementById(`h${hole}`);
+                const raw = String(input?.value || "").trim();
+                const strokes = raw === "" ? null : Number(raw);
+                const meta = COURSE_HOLES[hole];
+                holes.push({
+                    hole_number: hole,
+                    strokes: Number.isFinite(strokes) ? strokes : null,
+                    par_value: meta.par,
+                    hole_handicap: meta.hcp
+                });
+            }
+
+            return { seg, habilitados, holes };
+        }
+
+        function construirHoleScores(holes) {
+            const obj = {};
+            for (const h of holes) {
+                obj[String(h.hole_number)] = {
+                    strokes: h.strokes,
+                    par_value: h.par_value,
+                    hole_handicap: h.hole_handicap
+                };
+            }
+            return obj;
+        }
+
+        function calcularResultado(holes) {
+            const cargados = holes.filter(h => h.strokes != null);
+            const gross = cargados.reduce((sum, h) => sum + Number(h.strokes || 0), 0);
+            const totalNecesarios = holes.length;
+            const hcp = Number(scoreActual?.playing_handicap || 0);
+
+            let card_status = "npt";
+            if (cargados.length === 0) card_status = "npt";
+            else if (cargados.length < totalNecesarios) card_status = "desc";
+            else card_status = "valid";
+
+            const net = cargados.length > 0 ? gross - hcp : null;
+            const export_ready = card_status === "valid" && matriculaValida(scoreActual?.aag_member_number);
+
+            return {
+                gross: cargados.length > 0 ? gross : null,
+                net,
+                total: net,
+                card_status,
+                export_ready
+            };
+        }
+
+        function actualizarPreviewLocal() {
+            if (!scoreActual) return;
+
+            const { holes } = leerInputsTarjeta();
+            const r = calcularResultado(holes);
+            scoreActual.hole_scores = construirHoleScores(holes);
+            Object.assign(scoreActual, r);
+
+            const sumaIda = sumarHoyos(holes, 1, 9);
+            const sumaVuelta = sumarHoyos(holes, 10, 18);
+            const cargadosIda = contarHoyosCargados(holes, 1, 9);
+            const cargadosVuelta = contarHoyosCargados(holes, 10, 18);
+            const cargadosTotal = holes.filter(h => h.strokes != null).length;
+
+            if ($("sumaIdaPreview")) $("sumaIdaPreview").textContent = textoSuma(sumaIda, cargadosIda);
+            if ($("sumaVueltaPreview")) $("sumaVueltaPreview").textContent = textoSuma(sumaVuelta, cargadosVuelta);
+            if ($("sumaTotalPreview")) $("sumaTotalPreview").textContent = textoSuma(sumaIda + sumaVuelta, cargadosTotal);
+            if ($("grossPreview")) $("grossPreview").textContent = r.gross ?? "—";
+            if ($("netPreview")) $("netPreview").textContent = r.net ?? "—";
+            if ($("estadoPreview")) $("estadoPreview").textContent = r.card_status === "valid" ? "Cargada" : r.card_status.toUpperCase();
+            if ($("exportPreview")) $("exportPreview").textContent = r.export_ready ? "Sí" : "No";
+            if ($("sumResultado")) $("sumResultado").textContent = r.net ?? "—";
+        }
+
+        function payloadScorecard() {
+            return {
+                player_id: scoreActual.player_id || null,
+                display_name: scoreActual.display_name,
+                first_name: scoreActual.first_name || null,
+                last_name: scoreActual.last_name || null,
+                aag_member_number: scoreActual.aag_member_number || null,
+                country: scoreActual.country || null,
+                club_name: scoreActual.club_name || null,
+                gender: scoreActual.gender,
+                official_index: scoreActual.official_index,
+                tee_id: scoreActual.tee_id || null,
+                tee_name: scoreActual.tee_name || null,
+                playing_handicap: scoreActual.playing_handicap,
+                slope: scoreActual.slope,
+                course_rating: scoreActual.course_rating,
+                par: scoreActual.par,
+                hole_segment: scoreActual.hole_segment || "18",
+                gross: scoreActual.gross,
+                net: scoreActual.net,
+                total: scoreActual.total,
+                card_status: scoreActual.card_status,
+                hole_scores: scoreActual.hole_scores,
+                export_ready: scoreActual.export_ready
+            };
+        }
+
+        async function guardarResultado() {
+            if (!scoreActual) return;
+            if (!matriculaValida(scoreActual.aag_member_number)) {
+                alert("Para guardar el resultado necesitás una matrícula válida.");
+                return;
+            }
+
+            actualizarPreviewLocal();
+
+            try {
+                setEstado("Guardando resultado libre...");
+
+                const { error } = await supabase
+                    .from("casual_scorecards")
+                    .insert(payloadScorecard());
+
+                if (error) throw error;
+
+                setEstado(`Resultado guardado para ${scoreActual.display_name}.`, "ok");
+                alert("Resultado guardado correctamente.");
+            } catch (err) {
+                console.error(err);
+                setEstado(err.message || "Error guardando resultado.", "error");
+                alert("No pude guardar. Revisá que exista la tabla casual_scorecards. Error: " + (err.message || err));
+            }
+        }
+
+        async function guardarNpt() {
+            if (!scoreActual) return;
+            if (!matriculaValida(scoreActual.aag_member_number)) {
+                alert("Para guardar NPT necesitás una matrícula válida.");
+                return;
+            }
+
+            if (!confirm(`¿Guardar ${scoreActual.display_name} como NPT?`)) return;
+
+            const { holes } = leerInputsTarjeta();
+            holes.forEach(h => h.strokes = null);
+            scoreActual.hole_scores = construirHoleScores(holes);
+            scoreActual.gross = null;
+            scoreActual.net = null;
+            scoreActual.total = null;
+            scoreActual.card_status = "npt";
+            scoreActual.export_ready = false;
+
+            await guardarResultado();
+        }
+
+        function fontSizeTorneo(texto) {
+            const largo = String(texto || "").trim().length;
+            if (largo > 35) return 12;
+            if (largo > 30) return 14;
+            if (largo > 27) return 16;
+            if (largo > 24) return 18;
+            return 20;
+        }
+
+        function buildTarjetaPreimpresaHTML({
+            torneo,
+            fecha,
+            jugadorA,
+            jugadorB = "",
+            handicap = "",
+            matricula = "",
+            datosJuego = ""
+        }) {
+            return `
+                <style>
+                    @page {
+                        size: 150mm 297mm;
+                        margin: 0;
+                    }
+
+                    #print-root {
+                        margin: 0;
+                        padding: 0;
+                    }
+
+                    body {
+                        margin: 0;
+                        background: white;
+                        font-family: Arial, sans-serif;
+                    }
+
+                    .page {
+                        position: relative;
+                        width: 150mm;
+                        height: 297mm;
+                        overflow: hidden;
+                    }
+
+                    .overlay {
+                        position: absolute;
+                        width: 297mm;
+                        height: 150mm;
+                        white-space: nowrap;
+                        transform-origin: top left;
+                        transform: rotate(90deg);
+                        left: 150mm;
+                        top: 0;
+                    }
+
+                    .field {
+                        position: absolute;
+                        font-weight: bold;
+                        color: black;
+                        font-size: 14px;
+                    }
+
+                    .torneo {
+                        top: 12mm;
+                        left: 37mm;
+                        width: 75mm;
+                        text-align: left;
+                    }
+
+                    .fecha {
+                        top: 12mm;
+                        left: 120mm;
+                        width: 30mm;
+                        font-size: 20px;
+                        text-align: center;
+                        transform: translateX(-50%);
+                    }
+
+                    .jugadorA {
+                        top: 27mm;
+                        left: 37mm;
+                        width: 45mm;
+                        text-align: left;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+
+                    .jugadorB {
+                        top: 27mm;
+                        left: 86mm;
+                        width: 45mm;
+                        text-align: right;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+
+                    .handicap {
+                        top: 27mm;
+                        left: 149mm;
+                        width: 30mm;
+                        text-align: center;
+                        transform: translateX(-50%);
+                    }
+
+                    .matricula {
+                        top: 27mm;
+                        left: 183mm;
+                        width: 30mm;
+                        text-align: center;
+                        transform: translateX(-50%);
+                    }
+
+                    .datosdejuego {
+                        top: 40mm;
+                        left: 115mm;
+                        width: 65mm;
+                        text-align: center;
+                        font-size: 12px;
+                    }
+                </style>
+
+                <div class="page">
+                    <div class="overlay">
+                        <div class="field torneo">${torneo}</div>
+                        <div class="field fecha">${fecha}</div>
+
+                        <div class="field jugadorA">${jugadorA}</div>
+                        <div class="field jugadorB">${jugadorB}</div>
+
+                        <div class="field handicap">${handicap}</div>
+                        <div class="field matricula">${matricula}</div>
+
+                        <div class="field datosdejuego">${datosJuego}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function doPrint(html) {
+            printRoot.innerHTML = html;
+
+            setTimeout(() => {
+                window.print();
+                setTimeout(() => { printRoot.innerHTML = ""; }, 700);
+            }, 150);
+        }
+
+        function imprimirTarjeta() {
+            if (!scoreActual) return;
+            recalcularDesdeInputs();
+
+            const datosJuego = `Tee: ${scoreActual.tee_name || "—"} / HCP: ${scoreActual.playing_handicap ?? "—"} / ${etiquetaSegmento(scoreActual.hole_segment)}`;
+
+            const html = buildTarjetaPreimpresaHTML({
+                torneo: "TARJETA LIBRE",
+                fecha: fechaHoyTexto(),
+                jugadorA: scoreActual.display_name,
+                handicap: scoreActual.playing_handicap ?? "",
+                matricula: scoreActual.aag_member_number || "",
+                datosJuego
+            });
+
+            doPrint(html);
+        }
+
+        async function obtenerNumeroCupon() {
+            const branchCode = String(localStorage.getItem("ticket_branch_code") || "").trim();
+
+            if (!branchCode) {
+                alert("Esta computadora no tiene sucursal configurada.");
+                throw new Error("Falta configurar ticket_branch_code");
+            }
+
+            const { data, error } = await supabase.rpc("get_next_ticket_number", {
+                p_branch_code: branchCode
+            });
+
+            if (error) throw error;
+            return data;
+        }
+
+        function buildCuponHTMLLibre(numeroCupon = "") {
+            const importe = obtenerPrecioGreenfee();
+            return `
+        <div style="width:80mm; padding:4mm; font-family:Arial,sans-serif; color:#000;">
+          <div style="text-align:center; font-size:14px; font-weight:700;">${CLUB_NOMBRE}</div>
+          <div style="text-align:center; font-size:12px; margin-top:2px;">Cupón de pago NO FISCAL</div>
+          <div style="border-top:1px dashed #000; margin:6px 0;"></div>
+          <div style="font-size:12px; line-height:1.5;">
+            <div><b>Concepto:</b> Green fee</div>
+            <div><b>Fecha:</b> ${fechaHoyTexto()}</div>
+            <div><b>Cupón:</b> ${escapeHtml(numeroCupon)}</div>
+            <div><b>Jugador:</b> ${escapeHtml(scoreActual?.display_name || "")}</div>
+            <div><b>Matrícula:</b> ${escapeHtml(scoreActual?.aag_member_number || "—")}</div>
+            <div><b>Tee:</b> ${escapeHtml(scoreActual?.tee_name || "—")}</div>
+            <div><b>HCP:</b> ${scoreActual?.playing_handicap ?? "—"}</div>
+            <div><b>Importe:</b> ${money(importe)}</div>
+          </div>
+          <div style="border-top:1px dashed #000; margin:6px 0;"></div>
+          <div style="font-size:11px; text-align:center;">NO VÁLIDO COMO FACTURA</div>
+        </div>
+      `;
+        }
+
+        async function imprimirCupon() {
+            if (!scoreActual) return;
+            recalcularDesdeInputs();
+
+            try {
+                const numeroCupon = await obtenerNumeroCupon();
+                doPrint(buildCuponHTMLLibre(numeroCupon));
+            } catch (error) {
+                console.error(error);
+                alert("Error generando número de cupón: " + (error.message || JSON.stringify(error)));
+            }
+        }
+
+        function resetTodo() {
+            jugadorActual = null;
+            scoreActual = null;
+            buscadorJugador.value = "";
+            resultadosBusqueda.innerHTML = "";
+            panelJugador.innerHTML = `<div class="empty">Buscá o cargá un jugador manual para generar una tarjeta.</div>`;
+            panelCarga.innerHTML = `<div class="empty">Primero generá los datos de juego.</div>`;
+            setEstado("Listo para generar una nueva tarjeta.", "ok");
+        }
+
+        greenfeePrecio?.addEventListener("input", () => {
+            const limpio = greenfeePrecio.value.replace(/[^\d]/g, "");
+            if (!limpio) {
+                greenfeePrecio.value = "";
+                return;
+            }
+            greenfeePrecio.value = money(Number(limpio) / 100);
+        });
+        greenfeePrecio?.addEventListener("focus", () => greenfeePrecio.select());
+        greenfeePrecio?.addEventListener("blur", () => {
+            greenfeePrecio.value = formatearPesosInput(greenfeePrecio.value);
+        });
+        $("btnSucursalS1")?.addEventListener("click", () => setSucursal("S1"));
+        $("btnSucursalS2")?.addEventListener("click", () => setSucursal("S2"));
+
+        $("btnBuscar").addEventListener("click", buscarJugadores);
+        buscadorJugador.addEventListener("input", () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(buscarJugadores, 350);
+        });
+        buscadorJugador.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") buscarJugadores();
+        });
+        $("btnUsarManual").addEventListener("click", seleccionarJugadorManual);
+        $("btnReset").addEventListener("click", resetTodo);
+        $("btnHome").addEventListener("click", () => { window.location.href = "panel.html"; });
+
+        mostrarSucursal();
+
+        try {
+            await protegerAdmin();
+            await cargarTeesYReglas();
+        } catch (err) {
+            console.error(err);
+            setEstado(err.message || "Error inicializando scorecard libre.", "error");
+        }
+    </script>
+</body>
+
+</html>

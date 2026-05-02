@@ -212,10 +212,42 @@
         width: 100%;
       }
     }
+
+    .home-btn {
+      position: fixed;
+      top: 30px;
+      right: 27px;
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      background: #166534;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      z-index: 9999;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .home-btn:hover {
+      background: #14532d;
+      transform: scale(1.05);
+    }
   </style>
 </head>
 
 <body>
+
+  <div class="home-btn" id="btnHome" title="Volver al panel">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+        stroke-width="2" />
+    </svg>
+  </div>
+
   <div class="container">
 
     <div class="hero">
@@ -281,10 +313,19 @@
       const texto = String(fecha || "").trim();
       if (!texto) return null;
 
-      const f = new Date(texto);
-      if (Number.isNaN(f.getTime())) return null;
+      const partes = texto.split("-"); // YYYY-MM-DD
 
-      return f;
+      if (partes.length === 3) {
+        const [yyyy, mm, dd] = partes;
+        return new Date(
+          Number(yyyy),
+          Number(mm) - 1,
+          Number(dd)
+        );
+      }
+
+      const f = new Date(texto);
+      return Number.isNaN(f.getTime()) ? null : f;
     }
 
     function formatearFecha(fecha) {
@@ -420,15 +461,17 @@
         const { data: torneosData, error: errorTorneos } = await supabase
           .from("tournaments")
           .select(`
-          id,
-          name,
-          tournament_date,
-          game_mode_id,
-          game_modes (
             id,
-            name
-          )
-        `)
+            name,
+            tournament_date,
+            game_mode_id,
+            status,
+            game_modes (
+              id,
+              name
+            )
+          `)
+          .neq("status", "closed")
           .order("tournament_date", { ascending: false });
 
         if (errorTorneos) throw errorTorneos;
@@ -463,4 +506,8 @@
     document.getElementById("filtroDia").addEventListener("change", renderTorneos);
 
     cargar();
+
+    document.getElementById("btnHome").addEventListener("click", () => {
+      window.location.href = "panel.html";
+    });
   </script>

@@ -497,6 +497,12 @@
             const texto = String(fecha || "").trim();
             if (!texto) return null;
 
+            const partes = texto.split("-");
+            if (partes.length === 3) {
+                const [yyyy, mm, dd] = partes;
+                return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+            }
+
             const f = new Date(texto);
             if (Number.isNaN(f.getTime())) return null;
 
@@ -536,6 +542,58 @@
                 .trim();
         }
 
+        function nombreModalidad() {
+            return normalizarTexto(torneoActual?.game_modes?.name || "");
+        }
+
+        function esMedal() {
+            return nombreModalidad().includes("medal");
+        }
+
+        function esAmericana() {
+            const nombre = nombreModalidad();
+            return nombre.includes("americana") || nombre.includes("american");
+        }
+
+        function normalizarGenero(valor) {
+            const g = normalizarTexto(valor);
+            if (["male", "m", "masculino", "hombre", "caballero", "caballeros"].includes(g)) return "male";
+            if (["female", "f", "femenino", "mujer", "dama", "damas"].includes(g)) return "female";
+            return "";
+        }
+
+        function generoCategoria(cat) {
+            const directo = normalizarGenero(cat?.gender);
+            if (directo) return directo;
+
+            const nombre = normalizarTexto(cat?.name || "");
+            if (nombre.includes("dama") || nombre.includes("damas")) return "female";
+            if (nombre.includes("caballero") || nombre.includes("caballeros")) return "male";
+            return "";
+        }
+
+        function generoJugador(j) {
+            return normalizarGenero(j?.player_gender || j?.gender || "");
+        }
+
+        function jugadorEnRangoScratch(j, genero) {
+            if (esNoValido(j)) return false;
+            if (generoJugador(j) !== genero) return false;
+
+            const idx = parseNumero(j.official_index);
+            if (idx === null) return false;
+
+            if (genero === "male") return idx >= -6 && idx <= 9;
+            if (genero === "female") return idx >= -6 && idx <= 54;
+            return false;
+        }
+
+        function valorGross(j) {
+            if (esNoValido(j)) return 999999;
+            const gross = parseNumero(j.gross);
+            return gross === null ? 999999 : gross;
+        }
+
         function coincideBusquedaJugador(nombreJugador, busqueda) {
             const palabras = normalizarTexto(busqueda).split(" ").filter(Boolean);
             const nombre = normalizarTexto(nombreJugador);
@@ -559,6 +617,10 @@
 
         function valorPrincipal(j) {
             if (esNoValido(j)) return 999999;
+
+            if (esAmericana()) {
+                return valorGross(j);
+            }
 
             const total = parseNumero(j.total);
             const net = parseNumero(j.net);
@@ -735,6 +797,7 @@
                 <td class="sum">${PAR_VUELTA}</td>
                 <td class="sum">${PAR_TOTAL}</td>
               </tr>
+              ${esAmericana() ? "" : `
               <tr class="hcp-row">
                 <td class="label">HCP</td>
                 ${HOYOS.slice(0, 9).map(x => `<td>${x.hp}</td>`).join("")}
@@ -742,7 +805,7 @@
                 ${HOYOS.slice(9).map(x => `<td>${x.hp}</td>`).join("")}
                 <td class="sum"></td>
                 <td class="sum"></td>
-              </tr>
+              </tr>`}
               <tr class="score-row">
                 <td class="label">Score</td>
                 ${HOYOS.slice(0, 9).map(x => `<td>${htmlScore(dataHoyos[x.h], x.par)}</td>`).join("")}
@@ -793,11 +856,12 @@
                 ${hoyos.map(x => `<td>${x.par}</td>`).join("")}
                 <td class="sum">${parTotal}</td>
               </tr>
+              ${esAmericana() ? "" : `
               <tr class="hcp-row">
                 <td class="label">HCP</td>
                 ${hoyos.map(x => `<td>${x.hp}</td>`).join("")}
                 <td class="sum"></td>
-              </tr>
+              </tr>`}
               <tr>
                 <td class="label">Score</td>
                 ${hoyos.map(x => `<td>${htmlScore(dataHoyos[x.h], x.par)}</td>`).join("")}
@@ -827,15 +891,29 @@
       `;
         }
 
-        function detalleJugadorHtml(j, posicion, empatados, categoriaNombre) {
+        function detalleJugadorHtml(j, posicion, empatados, categoriaNombre, esScratch = false) {
+            const datosTop = esScratch
+                ? `
+                <div><strong>Puesto:</strong> ${posicion || ""}</div>
+                <div><strong>Gross:</strong> ${j.gross ?? ""}</div>
+                `
+                : esAmericana()
+                    ? `
+                <div><strong>Puesto:</strong> ${posicion || ""}</div>
+                <div><strong>Gross:</strong> ${j.gross ?? ""}</div>
+                `
+                    : `
+                <div><strong>Puesto:</strong> ${posicion || ""}</div>
+                <div><strong>Index:</strong> ${j.official_index ?? ""}</div>
+                <div><strong>Gross:</strong> ${j.gross ?? ""}</div>
+                <div><strong>HCP:</strong> ${j.playing_handicap ?? ""}</div>
+                <div><strong>Neto:</strong> ${j.net ?? ""}</div>
+                `;
+
             return `
         <div class="detail-box">
           <div class="detail-top">
-            <div><strong>Puesto:</strong> ${posicion || ""}</div>
-            <div><strong>Index:</strong> ${j.official_index ?? ""}</div>
-            <div><strong>Gross:</strong> ${j.gross ?? ""}</div>
-            <div><strong>HCP:</strong> ${j.playing_handicap ?? ""}</div>
-            <div><strong>Neto:</strong> ${j.net ?? ""}</div>
+            ${datosTop}
           </div>
 
           ${obtenerDetalleDesempate(j, empatados)}
@@ -875,7 +953,7 @@
 
                 const { data: cats, error: errorCats } = await supabase
                     .from("tournament_categories")
-                    .select("id, name, display_order")
+                    .select("id, name, display_order, gender")
                     .eq("tournament_id", torneoId)
                     .order("display_order", { ascending: true });
 
@@ -885,63 +963,43 @@
                 const { data: scorecards, error: errorSc } = await supabase
                     .from("scorecards")
                     .select(`
-    id,
-    display_name,
-    gross,
-    net,
-    total,
-    card_status,
-    category_id,
-    official_index,
-    playing_handicap
-  `)
+                        id,
+                        display_name,
+                        gross,
+                        net,
+                        total,
+                        card_status,
+                        category_id,
+                        official_index,
+                        playing_handicap,
+                        player_gender,
+                        hole_scores
+                        `)
                     .eq("tournament_id", torneoId);
 
                 if (errorSc) throw errorSc;
                 jugadores = scorecards || [];
 
-                const scorecardIds = jugadores.map(j => j.id);
-
                 hoyosPorScorecard = {};
 
-                if (scorecardIds.length > 0) {
-                    const TAMANO_TANDA = 50;
-                    let todosLosHoyos = [];
+                jugadores.forEach(j => {
+                    hoyosPorScorecard[j.id] = {};
 
-                    for (let i = 0; i < scorecardIds.length; i += TAMANO_TANDA) {
-                        const tandaIds = scorecardIds.slice(i, i + TAMANO_TANDA);
+                    const holeScores = j.hole_scores || {};
 
-                        const { data: holes, error: errorHoles } = await supabase
-                            .from("scorecard_holes")
-                            .select("scorecard_id, hole_number, strokes")
-                            .in("scorecard_id", tandaIds)
-                            .order("scorecard_id", { ascending: true })
-                            .order("hole_number", { ascending: true })
-                            .range(0, 2000);
+                    Object.entries(holeScores).forEach(([holeNumber, data]) => {
+                        const hole = Number(holeNumber);
 
-                        if (errorHoles) throw errorHoles;
-
-                        todosLosHoyos = todosLosHoyos.concat(holes || []);
-                    }
-
-                    console.log("Tarjetas:", scorecardIds.length);
-                    console.log("Hoyos cargados:", todosLosHoyos.length);
-
-                    todosLosHoyos.forEach(h => {
-                        if (!hoyosPorScorecard[h.scorecard_id]) {
-                            hoyosPorScorecard[h.scorecard_id] = {};
+                        if (data && typeof data === "object") {
+                            hoyosPorScorecard[j.id][hole] = data.strokes ?? null;
+                        } else {
+                            hoyosPorScorecard[j.id][hole] = data ?? null;
                         }
-
-                        hoyosPorScorecard[h.scorecard_id][Number(h.hole_number)] = h.strokes;
                     });
+                });
 
-                    const tarjetasSin18Hoyos = scorecardIds.filter(id => {
-                        const cant = Object.keys(hoyosPorScorecard[id] || {}).length;
-                        return cant < 18;
-                    });
-
-                    console.log("Tarjetas con menos de 18 hoyos:", tarjetasSin18Hoyos.length, tarjetasSin18Hoyos);
-                }
+                console.log("Tarjetas:", jugadores.length);
+                console.log("Hoyos cargados desde scorecards.hole_scores");
 
                 renderTorneo();
             } catch (err) {
@@ -962,39 +1020,49 @@
 
             let html = "";
             let globalIndex = 0;
+            let scratchCaballerosAgregado = false;
+            let scratchDamasAgregado = false;
 
-            categorias.forEach(cat => {
-                const lista = jugadores
-                    .filter(j => j.category_id === cat.id)
-                    .slice()
-                    .sort(compararJugadores);
-
+            function renderTablaCategoria(titulo, lista, esScratch = false) {
                 if (!lista.length) return;
 
+                const columnas = (esAmericana() || esScratch)
+                    ? `
+                <th>Pos</th>
+                <th>Jugador</th>
+                <th>Gross</th>
+              `
+                    : `
+                <th>Pos</th>
+                <th>Jugador</th>
+                <th>Index</th>
+                <th>Gross</th>
+                <th>HCP</th>
+                <th>Neto</th>
+                <th>Total</th>
+              `;
+
+                const colspanDetalle = (esAmericana() || esScratch) ? 3 : 7;
+
                 html += `
-          <div class="categoria-card">
-            <div class="categoria-header">${cat.name}</div>
-            <div class="tabla-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Pos</th>
-                    <th>Jugador</th>
-                    <th>Index</th>
-                    <th>Gross</th>
-                    <th>HCP</th>
-                    <th>Neto</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div class="categoria-card">
+                <div class="categoria-header">${titulo}</div>
+                <div class="tabla-wrap">
+                    <table>
+                        <thead>
+                            <tr>${columnas}</tr>
+                        </thead>
+                        <tbody>
         `;
 
                 let posicion = 1;
                 let colorIdx = 0;
 
                 lista.forEach(j => {
-                    const idx = globalIndex++;
+                    const idx = esScratch
+                        ? `scratch-${titulo.replace(/\s+/g, "-").toLowerCase()}-${globalIndex++}`
+                        : globalIndex++;
+
                     const posMostrar = esNoValido(j) ? "" : posicion++;
                     const rowColor = colorIdx % 2 === 0 ? "row-white" : "row-gray";
                     colorIdx++;
@@ -1004,12 +1072,16 @@
                         : lista.filter(r =>
                             r.id !== j.id &&
                             !esNoValido(r) &&
-                            valorPrincipal(r) === valorPrincipal(j)
+                            (
+                                esScratch
+                                    ? parseNumero(r.gross) === parseNumero(j.gross)
+                                    : valorPrincipal(r) === valorPrincipal(j)
+                            )
                         );
 
                     const coincideJugadorBuscado = coincideBusquedaJugador(j.display_name, busquedaJugador);
 
-                    if (coincideJugadorBuscado && indiceAutoAbrir === null) {
+                    if (!esScratch && coincideJugadorBuscado && indiceAutoAbrir === null) {
                         indiceAutoAbrir = idx;
                     }
 
@@ -1017,30 +1089,83 @@
                         ? ' style="outline: 2px solid #86efac;"'
                         : '';
 
+                    const filaSimple = `
+                <td>${posMostrar}</td>
+                <td class="nombre">${j.display_name}</td>
+                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross ?? "")}</td>
+            `;
+
+                    const filaNormal = `
+                <td>${posMostrar}</td>
+                <td class="nombre">${j.display_name}</td>
+                <td>${j.official_index ?? ""}</td>
+                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross ?? "")}</td>
+                <td>${j.playing_handicap ?? ""}</td>
+                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.net ?? "")}</td>
+                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>
+            `;
+
                     html += `
-              <tr id="player-${idx}" class="player-row ${rowColor}"${highlight} onclick="toggleDetalle(${idx})">     
-              <td>${posMostrar}</td>
-              <td class="nombre">${j.display_name}</td>
-              <td>${j.official_index ?? ""}</td>
-              <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross ?? "")}</td>
-              <td>${j.playing_handicap ?? ""}</td>
-              <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.net ?? "")}</td>
-              <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>
-            </tr>
-            <tr id="detail-${idx}" class="detail-row">
-              <td colspan="7" class="detail-cell">
-                ${detalleJugadorHtml(j, posMostrar, empatados, cat.name)}
-              </td>
-            </tr>
-          `;
+                <tr id="player-${idx}" class="player-row ${rowColor}"${highlight} onclick="toggleDetalle('${idx}')">
+                    ${(esAmericana() || esScratch) ? filaSimple : filaNormal}
+                </tr>
+                <tr id="detail-${idx}" class="detail-row">
+                    <td colspan="${colspanDetalle}" class="detail-cell">
+                        ${detalleJugadorHtml(j, posMostrar, empatados, titulo, esScratch)}
+                    </td>
+                </tr>
+            `;
                 });
 
                 html += `
-                </tbody>
-              </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-          </div>
         `;
+            }
+
+            function renderScratch(genero) {
+                if (!esMedal()) return;
+
+                if (genero === "male" && scratchCaballerosAgregado) return;
+                if (genero === "female" && scratchDamasAgregado) return;
+
+                const indexMin = -6;
+                const indexMax = genero === "male" ? 9 : 54;
+                const titulo = genero === "male" ? "Scratch Caballeros" : "Scratch Damas";
+
+                const listaScratch = jugadores
+                    .filter(j => jugadorEnRangoScratch(j, genero))
+                    .slice()
+                    .sort((a, b) => {
+                        const ag = valorGross(a);
+                        const bg = valorGross(b);
+                        if (ag !== bg) return ag - bg;
+                        return String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+                    })
+                    .slice(0, 3);
+
+                renderTablaCategoria(titulo, listaScratch, true);
+
+                if (genero === "male") scratchCaballerosAgregado = true;
+                if (genero === "female") scratchDamasAgregado = true;
+            }
+
+            categorias.forEach(cat => {
+                const generoCat = generoCategoria(cat);
+
+                if (generoCat === "male") renderScratch("male");
+                if (generoCat === "female") renderScratch("female");
+
+                const lista = jugadores
+                    .filter(j => j.category_id === cat.id)
+                    .slice()
+                    .sort(compararJugadores);
+
+                if (!lista.length) return;
+
+                renderTablaCategoria(cat.name, lista, false);
             });
 
             document.getElementById("contenido").innerHTML = html;

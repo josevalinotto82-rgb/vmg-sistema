@@ -701,12 +701,44 @@
     .search-result-item:hover {
       background: #ecfdf5;
     }
+
+    .home-btn {
+      position: fixed;
+      top: 30px;
+      right: 27px;
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      background: #166534;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      z-index: 9999;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .home-btn:hover {
+      background: #14532d;
+      transform: scale(1.05);
+    }
   </style>
 </head>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <body>
+
+  <div class="home-btn" id="btnHome" title="Volver al panel">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+        stroke-width="2" />
+    </svg>
+  </div>
+
   <div class="header-torneo">
     <h1 id="tituloPrincipal">Grilla Interactiva</h1>
     <div id="subTituloTorneo" class="sub"></div>
@@ -2725,9 +2757,49 @@
             pais
           });
 
-          await occupySlotWithPlayer(slotBusquedaActivo, jugador, "manual_guest");
+          const input = document.getElementById("playerSearchInput");
+          const results = document.getElementById("playerSearchResults");
+          const manualWrap = document.getElementById("playerManualPopup");
 
-          document.getElementById("playerSearchPopup").classList.add("hidden");
+          const modoPareja = input?.dataset?.modoPareja === "1";
+          const jugadorBaseId = input?.dataset?.jugadorBaseId || "";
+
+          if (!requiresPartner() || !modoPareja) {
+            await occupySlotWithPlayer(slotBusquedaActivo, jugador, "manual_guest");
+            cerrarBuscadorJugador();
+            return;
+          }
+
+          if (!jugadorBaseId) {
+            input.dataset.jugadorBaseId = jugador.id;
+            input.value = "";
+
+            if (manualWrap) {
+              manualWrap.style.display = "none";
+              manualWrap.innerHTML = "";
+            }
+
+            if (results) {
+              results.innerHTML = `
+                <div style="margin-bottom:8px; font-weight:700; color:#166534;">
+                  Primer jugador cargado: ${safeText(jugador.full_name)}
+                </div>
+                <div class="helper-text" style="padding:8px;">
+                  Ahora buscá o cargá manualmente al compañero.
+                </div>
+              `;
+            }
+
+            return;
+          }
+
+          const jugadorBase = await fetchPlayerById(jugadorBaseId);
+
+          if (jugadorBase.id === jugador.id) {
+            throw new Error("No podés elegir el mismo jugador dos veces.");
+          }
+
+          await occupySlotWithPair(slotBusquedaActivo, jugadorBase, jugador);
         } catch (error) {
           console.error(error);
           showTransientMessage(error.message || "No se pudo guardar el jugador manual.", "error");
@@ -3008,6 +3080,11 @@
   installGlobalEvents();
   installAdminDragAndDrop();
   loadGrid();
+
+  document.getElementById("btnHome").addEventListener("click", () => {
+    window.location.href = "panel.html";
+  });
+
 </script>
 </body>
 

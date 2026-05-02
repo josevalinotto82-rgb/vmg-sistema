@@ -375,6 +375,52 @@
       margin-top: 14px;
     }
 
+    .sumas-control {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 10px;
+      margin: 10px 0 14px;
+    }
+
+    .suma-box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: #fafafa;
+      text-align: center;
+    }
+
+    .suma-box .label {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 4px;
+    }
+
+    .suma-box .valor {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--green2);
+    }
+
+    .modo-aviso {
+      margin: 8px 0 12px;
+      padding: 9px 11px;
+      border-radius: 12px;
+      background: var(--soft-amber);
+      color: var(--amber);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    @media(max-width:700px) {
+      .sumas-control {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .empty {
       padding: 18px;
       color: var(--muted);
@@ -426,10 +472,42 @@
         grid-template-columns: 1fr;
       }
     }
+
+    .home-btn {
+      position: fixed;
+      top: 30px;
+      right: 27px;
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      background: #166534;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      z-index: 9999;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .home-btn:hover {
+      background: #14532d;
+      transform: scale(1.05);
+    }
   </style>
 </head>
 
 <body>
+
+  <div class="home-btn" id="btnHome" title="Volver al panel">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+        stroke-width="2" />
+    </svg>
+  </div>
+
   <div class="page">
     <div class="topbar">
       <div>
@@ -618,6 +696,25 @@
       return "18 hoyos";
     }
 
+    function esModalidadAmericana() {
+      const nombre = normalizarTexto(torneoActual?.game_modes?.name || "");
+      return nombre.includes("AMERICANA");
+    }
+
+    function sumarHoyos(holes, desde, hasta) {
+      return holes
+        .filter(h => h.hole_number >= desde && h.hole_number <= hasta && h.strokes != null)
+        .reduce((sum, h) => sum + Number(h.strokes || 0), 0);
+    }
+
+    function contarHoyosCargados(holes, desde, hasta) {
+      return holes.filter(h => h.hole_number >= desde && h.hole_number <= hasta && h.strokes != null).length;
+    }
+
+    function textoSuma(sum, cargados) {
+      return cargados > 0 ? String(sum) : "—";
+    }
+
     function getStatus(sc) {
       const st = String(sc?.card_status || "npt").toLowerCase();
       if (st === "valid" || st === "cargada" || st === "loaded") return "valid";
@@ -711,13 +808,7 @@
             card_status,
             hole_scores,
             export_ready,
-            aag_exportable,
-            scorecard_holes (
-              id,
-              hole_number,
-              strokes,
-              par_value,
-              hole_handicap
+            aag_exportable
             )
           `)
           .eq("tournament_id", torneoId);
@@ -796,7 +887,9 @@
             <div class="player-extra">
               Matrícula: ${sc.aag_member_number || "Sin matrícula AAG"}<br>
               Cat.: ${sc.category_name || "—"} · Tee: ${sc.tee_name || "—"}<br>
-              HCP: ${sc.playing_handicap ?? "—"} · Gross: ${sc.gross ?? "—"} · Neto: ${sc.net ?? "—"}
+              ${esModalidadAmericana()
+            ? `Gross: ${sc.gross ?? "—"}`
+            : `HCP: ${sc.playing_handicap ?? "—"} · Gross: ${sc.gross ?? "—"} · Neto: ${sc.net ?? "—"}`}
             </div>
             <span class="tag ${st}">${statusLabel(sc)}</span>
             ${exportReady ? `<span class="tag export">AAG Exp.</span>` : `<span class="tag noexport">No Exp.</span>`}
@@ -819,17 +912,17 @@
 
     function mapaStrokes(sc) {
       const mapa = {};
+      const holeScores = sc?.hole_scores || {};
 
-      if (sc?.hole_scores && typeof sc.hole_scores === "object") {
-        for (const [hole, val] of Object.entries(sc.hole_scores)) {
-          if (val && typeof val === "object" && val.strokes != null) mapa[Number(hole)] = val.strokes;
-          else if (val != null && val !== "") mapa[Number(hole)] = val;
+      if (holeScores && typeof holeScores === "object") {
+        for (const [hole, val] of Object.entries(holeScores)) {
+          if (val && typeof val === "object") {
+            if (val.strokes != null) mapa[Number(hole)] = val.strokes;
+          } else if (val != null && val !== "") {
+            mapa[Number(hole)] = val;
+          }
         }
       }
-
-      (sc?.scorecard_holes || []).forEach(h => {
-        if (h.strokes != null) mapa[Number(h.hole_number)] = h.strokes;
-      });
 
       return mapa;
     }
@@ -845,6 +938,7 @@
       const habilitados = hoyosHabilitados(seg);
       const habilitadosSet = new Set(habilitados);
       const strokes = mapaStrokes(sc);
+      const americana = esModalidadAmericana();
 
       panelTarjeta.innerHTML = `
         <div class="score-header">
@@ -852,13 +946,30 @@
             <div class="selected-title">${sc.display_name || "Sin nombre"}</div>
             <div class="selected-sub">
               Matrícula: ${sc.aag_member_number || "Sin matrícula AAG"} · Categoría: ${sc.category_name || "—"} · Tee: ${sc.tee_name || "—"}<br>
-              Segmento: ${etiquetaSegmento(seg)} · HCP juego: ${sc.playing_handicap ?? "—"}
+              Segmento: ${etiquetaSegmento(seg)}${americana ? " · Modalidad Americana: cargar golpes ya neteados por hoyo" : ` · HCP juego: ${sc.playing_handicap ?? "—"}`}
             </div>
           </div>
           <div class="field"><label>Gross</label><input id="grossPreview" readonly value="${sc.gross ?? ""}" /></div>
-          <div class="field"><label>Neto</label><input id="netPreview" readonly value="${sc.net ?? ""}" /></div>
+          <div class="field"><label>${americana ? "Resultado" : "Neto"}</label><input id="netPreview" readonly value="${americana ? (sc.gross ?? "") : (sc.net ?? "")}" /></div>
           <div class="field"><label>Estado</label><input id="estadoPreview" readonly value="${statusLabel(sc)}" /></div>
           <div class="field"><label>Exp.</label><input id="exportPreview" readonly value="${sc.export_ready ? "Ready" : "No"}" /></div>
+        </div>
+
+        ${americana ? `<div class="modo-aviso">Americana: se cargan los golpes finales por hoyo. No se descuenta HCP ni se calcula neto aparte.</div>` : ""}
+
+        <div class="sumas-control">
+          <div class="suma-box">
+            <div class="label">Suma hoyos 1 al 9</div>
+            <div class="valor" id="sumaIdaPreview">—</div>
+          </div>
+          <div class="suma-box">
+            <div class="label">Suma hoyos 10 al 18</div>
+            <div class="valor" id="sumaVueltaPreview">—</div>
+          </div>
+          <div class="suma-box">
+            <div class="label">Total cargado</div>
+            <div class="valor" id="sumaTotalPreview">—</div>
+          </div>
         </div>
 
         <div class="score-grid-wrap">
@@ -902,18 +1013,24 @@
           actualizarPreviewLocal();
         });
 
-        inp.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            const inputs = Array.from(document.querySelectorAll("[data-hole-input]:not(:disabled)"));
-            const pos = inputs.indexOf(inp);
-            if (pos >= 0 && pos < inputs.length - 1) inputs[pos + 1].focus();
-            else document.getElementById("btnGuardarTarjeta")?.focus();
+        inp.addEventListener("keydown", async (e) => {
+          if (e.key !== "Enter") return;
+
+          e.preventDefault();
+          const inputs = Array.from(document.querySelectorAll("[data-hole-input]:not(:disabled)"));
+          const pos = inputs.indexOf(inp);
+
+          if (pos >= 0 && pos < inputs.length - 1) {
+            inputs[pos + 1].focus();
+            inputs[pos + 1].select?.();
+            return;
           }
+
+          await guardarTarjetaActual({ limpiarLuego: true });
         });
       });
 
-      document.getElementById("btnGuardarTarjeta").addEventListener("click", guardarTarjetaActual);
+      document.getElementById("btnGuardarTarjeta").addEventListener("click", () => guardarTarjetaActual());
       document.getElementById("btnMarcarNpt").addEventListener("click", marcarActualNpt);
       document.getElementById("btnLimpiar").addEventListener("click", () => {
         document.querySelectorAll("[data-hole-input]:not(:disabled)").forEach(i => i.value = "");
@@ -951,13 +1068,18 @@
       const gross = cargados.reduce((sum, h) => sum + Number(h.strokes || 0), 0);
       const totalNecesarios = holes.length;
       const hcp = Number(sc.playing_handicap || 0);
+      const americana = esModalidadAmericana();
 
       let card_status = "npt";
       if (cargados.length === 0) card_status = "npt";
       else if (cargados.length < totalNecesarios) card_status = "desc";
       else card_status = "valid";
 
-      const net = cargados.length > 0 ? gross - hcp : null;
+      // En Four Ball Americana la tarjeta ya viene con los golpes netos aplicados por hoyo.
+      // Por eso NO se descuenta HCP y el resultado que se guarda/muestra es el gross cargado.
+      const net = cargados.length > 0
+        ? (americana ? gross : gross - hcp)
+        : null;
       const export_ready = card_status === "valid" && !!sc.aag_member_number;
 
       return {
@@ -990,13 +1112,26 @@
       const netEl = document.getElementById("netPreview");
       const estadoEl = document.getElementById("estadoPreview");
       const exportEl = document.getElementById("exportPreview");
+      const sumaIdaEl = document.getElementById("sumaIdaPreview");
+      const sumaVueltaEl = document.getElementById("sumaVueltaPreview");
+      const sumaTotalEl = document.getElementById("sumaTotalPreview");
+
+      const sumaIda = sumarHoyos(holes, 1, 9);
+      const sumaVuelta = sumarHoyos(holes, 10, 18);
+      const cargadosIda = contarHoyosCargados(holes, 1, 9);
+      const cargadosVuelta = contarHoyosCargados(holes, 10, 18);
+      const cargadosTotal = holes.filter(h => h.strokes != null).length;
+
       if (grossEl) grossEl.value = r.gross ?? "";
       if (netEl) netEl.value = r.net ?? "";
       if (estadoEl) estadoEl.value = r.card_status === "valid" ? "Cargada" : r.card_status.toUpperCase();
       if (exportEl) exportEl.value = r.export_ready ? "Lista" : "No";
+      if (sumaIdaEl) sumaIdaEl.textContent = textoSuma(sumaIda, cargadosIda);
+      if (sumaVueltaEl) sumaVueltaEl.textContent = textoSuma(sumaVuelta, cargadosVuelta);
+      if (sumaTotalEl) sumaTotalEl.textContent = textoSuma(sumaIda + sumaVuelta, cargadosTotal);
     }
 
-    async function guardarTarjetaActual() {
+    async function guardarTarjetaActual(opciones = {}) {
       const sc = getScorecardActual();
       if (!sc) return;
 
@@ -1006,20 +1141,6 @@
         const { holes } = leerInputsTarjeta(sc);
         const resultado = calcularResultado(sc, holes);
         const holeScores = construirHoleScores(holes);
-
-        const rows = holes.map(h => ({
-          scorecard_id: sc.id,
-          hole_number: h.hole_number,
-          strokes: h.strokes,
-          par_value: h.par_value,
-          hole_handicap: h.hole_handicap
-        }));
-
-        const { error: holesError } = await supabase
-          .from("scorecard_holes")
-          .upsert(rows, { onConflict: "scorecard_id,hole_number" });
-
-        if (holesError) throw holesError;
 
         const { error: scError } = await supabase
           .from("scorecards")
@@ -1037,9 +1158,17 @@
         if (scError) throw scError;
 
         await cargarScorecardsDelTorneo();
-        scorecardActualId = sc.id;
-        renderLista();
-        renderTarjeta();
+
+        if (opciones.limpiarLuego) {
+          scorecardActualId = null;
+          renderLista();
+          panelTarjeta.innerHTML = `<div class="empty">Tarjeta guardada. Seleccioná otra tarjeta para cargar.</div>`;
+          buscador.focus();
+        } else {
+          scorecardActualId = sc.id;
+          renderLista();
+          renderTarjeta();
+        }
 
         if (resultado.card_status === "valid") {
           setEstado(`Tarjeta cargada: ${sc.display_name}${resultado.export_ready ? " · Ready export" : " · sin matrícula AAG, no exporta"}.`, "ok");
@@ -1070,12 +1199,6 @@
           par_value: COURSE_HOLES[hole].par,
           hole_handicap: COURSE_HOLES[hole].hcp
         }));
-
-        const { error: holesError } = await supabase
-          .from("scorecard_holes")
-          .upsert(holes, { onConflict: "scorecard_id,hole_number" });
-
-        if (holesError) throw holesError;
 
         const { error } = await supabase
           .from("scorecards")
@@ -1138,6 +1261,10 @@
     }
 
     cargarTorneos();
+
+    document.getElementById("btnHome").addEventListener("click", () => {
+      window.location.href = "panel.html";
+    });
   </script>
 </body>
 

@@ -64,10 +64,12 @@
     <div class="card">
         <h2>Ingreso VMGC</h2>
 
-        <input id="email" type="email" placeholder="Email">
-        <input id="password" type="password" placeholder="Contraseña">
+        <form id="loginForm">
+            <input id="email" type="email" placeholder="Email">
+            <input id="password" type="password" placeholder="Contraseña">
 
-        <button id="loginBtn" type="button">Ingresar</button>
+            <button id="loginBtn" type="submit">Ingresar</button>
+        </form>
 
         <div style="margin-top:14px; text-align:center; font-size:14px;">
             <a href="registro.html" style="color:#166534; font-weight:bold; text-decoration:none;">
@@ -95,9 +97,10 @@
         const emailEl = document.getElementById("email");
         const passwordEl = document.getElementById("password");
         const loginBtn = document.getElementById("loginBtn");
+        const loginForm = document.getElementById("loginForm");
         const msg = document.getElementById("msg");
 
-        loginBtn.addEventListener("click", async () => {
+        async function hacerLogin() {
             msg.textContent = "";
 
             const email = emailEl.value.trim();
@@ -108,6 +111,9 @@
                 return;
             }
 
+            loginBtn.disabled = true;
+            loginBtn.textContent = "Ingresando...";
+
             const { error } = await supabase.auth.signInWithPassword({
                 email,
                 password
@@ -115,10 +121,24 @@
 
             if (error) {
                 msg.textContent = error.message;
+                loginBtn.disabled = false;
+                loginBtn.textContent = "Ingresar";
                 return;
             }
 
             window.location.href = "panel.html";
+        }
+
+        passwordEl.addEventListener("keydown", async (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                await hacerLogin();
+            }
+        });
+
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await hacerLogin();
         });
     </script>
 </body>
