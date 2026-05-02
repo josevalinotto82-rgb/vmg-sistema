@@ -823,10 +823,42 @@
                 font-size: 10px
             }
         }
+
+        .home-btn {
+            position: fixed;
+            top: 30px;
+            right: 27px;
+            width: 38px;
+            height: 38px;
+            border-radius: 6px;
+            background: #166534;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+            z-index: 9999;
+            transition: transform 0.15s, background 0.15s;
+        }
+
+        .home-btn:hover {
+            background: #14532d;
+            transform: scale(1.05);
+        }
     </style>
 </head>
 
 <body>
+
+    <div class="home-btn" id="btnHome" title="Volver al panel">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+                stroke-width="2" />
+        </svg>
+    </div>
+
     <div class="page">
         <div class="topbar">
             <div>
@@ -840,18 +872,34 @@
 
         <div class="card toolbar-card">
             <div class="toolbar">
-                <div><label>Torneo archivado</label><select id="torneoSelect"></select></div>
-                <div><label>Ganadores por categoría</label><input id="topCategoria" type="number" min="1" max="10"
-                        value="3"></div>
-                <div><label>Scratch top</label><input id="topScratch" type="number" min="1" max="10" value="3"></div>
-                <div><label>Scratch género</label><select id="scratchGenero">
-                        <option value="all">Todos</option>
-                        <option value="male">Caballeros</option>
-                        <option value="female">Damas</option>
-                    </select></div>
-                <div><label>Acción</label><button id="btnCargar" class="btn-primary" style="width:100%">Cargar
-                        informe</button></div>
+                <div>
+                    <label>Torneo archivado</label>
+                    <select id="torneoSelect"></select>
+                </div>
+
+                <div>
+                    <label>Ganadores por categoría</label>
+                    <input id="topCategoria" type="number" min="1" max="10" value="3">
+                </div>
+
+                <div>
+                    <label>Scratch Caballeros</label>
+                    <input id="topScratch" type="number" min="0" max="10" value="1">
+                </div>
+
+                <div>
+                    <label>Scratch Damas</label>
+                    <input id="topScratchDamas" type="number" min="0" max="10" value="0">
+                </div>
+
+                <div>
+                    <label>Acción</label>
+                    <button id="btnCargar" class="btn-primary" style="width:100%">
+                        Cargar informe
+                    </button>
+                </div>
             </div>
+
             <div style="margin-top:12px" id="estado" class="status">Conectando...</div>
         </div>
 
@@ -945,7 +993,12 @@
         torneoSelect.addEventListener("change", cargarInforme);
         el("topCategoria").addEventListener("change", renderTodo);
         el("topScratch").addEventListener("change", renderTodo);
-        el("scratchGenero").addEventListener("change", renderTodo);
+
+        const inputScratchDamas = el("topScratchDamas");
+        if (inputScratchDamas) {
+            inputScratchDamas.addEventListener("change", renderTodo);
+        }
+
         document.addEventListener("click", (ev) => {
             const btn = ev.target.closest("[data-serie-tab]");
             if (!btn) return;
@@ -1027,8 +1080,7 @@
                     .select(`
             id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,player_gender,
             category_id,category_name,tee_id,tee_name,official_index,manual_index,playing_handicap,
-            gross,net,total,card_status,hole_segment,hole_scores,starting_time,starting_hole,
-            scorecard_holes(hole_number,strokes,par_value,hole_handicap)
+            gross,net,total,card_status,hole_segment,hole_scores,starting_time,starting_hole
           `)
                     .eq("tournament_id", tournamentId)
                     .order("display_name", { ascending: true });
@@ -1279,7 +1331,7 @@
 
         function renderTablaSeriePorCategorias({ tipo, items, field, required = null }) {
             const topCategoria = Math.max(1, Number(el("topCategoria").value || 3));
-            const topScratch = Math.max(1, Number(el("topScratch").value || topCategoria));
+            const topScratch = Math.max(0, Number(el("topScratch")?.value || 0));
             const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
             const esMejor18 = tipo === "mejor18";
 
@@ -1418,12 +1470,22 @@
         }
 
         function renderGanadoresCategorias() {
-            const top = Math.max(1, Number(el("topCategoria").value || 3));
+            const topCategoria = Math.max(1, Number(el("topCategoria")?.value || 3));
+            const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
 
-            const scratchItems = obtenerScratchItems(el("scratchGenero").value).slice(0, Math.max(1, Number(el("topScratch").value || top)));
-            const scratchWinnerIds = new Set(
-                scratchItems.map(s => String(s.id))
-            );
+            const scratchCab = topScratchCab > 0
+                ? obtenerScratchItems("male").slice(0, topScratchCab)
+                : [];
+
+            const scratchDam = topScratchDam > 0
+                ? obtenerScratchItems("female").slice(0, topScratchDam)
+                : [];
+
+            const scratchWinnerIds = new Set([
+                ...scratchCab.map(s => String(s.id)),
+                ...scratchDam.map(s => String(s.id))
+            ]);
 
             const validas = scorecards.filter(s => {
                 const catName = String(s.category_name || "").toLowerCase();
@@ -1432,27 +1494,101 @@
                     n(s.net) != null &&
                     !catName.includes("scratch") &&
                     !catName.includes("scrach") &&
-                    !scratchWinnerIds.has(String(s.id))
+                    !scratchWinnerIds.has(String(s.id));
             });
+
             const grupos = new Map();
-            for (const s of validas) { const key = s.category_name || "Sin categoría"; if (!grupos.has(key)) grupos.set(key, []); grupos.get(key).push(s); }
+
+            for (const s of validas) {
+                const key = s.category_name || "Sin categoría";
+                if (!grupos.has(key)) grupos.set(key, []);
+                grupos.get(key).push(s);
+            }
+
+            const categoriasCab = [...grupos.entries()]
+                .filter(([cat]) => {
+                    const meta = categoriaMetaPorNombre(cat);
+                    const texto = String(cat || "").toLowerCase();
+                    return normalizarGenero(meta?.gender || cat) !== "female" &&
+                        !texto.includes("dama");
+                })
+                .sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"));
+
+            const categoriasDam = [...grupos.entries()]
+                .filter(([cat]) => {
+                    const meta = categoriaMetaPorNombre(cat);
+                    const texto = String(cat || "").toLowerCase();
+                    return normalizarGenero(meta?.gender || cat) === "female" ||
+                        texto.includes("dama");
+                })
+                .sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"));
+
             let html = "";
 
-            html += `<div class="winner-card"><div class="winner-head">Scratch · Index -6 a 9 · Gross</div><div class="podium">`;
-            scratchItems.forEach((s, i) => { html += podiumRow(s, i, `Gross ${fmt(s.gross, 0)}`, `Index ${fmt(s.official_index ?? s.manual_index, 1)} · Neto ${fmt(s.net, 0)} · ${esc(s.category_name || "Sin categoría")}`); });
-            if (!scratchItems.length) html += `<div class="small">No hay jugadores que cumplan con el filtro scratch.</div>`;
-            html += `</div></div>`;
+            function renderBloqueScratch(titulo, items) {
+                if (!items.length) return "";
 
-            [...grupos.entries()].sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es")).forEach(([cat, items]) => {
+                let out = `<div class="winner-card">
+            <div class="winner-head">${titulo} · Index -6 a 9 · Gross</div>
+            <div class="podium">`;
+
+                items.forEach((s, i) => {
+                    out += podiumRow(
+                        s,
+                        i,
+                        `Gross ${fmt(s.gross, 0)}`,
+                        `Index ${fmt(s.official_index ?? s.manual_index, 1)} · Neto ${fmt(s.net, 0)} · ${esc(s.category_name || "Sin categoría")}`
+                    );
+                });
+
+                out += `</div></div>`;
+                return out;
+            }
+
+            function renderBloqueCategoria(cat, items) {
                 const meta = categoriaMetaPorNombre(cat);
-                const rango = meta && (meta.index_min != null || meta.index_max != null) ? ` · ${fmt(meta.index_min, 1)} a ${fmt(meta.index_max, 1)}` : "";
-                const gan = items.sort((a, b) => compareScore(a, b, "net")).slice(0, top);
+                const rango = meta && (meta.index_min != null || meta.index_max != null)
+                    ? ` · ${fmt(meta.index_min, 1)} a ${fmt(meta.index_max, 1)}`
+                    : "";
+
+                const gan = items
+                    .slice()
+                    .sort((a, b) => compareScore(a, b, "net"))
+                    .slice(0, topCategoria);
+
                 const claseTee = claseColorCategoria(cat, meta);
-                html += `<div class="winner-card"><div class="winner-head ${claseTee}">${esc(cat)}${rango}</div><div class="podium">`;
-                gan.forEach((s, i) => { html += podiumRow(s, i, `Neto ${fmt(s.net, 0)}`, `Gross ${fmt(s.gross, 0)} · HCP ${fmt(s.playing_handicap, 0)} · ${esc(s.tee_name || "Tee —")}`); });
-                if (!gan.length) html += `<div class="small">Sin tarjetas válidas.</div>`;
-                html += `</div></div>`;
+
+                let out = `<div class="winner-card">
+            <div class="winner-head ${claseTee}">${esc(cat)}${rango}</div>
+            <div class="podium">`;
+
+                gan.forEach((s, i) => {
+                    out += podiumRow(
+                        s,
+                        i,
+                        `Neto ${fmt(s.net, 0)}`,
+                        `Gross ${fmt(s.gross, 0)} · HCP ${fmt(s.playing_handicap, 0)} · ${esc(s.tee_name || "Tee —")}`
+                    );
+                });
+
+                if (!gan.length) out += `<div class="small">Sin tarjetas válidas.</div>`;
+
+                out += `</div></div>`;
+                return out;
+            }
+
+            html += renderBloqueScratch("Scratch Caballeros", scratchCab);
+
+            categoriasCab.forEach(([cat, items]) => {
+                html += renderBloqueCategoria(cat, items);
             });
+
+            html += renderBloqueScratch("Scratch Damas", scratchDam);
+
+            categoriasDam.forEach(([cat, items]) => {
+                html += renderBloqueCategoria(cat, items);
+            });
+
             el("ganadoresCategorias").innerHTML = html || `<div class="small">No hay resultados por categoría para mostrar.</div>`;
         }
 
@@ -1464,15 +1600,40 @@
         }
 
         function renderScratch() {
-            const top = Math.max(1, Number(el("topScratch").value || 3));
-            const genero = el("scratchGenero").value;
-            const items = obtenerScratchItems(genero);
-            const titulo = genero === "male" ? "Scratch Caballeros" : genero === "female" ? "Scratch Damas" : "Scratch General";
-            let html = `<div class="winner-card"><div class="winner-head">${titulo} · Index -6 a 9</div><div class="podium">`;
-            items.slice(0, top).forEach((s, i) => { html += podiumRow(s, i, `Gross ${fmt(s.gross, 0)}`, `Index ${fmt(s.official_index ?? s.manual_index, 1)} · Neto ${fmt(s.net, 0)} · ${esc(s.category_name || "Sin categoría")}`); });
-            if (!items.length) html += `<div class="small">No hay jugadores que cumplan con el filtro scratch.</div>`;
+            // Función antigua desactivada: ahora Scratch Caballeros y Scratch Damas
+            // se renderizan separados dentro de renderGanadoresCategorias().
+            return;
+        }
+        function renderCategoria(cat, items, top) {
+            const meta = categoriaMetaPorNombre(cat);
+            const rango = meta && (meta.index_min != null || meta.index_max != null)
+                ? ` · ${fmt(meta.index_min, 1)} a ${fmt(meta.index_max, 1)}`
+                : "";
+
+            const gan = items
+                .sort((a, b) => compareScore(a, b, "net"))
+                .slice(0, top);
+
+            const claseTee = claseColorCategoria(cat, meta);
+
+            let html = `<div class="winner-card">
+        <div class="winner-head ${claseTee}">
+            ${esc(cat)}${rango}
+        </div>
+        <div class="podium">`;
+
+            gan.forEach((s, i) => {
+                html += podiumRow(
+                    s,
+                    i,
+                    `Neto ${fmt(s.net, 0)}`,
+                    `Gross ${fmt(s.gross, 0)} · HCP ${fmt(s.playing_handicap, 0)}`
+                );
+            });
+
             html += `</div></div>`;
-            el("ganadoresScratch").innerHTML = html;
+
+            return html;
         }
 
         function podiumRow(s, i, score, extra) {
@@ -1481,15 +1642,31 @@
 
         function holeRowsForScorecard(sc) {
             const rows = new Map();
-            (sc.scorecard_holes || []).forEach(h => {
-                rows.set(Number(h.hole_number), { strokes: n(h.strokes), par: n(h.par_value) ?? COURSE_HOLES[h.hole_number]?.par, hcp: n(h.hole_handicap) ?? COURSE_HOLES[h.hole_number]?.hcp });
-            });
             const json = sc.hole_scores || {};
+
             Object.entries(json).forEach(([k, v]) => {
-                const hole = Number(k); if (!hole || rows.has(hole)) return;
-                const strokes = typeof v === "object" && v !== null ? n(v.strokes ?? v.stroke ?? v.score) : n(v);
-                rows.set(hole, { strokes, par: n(v?.par_value) ?? COURSE_HOLES[hole]?.par, hcp: n(v?.hole_handicap) ?? COURSE_HOLES[hole]?.hcp });
+                const hole = Number(k);
+                if (!hole) return;
+
+                const strokes = typeof v === "object" && v !== null
+                    ? n(v.strokes ?? v.stroke ?? v.score)
+                    : n(v);
+
+                const par = typeof v === "object" && v !== null
+                    ? n(v.par_value ?? v.par)
+                    : null;
+
+                const hcp = typeof v === "object" && v !== null
+                    ? n(v.hole_handicap ?? v.hcp)
+                    : null;
+
+                rows.set(hole, {
+                    strokes,
+                    par: par ?? COURSE_HOLES[hole]?.par,
+                    hcp: hcp ?? COURSE_HOLES[hole]?.hcp
+                });
             });
+
             return rows;
         }
 
@@ -1576,7 +1753,7 @@
 
         function renderPrintTablaSeriePorCategorias({ tipo, items, field, required = null }) {
             const topCategoria = Math.max(1, Number(el("topCategoria").value || 3));
-            const topScratch = Math.max(1, Number(el("topScratch").value || topCategoria));
+            const topScratch = Math.max(0, Number(el("topScratch")?.value || 0));
             const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
             const esMejor18 = tipo === "mejor18";
 
@@ -1656,30 +1833,50 @@
             const npt = scorecards.filter(s => s.card_status === "npt" || !s.card_status);
             const grossAvg = validas.length ? validas.reduce((a, s) => a + (n(s.gross) || 0), 0) / validas.length : null;
             const netAvg = validas.length ? validas.reduce((a, s) => a + (n(s.net) || 0), 0) / validas.length : null;
-            const top = Math.max(1, Number(el("topCategoria").value || 3));
+            const top = Math.max(1, Number(el("topCategoria")?.value || 3));
+            const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
+
+            const scratchCab = topScratchCab > 0 ? obtenerScratchItems("male").slice(0, topScratchCab) : [];
+            const scratchDam = topScratchDam > 0 ? obtenerScratchItems("female").slice(0, topScratchDam) : [];
+
+            const scratchWinnerIds = new Set([
+                ...scratchCab.map(s => String(s.id)),
+                ...scratchDam.map(s => String(s.id))
+            ]);
+
             let html = `<div class="print-page">`;
             html += `<div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">${fechaTexto(torneoActual.tournament_date)}</div>`;
             html += `<div class="print-meta">Modalidad: <b>${esc(torneoActual.game_modes?.name || "—")}</b><br>Tipo de Salida: <b>${esc(torneoActual.start_type || "—")}</b><br>Anotados: <b>${scorecards.length}</b><br>Tarjetas presentadas: <b>${validas.length}</b><br>NPT: <b>${npt.length}</b><br>DSC.: <b>${desc.length}</b><br>Gross Promedio: <b>${fmt(grossAvg, 1)}</b><br>Neto Promedio: <b>${fmt(netAvg, 1)}</b></div>`;
             html += `<div class="print-section-title">Ganadores por Categoría</div>`;
-            const scratch = obtenerScratchItems(el("scratchGenero").value).slice(0, Math.max(1, Number(el("topScratch").value || top)));
-            const scratchWinnerIds = new Set(
-                scratch.slice(0, 1).map(s => String(s.id))
-            );
-            html += `<div class="print-category">Scratch · Index -6 a 9:</div>`;
 
-            scratch.forEach(s => {
-                html += `
-                 <div class="print-winner scratch-print">
-                 <div>${esc(s.display_name)}</div>
-                 <div>Gross: ${fmt(s.gross, 0)}</div>
-                 </div>
-             `;
-            });
+            function renderPrintScratch(titulo, items) {
+                if (!items.length) return "";
+                let out = `<div class="print-category">${esc(titulo)} · Index -6 a 9:</div>`;
+                items.forEach(s => {
+                    out += `<div class="print-winner scratch-print"><div>${esc(s.display_name)}</div><div>Gross: ${fmt(s.gross, 0)}</div></div>`;
+                });
+                return out;
+            }
+
+            function renderPrintCategoria(cat, items) {
+                const meta = categoriaMetaPorNombre(cat);
+                const rango = meta && (meta.index_min != null || meta.index_max != null) ? ` ${fmt(meta.index_min, 1)} a ${fmt(meta.index_max, 1)}` : "";
+                let out = `<div class="print-category">${esc(cat)}${rango}:</div>`;
+                items
+                    .slice()
+                    .sort((a, b) => compareScore(a, b, "net"))
+                    .slice(0, top)
+                    .forEach(s => {
+                        out += `<div class="print-winner"><div>${esc(s.display_name)}</div><div>Gross: ${fmt(s.gross, 0)}</div><div>HCP: ${fmt(s.playing_handicap, 0)}</div><div>Neto: ${fmt(s.net, 0)}</div></div>`;
+                    });
+                return out;
+            }
+
             const grupos = new Map();
             scorecards
                 .filter(s => {
                     const catName = String(s.category_name || "").toLowerCase();
-
                     return (s.card_status === "valid" || s.card_status === "cargada") &&
                         s.category_name &&
                         n(s.net) != null &&
@@ -1687,13 +1884,32 @@
                         !catName.includes("scrach") &&
                         !scratchWinnerIds.has(String(s.id));
                 })
-                .forEach(s => { const key = s.category_name || "Sin categoría"; if (!grupos.has(key)) grupos.set(key, []); grupos.get(key).push(s); });
-            [...grupos.entries()].sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es")).forEach(([cat, items]) => {
-                const meta = categoriaMetaPorNombre(cat);
-                const rango = meta && (meta.index_min != null || meta.index_max != null) ? ` ${fmt(meta.index_min, 1)} a ${fmt(meta.index_max, 1)}` : "";
-                html += `<div class="print-category">${esc(cat)}${rango}:</div>`;
-                items.sort((a, b) => compareScore(a, b, "net")).slice(0, top).forEach(s => html += `<div class="print-winner"><div>${esc(s.display_name)}</div><div>Gross: ${fmt(s.gross, 0)}</div><div>HCP: ${fmt(s.playing_handicap, 0)}</div><div>Neto: ${fmt(s.net, 0)}</div></div>`);
-            });
+                .forEach(s => {
+                    const key = s.category_name || "Sin categoría";
+                    if (!grupos.has(key)) grupos.set(key, []);
+                    grupos.get(key).push(s);
+                });
+
+            const categoriasCab = [...grupos.entries()]
+                .filter(([cat]) => {
+                    const meta = categoriaMetaPorNombre(cat);
+                    const texto = String(cat || "").toLowerCase();
+                    return normalizarGenero(meta?.gender || cat) !== "female" && !texto.includes("dama");
+                })
+                .sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"));
+
+            const categoriasDam = [...grupos.entries()]
+                .filter(([cat]) => {
+                    const meta = categoriaMetaPorNombre(cat);
+                    const texto = String(cat || "").toLowerCase();
+                    return normalizarGenero(meta?.gender || cat) === "female" || texto.includes("dama");
+                })
+                .sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"));
+
+            html += renderPrintScratch("Scratch Caballeros", scratchCab);
+            categoriasCab.forEach(([cat, items]) => html += renderPrintCategoria(cat, items));
+            html += renderPrintScratch("Scratch Damas", scratchDam);
+            categoriasDam.forEach(([cat, items]) => html += renderPrintCategoria(cat, items));
 
             html += `</div>`;
 
@@ -1775,6 +1991,10 @@
         }
 
         init();
+
+        document.getElementById("btnHome").addEventListener("click", () => {
+            window.location.href = "panel.html";
+        });
     </script>
 </body>
 
