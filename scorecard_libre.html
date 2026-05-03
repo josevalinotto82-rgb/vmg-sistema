@@ -316,21 +316,25 @@
         }
 
         .score-grid-wrap {
-            overflow-x: auto;
+            overflow-x: hidden;
             padding-bottom: 4px;
         }
 
         .score-grid {
-            min-width: 900px;
+            width: 100%;
+            min-width: 0;
             display: grid;
-            grid-template-columns: repeat(18, 1fr);
-            gap: 6px;
+            grid-template-columns: repeat(18, minmax(0, 1fr));
+            gap: 4px;
+            align-items: stretch;
         }
 
         .hole {
             border: 1px solid var(--line);
             border-radius: 12px;
             padding: 7px 5px;
+            min-width: 0;
+            height: 100%;
             background: #fff;
             text-align: center;
         }
@@ -342,10 +346,14 @@
         }
 
         .hole-meta {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--muted);
-            line-height: 1.25;
+            line-height: 1.15;
             margin: 3px 0 6px;
+            min-height: 24px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .hole input {
@@ -795,6 +803,30 @@
             return null;
         }
 
+        function teesPermitidosPorGenero(gender) {
+            const genero = normalizarGenero(gender);
+
+            const teeIdsConRegla = new Set(
+                teeRules
+                    .filter(r => normalizarGenero(r.gender) === genero)
+                    .map(r => String(r.tee_id))
+            );
+
+            const filtrados = tees.filter(t => teeIdsConRegla.has(String(t.id)));
+
+            if (filtrados.length) return filtrados;
+
+            return tees.filter(t => {
+                const nombre = normalizarTexto(t.name);
+
+                if (genero === "female") {
+                    return nombre.includes("ROJA") || nombre.includes("DAMA");
+                }
+
+                return !nombre.includes("ROJA") && !nombre.includes("DAMA");
+            });
+        }
+
         function getRuleForTee(teeId, gender, segment = "18") {
             const genero = normalizarGenero(gender);
             const seg = normalizarSegmento(segment);
@@ -809,7 +841,7 @@
             ) || null;
         }
 
-        function calcularHcpJuego(index, rule) {
+        function calcularHcpJuego(index, rule, segment = "18") {
             const idx = toNumber(index);
             if (idx == null || !rule) return null;
 
@@ -818,7 +850,12 @@
             const par = toNumber(rule.par);
             if ([slope, courseRating, par].some(v => v == null)) return null;
 
-            const valor = (idx * (slope / 113)) + (courseRating - par);
+            const seg = normalizarSegmento(segment);
+
+            const valor = seg === "front9" || seg === "back9"
+                ? ((idx / 2) * (slope / 113)) + (courseRating - par)
+                : (idx * (slope / 113)) + (courseRating - par);
+
             const hcp = roundHalfUp(valor);
             return hcp == null ? null : Math.min(hcp, 54);
         }
@@ -833,9 +870,8 @@
 
         async function buscarJugadores() {
             const qRaw = buscadorJugador.value.trim();
-            const q = qRaw.replaceAll("'", "");
 
-            if (q.length < 2) {
+            if (qRaw.length < 2) {
                 resultadosBusqueda.innerHTML = `<div class="empty">Escribí al menos 2 caracteres.</div>`;
                 return;
             }
@@ -843,18 +879,62 @@
             try {
                 setEstado("Buscando jugadores...");
 
-                const filtro = `full_name.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%,aag_member_number.ilike.%${q}%`;
+                const partes = normalizarTexto(qRaw)
+                    .split(/[,\s]+/)
+                    .map(x => x.trim())
+                    .filter(Boolean);
+
+                const filtros = partes.flatMap(p => [
+                    `full_name.ilike.%${p}%`,
+                    `first_name.ilike.%${p}%`,
+                    `last_name.ilike.%${p}%`,
+                    `aag_member_number.ilike.%${p}%`
+                ]).join(",");
+
                 const { data, error } = await supabase
                     .from("players")
                     .select("id, first_name, last_name, full_name, gender, current_index, aag_member_number, country, is_club_member")
-                    .or(filtro)
-                    .order("last_name", { ascending: true })
-                    .limit(30);
+                    .or(filtros)
+                    .limit(80);
 
                 if (error) throw error;
 
-                renderResultados(data || []);
-                setEstado(`Encontrados ${data?.length || 0} jugadores.`, "ok");
+                const buscado = partes.join(" ");
+
+                const ordenados = (data || [])
+                    .map(p => {
+                        const nombre = normalizarTexto(nombreDesdePlayer(p));
+                        const nombreInvertido = normalizarTexto(`${p.first_name || ""} ${p.last_name || ""}`);
+                        const matricula = normalizarTexto(p.aag_member_number || "");
+
+                        let score = 0;
+
+                        if (nombre.includes(buscado) || nombreInvertido.includes(buscado)) score += 1000;
+                        if (partes.every(parte => nombre.includes(parte) || nombreInvertido.includes(parte) || matricula.includes(parte))) score += 500;
+                        score += partes.filter(parte => nombre.includes(parte) || nombreInvertido.includes(parte) || matricula.includes(parte)).length * 100;
+
+                        return { ...p, _scoreBusqueda: score };
+                    })
+                    .filter(p => {
+                        const nombre = normalizarTexto(nombreDesdePlayer(p));
+                        const nombreInvertido = normalizarTexto(`${p.first_name || ""} ${p.last_name || ""}`);
+                        const matricula = normalizarTexto(p.aag_member_number || "");
+
+                        return partes.every(parte =>
+                            nombre.includes(parte) ||
+                            nombreInvertido.includes(parte) ||
+                            matricula.includes(parte)
+                        );
+                    })
+                    .sort((a, b) =>
+                        b._scoreBusqueda - a._scoreBusqueda ||
+                        String(a.last_name || "").localeCompare(String(b.last_name || ""), "es") ||
+                        String(a.first_name || "").localeCompare(String(b.first_name || ""), "es")
+                    )
+                    .slice(0, 30);
+
+                renderResultados(ordenados);
+                setEstado(`Encontrados ${ordenados.length} jugadores.`, "ok");
             } catch (err) {
                 console.error(err);
                 resultadosBusqueda.innerHTML = `<div class="empty">Error buscando jugadores.</div>`;
@@ -938,7 +1018,7 @@
             const tee = sugerirTeeDesdeIndex(jugadorActual.official_index, jugadorActual.gender);
             const segment = "18";
             const rule = tee ? getRuleForTee(tee.id, jugadorActual.gender, segment) : null;
-            const hcp = calcularHcpJuego(jugadorActual.official_index, rule);
+            const hcp = calcularHcpJuego(jugadorActual.official_index, rule, segment);
 
             scoreActual = {
                 player_id: jugadorActual.player_id,
@@ -1001,7 +1081,7 @@
             <label>Tee</label>
             <select id="scoreTee">
               <option value="">Seleccionar</option>
-              ${tees.map(t => `<option value="${t.id}" ${String(t.id) === String(scoreActual.tee_id) ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("")}
+              ${teesPermitidosPorGenero(scoreActual.gender).map(t => `<option value="${t.id}" ${String(t.id) === String(scoreActual.tee_id) ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("")}
             </select>
           </div>
           <div class="field">
@@ -1031,10 +1111,15 @@
         </div>
       `;
 
-            $("scoreIndex").addEventListener("input", recalcularDesdeInputs);
+            $("scoreIndex").addEventListener("change", recalcularDesdeInputs);
+            $("scoreIndex").addEventListener("blur", recalcularDesdeInputs);
             $("scoreSegmento").addEventListener("change", () => { recalcularDesdeInputs(); renderPanelCarga(); });
             $("scoreTee").addEventListener("change", recalcularDesdeInputs);
-            $("scoreMatricula").addEventListener("input", () => { scoreActual.aag_member_number = $("scoreMatricula").value.trim(); renderPanelJugador(); renderPanelCarga(); });
+            $("scoreMatricula").addEventListener("change", () => {
+                scoreActual.aag_member_number = $("scoreMatricula").value.trim();
+                renderPanelJugador();
+                renderPanelCarga();
+            });
             $("btnRecalcular").addEventListener("click", recalcularDesdeInputs);
             $("btnAutoTee").addEventListener("click", aplicarAutoTee);
             $("btnImprimir").addEventListener("click", imprimirTarjeta);
@@ -1056,7 +1141,7 @@
             scoreActual.slope = rule?.slope ?? null;
             scoreActual.course_rating = rule?.course_rating ?? null;
             scoreActual.par = rule?.par ?? null;
-            scoreActual.playing_handicap = calcularHcpJuego(scoreActual.official_index, rule);
+            scoreActual.playing_handicap = calcularHcpJuego(scoreActual.official_index, rule, scoreActual.hole_segment);
 
             const { holes } = leerInputsTarjeta();
             Object.assign(scoreActual, calcularResultado(holes));
@@ -1135,7 +1220,7 @@
         <div class="actions">
           <button id="btnGuardarResultado" class="btn btn-primary" ${puedeGuardar ? "" : "disabled"}>Guardar resultado</button>
           <button id="btnLimpiarHoyos" class="btn btn-gray">Limpiar hoyos</button>
-          <button id="btnMarcarNpt" class="btn btn-danger" ${puedeGuardar ? "" : "disabled"}>Guardar NPT</button>
+          <button id="btnExportarAag" class="btn btn-secondary">Exportar AAG</button>
         </div>
       `;
 
@@ -1160,7 +1245,9 @@
                 panelCarga.querySelectorAll("[data-hole-input]").forEach(i => i.value = "");
                 actualizarPreviewLocal();
             });
-            $("btnMarcarNpt")?.addEventListener("click", guardarNpt);
+            $("btnExportarAag")?.addEventListener("click", () => {
+                alert("Exportar AAG pendiente: acá vamos a conectar el formato oficial cuando lo tengamos definido.");
+            });
 
             actualizarPreviewLocal();
         }

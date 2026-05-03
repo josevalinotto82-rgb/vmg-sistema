@@ -573,9 +573,43 @@
             }
 
             /* GRILLA PRINT MEJORADA */
+            .home-btn {
+                display: none !important;
+            }
+
             .grid-table {
                 table-layout: fixed;
                 width: 100%;
+            }
+
+            .print-best-page .print-title {
+                font-size: 18px;
+            }
+
+            .print-best-page .print-date {
+                font-size: 11px;
+                margin-bottom: 4px;
+            }
+
+            .print-best-page .print-section-title {
+                font-size: 12px;
+                margin: 5px 0 3px;
+            }
+
+            .print-best-page .print-meta {
+                font-size: 8.5px;
+                margin: 2px 0 4px;
+            }
+
+            .print-best-page .print-series-table {
+                font-size: 7px;
+                margin-bottom: 5px;
+            }
+
+            .print-best-page .print-series-table th,
+            .print-best-page .print-series-table td {
+                padding: 1.2px 2px;
+                line-height: 1.05;
             }
 
             .print-winner.scratch-print {
@@ -685,37 +719,47 @@
                 margin-bottom: 8px;
             }
 
+            .print-grid-table {
+                width: 100%;
+                border-collapse: collapse;
+                border-spacing: 0;
+                table-layout: fixed;
+                font-size: 9.5px;
+                margin-bottom: 10px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
             .print-grid-table col.col-hora {
-                width: 48px;
+                width: 52px;
             }
 
             .print-grid-table col.col-jugador {
-                width: calc((100% - 48px) / 4);
+                width: calc((100% - 52px) / 4);
             }
 
             .print-grid-table th,
             .print-grid-table td {
-                border: 1px solid #16703a;
+                border: 1px solid #111 !important;
                 padding: 3px 4px;
                 text-align: center;
-                font-weight: 800;
+                vertical-align: middle;
+                font-weight: 700;
+                height: 20px;
                 white-space: nowrap;
                 overflow: hidden;
-                text-overflow: clip;
-            }
-
-            .print-grid-table td:first-child {
-                font-size: 9px;
-                padding-left: 2px;
-                padding-right: 2px;
+                text-overflow: ellipsis;
             }
 
             .print-grid-table th {
-                background: #e5e7eb;
-                color: #111
+                background: #e5e7eb !important;
+                color: #111 !important;
             }
 
-
+            .print-grid-table td:first-child {
+                font-size: 8.5px;
+                font-weight: 900;
+            }
 
             .print-series-table {
                 width: 100%;
@@ -736,11 +780,9 @@
             }
 
             .print-series-page {
-                page-break-after: always;
+                page-break-after: avoid;
                 break-after: page;
-                page-break-inside: avoid;
-                break-inside: avoid;
-                overflow: hidden;
+                overflow: visible;
             }
 
             .print-series-page .print-title {
@@ -772,9 +814,11 @@
 
             .print-series-page .print-series-table th,
             .print-series-page .print-series-table td {
-                padding: 1.6px 2px;
-                line-height: 1.08;
-                white-space: nowrap;
+                padding: 2px 3px;
+                line-height: 1.12;
+                white-space: normal;
+                word-break: normal;
+                overflow: visible;
             }
 
             .print-series-table th {
@@ -879,7 +923,7 @@
 
                 <div>
                     <label>Ganadores por categoría</label>
-                    <input id="topCategoria" type="number" min="1" max="10" value="3">
+                    <input id="topCategoria" type="number" min="1" max="10" value="2">
                 </div>
 
                 <div>
@@ -889,7 +933,7 @@
 
                 <div>
                     <label>Scratch Damas</label>
-                    <input id="topScratchDamas" type="number" min="0" max="10" value="0">
+                    <input id="topScratchDamas" type="number" min="0" max="10" value="1">
                 </div>
 
                 <div>
@@ -922,11 +966,13 @@
                     <button type="button" class="series-tab-btn active" data-serie-tab="acumulado">Acumulado
                         serie</button>
                     <button type="button" class="series-tab-btn" data-serie-tab="mejor18">Mejor 18 hoyos</button>
+                    <button type="button" class="series-tab-btn" data-serie-tab="mejor36">Mejor 36 hoyos</button>
                     <button type="button" class="series-tab-btn"
                         data-serie-tab="participaciones">Participaciones</button>
                 </div>
                 <div id="panelSerieAcumulado" class="series-panel active"></div>
                 <div id="panelSerieMejor18" class="series-panel"></div>
+                <div id="panelSerieMejor36" class="series-panel"></div>
                 <div id="panelSerieParticipaciones" class="series-panel"></div>
             </div>
 
@@ -1243,6 +1289,9 @@
                     tournament_name: torneo?.name || "Fecha",
                     tournament_date: torneo?.tournament_date,
                     round_number: torneo?.series_round_number,
+                    player_gender: sc.player_gender,
+                    official_index: n(sc.official_index ?? sc.manual_index),
+                    manual_index: n(sc.manual_index),
                     net: n(sc.net),
                     gross: n(sc.gross),
                     total: n(sc.total),
@@ -1258,10 +1307,75 @@
             return [...grupos.values()].sort((a, b) => a.score - b.score || (a.gross || 999) - (b.gross || 999) || String(a.display_name).localeCompare(String(b.display_name), "es"));
         }
 
+        function generoSerie(item) {
+            return normalizarGenero(item.player_gender || item.gender || "");
+        }
+
+        function scoreScratchSerie(item, tipo) {
+            if (tipo === "mejor18") return n(item.gross);
+            if (tipo === "mejor36") return n(item.total_gross);
+            return n(item.total_gross);
+        }
+
+        function calcularMejor36Serie() {
+            const field = getSerieScoringField();
+            const validas = scorecardsSerie.filter(s => esTarjetaValida(s) && n(s[field]) != null);
+            const grupos = new Map();
+
+            for (const sc of validas) {
+                const key = jugadorKey(sc);
+                const torneo = torneoSeriePorId(sc.tournament_id);
+
+                if (!grupos.has(key)) {
+                    grupos.set(key, {
+                        key,
+                        display_name: sc.display_name,
+                        player_gender: sc.player_gender,
+                        official_index: n(sc.official_index ?? sc.manual_index),
+                        manual_index: n(sc.manual_index),
+                        category_name: sc.category_name,
+                        rounds: []
+                    });
+                }
+
+                grupos.get(key).rounds.push({
+                    tournament_id: sc.tournament_id,
+                    tournament_name: torneo?.name || "Fecha",
+                    tournament_date: torneo?.tournament_date,
+                    round_number: torneo?.series_round_number,
+                    net: n(sc.net),
+                    gross: n(sc.gross),
+                    total: n(sc.total),
+                    score: n(sc[field])
+                });
+            }
+
+            return [...grupos.values()]
+                .map(g => {
+                    const mejores = g.rounds
+                        .filter(r => n(r.score) != null)
+                        .sort((a, b) => n(a.score) - n(b.score) || (n(a.gross) ?? 9999) - (n(b.gross) ?? 9999))
+                        .slice(0, 2);
+
+                    if (mejores.length < 2) return null;
+
+                    g.best_rounds = mejores;
+                    g.score = mejores.reduce((a, r) => a + (n(r.score) || 0), 0);
+                    g.total_gross = mejores.reduce((a, r) => a + (n(r.gross) || 0), 0);
+                    return g;
+                })
+                .filter(Boolean)
+                .sort((a, b) => a.score - b.score || a.total_gross - b.total_gross || String(a.display_name).localeCompare(String(b.display_name), "es"));
+        }
+
         function activarTabSerie(tab) {
-            document.querySelectorAll("[data-serie-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.serieTab === tab));
+            document.querySelectorAll("[data-serie-tab]").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.serieTab === tab);
+            });
+
             el("panelSerieAcumulado")?.classList.toggle("active", tab === "acumulado");
             el("panelSerieMejor18")?.classList.toggle("active", tab === "mejor18");
+            el("panelSerieMejor36")?.classList.toggle("active", tab === "mejor36");
             el("panelSerieParticipaciones")?.classList.toggle("active", tab === "participaciones");
         }
 
@@ -1287,6 +1401,7 @@
 
             renderSerieAcumulado();
             renderSerieMejor18();
+            renderSerieMejor36();
             renderSerieParticipaciones();
             activarTabSerie(serieTabActiva);
         }
@@ -1331,27 +1446,38 @@
 
         function renderTablaSeriePorCategorias({ tipo, items, field, required = null }) {
             const topCategoria = Math.max(1, Number(el("topCategoria").value || 3));
-            const topScratch = Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
+
             const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
             const esMejor18 = tipo === "mejor18";
+            const esMejor36 = tipo === "mejor36";
 
-            const scratchItems = items
-                .filter(esElegibleScratchSerie)
-                .slice()
-                .sort((a, b) => {
-                    const av = esMejor18 ? n(a.gross) : n(a.total_gross);
-                    const bv = esMejor18 ? n(b.gross) : n(b.total_gross);
-                    return (av ?? 9999) - (bv ?? 9999) || String(a.display_name).localeCompare(String(b.display_name), "es");
-                })
-                .slice(0, topScratch);
+            const ordenarScratch = (a, b) =>
+                (scoreScratchSerie(a, tipo) ?? 9999) - (scoreScratchSerie(b, tipo) ?? 9999) ||
+                String(a.display_name).localeCompare(String(b.display_name), "es");
 
-            const scratchIds = new Set(scratchItems.map(x => String(x.key || x.id || x.linked_player_id || x.display_name)));
+            const scratchCab = topScratchCab > 0
+                ? items.filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "male").slice().sort(ordenarScratch).slice(0, topScratchCab)
+                : [];
+
+            const scratchDam = topScratchDam > 0
+                ? items.filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "female").slice().sort(ordenarScratch).slice(0, topScratchDam)
+                : [];
+
+            const scratchIds = new Set([
+                ...scratchCab.map(x => String(x.key || x.id || x.linked_player_id || x.display_name)),
+                ...scratchDam.map(x => String(x.key || x.id || x.linked_player_id || x.display_name))
+            ]);
+
             const itemsParaCategorias = items.filter(x => !scratchIds.has(String(x.key || x.id || x.linked_player_id || x.display_name)));
             const grupos = agruparPorCategoriaOrdenada(itemsParaCategorias);
 
             let html = `<div class="table-wrap"><table><thead><tr>`;
-            html += `<th>Competencia</th><th>Pos</th><th class="left">Jugador</th><th>${esMejor18 ? "Mejor " + labelScore : labelScore + " acum."}</th><th>Gross</th>`;
-            html += esMejor18 ? `<th>Fecha</th>` : `<th>Vueltas</th><th>Detalle fechas</th>`;
+            html += `<th>Competencia</th><th>Pos</th><th class="left">Jugador</th>`;
+            html += `<th>${esMejor18 ? "Mejor " + labelScore : esMejor36 ? "Mejor 36 " + labelScore : labelScore + " acum."}</th>`;
+            html += `<th>Gross</th>`;
+            html += esMejor18 ? `<th>Fecha</th>` : esMejor36 ? `<th>Fechas usadas</th>` : `<th>Vueltas</th><th>Detalle fechas</th>`;
             html += `</tr></thead><tbody>`;
 
             function fila(nombreCompetencia, item, pos) {
@@ -1359,11 +1485,17 @@
                     return `<tr><td><b>${esc(nombreCompetencia)}</b></td><td><b>${pos}</b></td><td class="left"><b>${esc(item.display_name)}</b></td><td><b>${fmt(item.score, 0)}</b></td><td>${fmt(item.gross, 0)}</td><td>F${esc(item.round_number || "?")} · ${fechaTexto(item.tournament_date)}</td></tr>`;
                 }
 
+                if (esMejor36) {
+                    const detalle36 = (item.best_rounds || []).map(r => `F${r.round_number || "?"}: ${r.score ?? "—"}`).join(" · ");
+                    return `<tr><td><b>${esc(nombreCompetencia)}</b></td><td><b>${pos}</b></td><td class="left"><b>${esc(item.display_name)}</b></td><td><b>${fmt(item.score, 0)}</b></td><td>${fmt(item.total_gross, 0)}</td><td>${esc(detalle36)}</td></tr>`;
+                }
+
                 const detalle = (item.rounds || []).map(r => `F${r.round_number || "?"}: ${r.score ?? "—"}`).join(" · ");
                 return `<tr><td><b>${esc(nombreCompetencia)}</b></td><td><b>${pos}</b></td><td class="left"><b>${esc(item.display_name)}</b></td><td><b>${fmt(item.score, 0)}</b></td><td>${fmt(item.total_gross, 0)}</td><td>${item.rounds_played}/${required || item.rounds_played}</td><td>${esc(detalle)}</td></tr>`;
             }
 
-            scratchItems.forEach((item, i) => html += fila("Scratch", item, i + 1));
+            scratchCab.forEach((item, i) => html += fila("Scratch Caballeros", item, i + 1));
+            scratchDam.forEach((item, i) => html += fila("Scratch Damas", item, i + 1));
 
             for (const [cat, catItems] of grupos) {
                 catItems
@@ -1373,8 +1505,8 @@
                     .forEach((item, i) => html += fila(cat, item, i + 1));
             }
 
-            if (!scratchItems.length && !grupos.length) {
-                const colspan = esMejor18 ? 6 : 7;
+            const colspan = esMejor18 || esMejor36 ? 6 : 7;
+            if (!scratchCab.length && !scratchDam.length && !grupos.length) {
                 html += `<tr><td colspan="${colspan}">Todavía no hay tarjetas válidas para mostrar.</td></tr>`;
             }
 
@@ -1400,6 +1532,16 @@
             let html = `<div class="series-note">Mejor 18 hoyos por categoría. Entra cualquier jugador con al menos una tarjeta válida en alguna fecha de la serie. Se muestran los mismos puestos configurados arriba.</div>`;
             html += renderTablaSeriePorCategorias({ tipo: "mejor18", items, field });
             el("panelSerieMejor18").innerHTML = html;
+        }
+
+        function renderSerieMejor36() {
+            const field = getSerieScoringField();
+            const items = calcularMejor36Serie();
+
+            let html = `<div class="series-note">Mejor 36 hoyos por categoría. Se toman las mejores 2 tarjetas válidas de cada jugador. Solo aparecen jugadores con al menos 2 vueltas cargadas.</div>`;
+            html += renderTablaSeriePorCategorias({ tipo: "mejor36", items, field });
+
+            el("panelSerieMejor36").innerHTML = html;
         }
 
         function renderSerieParticipaciones() {
@@ -1749,53 +1891,81 @@
             } catch (err) { console.warn("No se pudo cargar la grilla", err); grillaBloquesActuales = []; }
         }
 
-
-
         function renderPrintTablaSeriePorCategorias({ tipo, items, field, required = null }) {
             const topCategoria = Math.max(1, Number(el("topCategoria").value || 3));
-            const topScratch = Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
+
             const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
             const esMejor18 = tipo === "mejor18";
+            const esMejor36 = tipo === "mejor36";
 
-            const scratchItems = items
-                .filter(esElegibleScratchSerie)
-                .slice()
-                .sort((a, b) => {
-                    const av = esMejor18 ? n(a.gross) : n(a.total_gross);
-                    const bv = esMejor18 ? n(b.gross) : n(b.total_gross);
-                    return (av ?? 9999) - (bv ?? 9999) || String(a.display_name).localeCompare(String(b.display_name), "es");
-                })
-                .slice(0, topScratch);
+            const ordenarScratch = (a, b) =>
+                (scoreScratchSerie(a, tipo) ?? 9999) - (scoreScratchSerie(b, tipo) ?? 9999) ||
+                String(a.display_name).localeCompare(String(b.display_name), "es");
 
-            const scratchIds = new Set(scratchItems.map(x => String(x.key || x.id || x.linked_player_id || x.display_name)));
+            const scratchCab = topScratchCab > 0
+                ? items.filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "male").slice().sort(ordenarScratch).slice(0, topScratchCab)
+                : [];
+
+            const scratchDam = topScratchDam > 0
+                ? items.filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "female").slice().sort(ordenarScratch).slice(0, topScratchDam)
+                : [];
+
+            const scratchIds = new Set([
+                ...scratchCab.map(x => String(x.key || x.id || x.linked_player_id || x.display_name)),
+                ...scratchDam.map(x => String(x.key || x.id || x.linked_player_id || x.display_name))
+            ]);
+
             const itemsParaCategorias = items.filter(x => !scratchIds.has(String(x.key || x.id || x.linked_player_id || x.display_name)));
             const grupos = agruparPorCategoriaOrdenada(itemsParaCategorias);
 
             let html = `<table class="print-series-table"><thead><tr>`;
-            html += `<th style="width:21%">Competencia</th><th style="width:7%">Pos</th><th class="left" style="width:29%">Jugador</th><th style="width:12%">${esMejor18 ? "Mejor " + labelScore : labelScore + " acum."}</th><th style="width:10%">Gross</th>`;
-            html += esMejor18 ? `<th style="width:21%">Fecha</th>` : `<th style="width:9%">Vueltas</th><th style="width:12%">Detalle</th>`;
+            html += `<th style="width:20%">Competencia</th>`;
+            html += `<th style="width:6%">Pos</th>`;
+            html += `<th class="left" style="width:28%">Jugador</th>`;
+            html += `<th style="width:12%">${esMejor18 ? "Mejor " + labelScore : esMejor36 ? "Mejor 36 " + labelScore : labelScore + " acum."}</th>`;
+            html += `<th style="width:10%">Gross</th>`;
+            html += esMejor18
+                ? `<th style="width:24%">Fecha</th>`
+                : esMejor36
+                    ? `<th style="width:24%">Fechas usadas</th>`
+                    : `<th style="width:8%">Vueltas</th><th style="width:16%">Detalle</th>`;
             html += `</tr></thead><tbody>`;
 
             function fila(nombreCompetencia, item, pos) {
                 if (esMejor18) {
                     return `<tr><td class="comp">${esc(nombreCompetencia)}</td><td><b>${pos}</b></td><td class="left"><b>${esc(item.display_name)}</b></td><td><b>${fmt(item.score, 0)}</b></td><td>${fmt(item.gross, 0)}</td><td>F${esc(item.round_number || "?")} · ${fechaTexto(item.tournament_date)}</td></tr>`;
                 }
+
+                if (esMejor36) {
+                    const detalle36 = (item.best_rounds || []).map(r => `F${r.round_number || "?"}: ${r.score ?? "—"}`).join(" · ");
+                    return `<tr><td class="comp">${esc(nombreCompetencia)}</td><td><b>${pos}</b></td><td class="left"><b>${esc(item.display_name)}</b></td><td><b>${fmt(item.score, 0)}</b></td><td>${fmt(item.total_gross, 0)}</td><td>${esc(detalle36)}</td></tr>`;
+                }
+
                 const detalle = (item.rounds || []).map(r => `F${r.round_number || "?"}: ${r.score ?? "—"}`).join(" · ");
                 return `<tr><td class="comp">${esc(nombreCompetencia)}</td><td><b>${pos}</b></td><td class="left"><b>${esc(item.display_name)}</b></td><td><b>${fmt(item.score, 0)}</b></td><td>${fmt(item.total_gross, 0)}</td><td>${item.rounds_played}/${required || item.rounds_played}</td><td>${esc(detalle)}</td></tr>`;
             }
 
-            scratchItems.forEach((item, i) => html += fila("Scratch", item, i + 1));
+            scratchCab.forEach((item, i) => html += fila("Scratch Caballeros", item, i + 1));
+            scratchDam.forEach((item, i) => html += fila("Scratch Damas", item, i + 1));
 
             for (const [cat, catItems] of grupos) {
                 catItems
                     .slice()
-                    .sort((a, b) => n(a.score) - n(b.score) || (n(a.total_gross ?? a.gross) ?? 9999) - (n(b.total_gross ?? b.gross) ?? 9999) || String(a.display_name).localeCompare(String(b.display_name), "es"))
+                    .sort((a, b) =>
+                        n(a.score) - n(b.score) ||
+                        (n(a.total_gross ?? a.gross) ?? 9999) - (n(b.total_gross ?? b.gross) ?? 9999) ||
+                        String(a.display_name).localeCompare(String(b.display_name), "es")
+                    )
                     .slice(0, topCategoria)
                     .forEach((item, i) => html += fila(cat, item, i + 1));
             }
 
-            if (!scratchItems.length && !grupos.length) {
-                html += `<tr><td colspan="${esMejor18 ? 6 : 7}">Todavía no hay tarjetas válidas para mostrar.</td></tr>`;
+            const colspan = esMejor18 || esMejor36 ? 6 : 7;
+
+            if (!scratchCab.length && !scratchDam.length && !grupos.length) {
+                html += `<tr><td colspan="${colspan}">Todavía no hay tarjetas válidas para mostrar.</td></tr>`;
             }
 
             html += `</tbody></table>`;
@@ -1808,22 +1978,49 @@
             const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
             const tituloSerie = serieActual?.name || "Competencia de varias fechas";
 
-            let html = `<div class="print-page print-series-page">`;
-            html += `<div class="print-title">${esc(tituloSerie)}</div>`;
-            html += `<div class="print-date">Competencia de varias fechas · ${esc(torneoActual.name || "")}</div>`;
+            let html = "";
 
-            html += `<div class="print-section-title">Acumulado serie</div>`;
-            html += `<div class="print-meta">Orden: Scratch, Negras, Amarillas, Blancas y Damas. Acumulado por <b>${labelScore}</b>. Exige completar <b>${acumulado.required || "todas las"}</b> fechas.</div>`;
-            html += renderPrintTablaSeriePorCategorias({ tipo: "acumulado", items: acumulado.completos, field, required: acumulado.required });
+            // HOJA 1: ACUMULADO
+            html += `<div class="print-page print-series-page">`;
+            html += `<div class="print-title">${esc(tituloSerie)}</div>`;
+            html += `<div class="print-date">Acumulado serie · ${esc(torneoActual.name || "")}</div>`;
+            html += `<div class="print-meta">Orden por <b>${labelScore}</b>. Exige completar <b>${acumulado.required || "todas las"}</b> fechas.</div>`;
+            html += renderPrintTablaSeriePorCategorias({
+                tipo: "acumulado",
+                items: acumulado.completos,
+                field,
+                required: acumulado.required
+            });
+            html += `</div>`;
+
+            // HOJA 2: MEJOR 18 + MEJOR 36 JUNTOS
+            const mejor18 = calcularMejor18Serie();
+            const mejor36 = calcularMejor36Serie();
+
+            html += `<div class="print-page print-series-page print-best-page">`;
+            html += `<div class="print-title">${esc(tituloSerie)}</div>`;
+            html += `<div class="print-date">Mejor 18 y Mejor 36 hoyos · ${esc(torneoActual.name || "")}</div>`;
 
             if (serieActual.best18_enabled !== false) {
-                const mejor18 = calcularMejor18Serie();
                 html += `<div class="print-section-title">Mejor 18 hoyos</div>`;
-                html += `<div class="print-meta">Entra cualquier jugador con al menos una tarjeta válida. Se imprimen los mismos puestos configurados arriba.</div>`;
-                html += renderPrintTablaSeriePorCategorias({ tipo: "mejor18", items: mejor18, field });
+                html += `<div class="print-meta">Entra cualquier jugador con al menos una tarjeta válida.</div>`;
+                html += renderPrintTablaSeriePorCategorias({
+                    tipo: "mejor18",
+                    items: mejor18,
+                    field
+                });
             }
 
+            html += `<div class="print-section-title">Mejor 36 hoyos</div>`;
+            html += `<div class="print-meta">Se toman las mejores 2 tarjetas válidas de cada jugador.</div>`;
+            html += renderPrintTablaSeriePorCategorias({
+                tipo: "mejor36",
+                items: mejor36,
+                field
+            });
+
             html += `</div>`;
+
             return html;
         }
 
