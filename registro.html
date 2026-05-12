@@ -120,10 +120,12 @@
                 .from("players")
                 .select("*")
                 .eq("aag_member_number", matricula)
+                .eq("is_club_member", true)
+                .eq("option_club_id", 408)
                 .maybeSingle();
 
             if (error || !data) {
-                msg.textContent = "Matrícula no encontrada.";
+                msg.textContent = "Solo socios del Villa María Golf Club pueden registrarse.";
                 return;
             }
 

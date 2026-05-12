@@ -50,7 +50,7 @@
         }
 
         .card {
-            background: white;
+            background: rgb(255, 255, 255);
             border-radius: 16px;
             padding: 18px;
             box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
@@ -113,6 +113,76 @@
         .card-amber p {
             color: #6b7280;
         }
+
+        a.button.button-blue {
+            background: #0841bb !important;
+            color: #ffffff;
+            border: 2px solid #0841bb;
+        }
+
+        .card-blue h2 {
+            color: #4446b8;
+        }
+
+        .card-blue p {
+            color: #6b7280;
+        }
+
+        .protected-wrapper {
+            position: relative;
+        }
+
+        .pass-popup {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            width: 220px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .15);
+            z-index: 9999;
+        }
+
+        .pass-popup.hidden {
+            display: none;
+        }
+
+        .pass-input {
+            width: 100%;
+            height: 38px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 0 10px;
+            margin-bottom: 8px;
+            box-sizing: border-box;
+        }
+
+        .pass-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .pass-ok {
+            flex: 1;
+            background: #0841bb;
+            color: white;
+            border: 0;
+            border-radius: 8px;
+            height: 34px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .pass-cancel {
+            width: 34px;
+            background: #e5e7eb;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+        }
     </style>
 </head>
 
@@ -131,7 +201,7 @@
             <h2>Administrador</h2>
             <div class="grid">
                 <div class="card">
-                    <h2>Crear torneos</h2>
+                    <h2>Crear Torneos</h2>
                     <p>Alta, edición y configuración de torneos.</p>
                     <a class="button" href="admin_torneos.html">Entrar</a>
                 </div>
@@ -149,20 +219,64 @@
                 </div>
 
                 <div class="card">
-                    <h2>Carga de tarjetas Torneos</h2>
+                    <h2>Carga de tarjetas</h2>
                     <p>Cargar golpes, NPT, DESC y resultados.</p>
                     <a class="button" href="carga_tarjeta.html">Entrar</a>
                 </div>
 
                 <div class="card">
-                    <h2>Consulta completa</h2>
+                    <h2>Consulta Torneos</h2>
                     <p>Informe A4, ganadores, varias fechas y mejor 18.</p>
                     <a class="button" href="consulta.html">Entrar</a>
                 </div>
 
+                <div class="card card-blue">
+                    <h2>Sync AAG</h2>
+                    <p>Actualizar jugadores, índices y consultar padrón AAG.</p>
+
+                    <div class="protected-wrapper">
+
+                        <a class="button button-blue protected-link" href="admin_aag.html" data-pass="Entrar">
+                            Entrar
+                        </a>
+
+                        <div class="pass-popup hidden">
+                            <input type="password" class="pass-input" placeholder="Escribí - Entrar">
+
+                            <div class="pass-actions">
+                                <button class="pass-ok">OK</button>
+                                <button class="pass-cancel">X</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="card card-blue">
+                    <h2>Exp. AAG</h2>
+                    <p>Generar, enviar y controlar exports de torneos a AAG.</p>
+
+                    <div class="protected-wrapper">
+
+                        <a class="button button-blue protected-link" href="admin_aag_export.html" data-pass="Entrar">
+                            Entrar
+                        </a>
+
+                        <div class="pass-popup hidden">
+                            <input type="password" class="pass-input" placeholder="Escribí - Entrar">
+
+                            <div class="pass-actions">
+                                <button class="pass-ok">OK</button>
+                                <button class="pass-cancel">X</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
                 <div class="card">
                     <h2>Resultados públicos</h2>
-                    <p>Vista pública de torneos jugados.</p>
+                    <p>Vista pública de Leaderboard y torneos jugados.</p>
                     <a class="button" href="resultados.html">Entrar</a>
                 </div>
 
@@ -248,6 +362,50 @@
         logoutBtn.addEventListener("click", async () => {
             await supabase.auth.signOut();
             window.location.href = "login.html";
+        });
+
+        document.querySelectorAll(".protected-wrapper").forEach(wrapper => {
+
+            const link = wrapper.querySelector(".protected-link");
+            const popup = wrapper.querySelector(".pass-popup");
+            const input = wrapper.querySelector(".pass-input");
+            const okBtn = wrapper.querySelector(".pass-ok");
+            const cancelBtn = wrapper.querySelector(".pass-cancel");
+
+            link.addEventListener("click", (e) => {
+                e.preventDefault();
+
+                document.querySelectorAll(".pass-popup").forEach(p => {
+                    if (p !== popup) p.classList.add("hidden");
+                });
+
+                popup.classList.toggle("hidden");
+
+                setTimeout(() => input.focus(), 50);
+            });
+
+            okBtn.addEventListener("click", () => {
+
+                const correcta = link.dataset.pass;
+
+                if (input.value === correcta) {
+                    window.location.href = link.href;
+                } else {
+                    alert("Palabra incorrecta.");
+                    input.value = "";
+                    input.focus();
+                }
+            });
+
+            cancelBtn.addEventListener("click", () => {
+                popup.classList.add("hidden");
+            });
+
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    okBtn.click();
+                }
+            });
         });
 
         init();

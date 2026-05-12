@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin AAG - Villa María Golf</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f4f8;
+            margin: 0;
+            padding: 30px;
+            color: #1f2937;
+        }
+
+        .card {
+            max-width: 620px;
+            margin: auto;
+            background: #fff;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #3e5740;
+        }
+
+        button {
+            background: #ec9b58;
+            color: rgb(255, 255, 255);
+            border: 0;
+            border-radius: 10px;
+            padding: 12px 18px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        pre {
+            margin-top: 18px;
+            background: #f3f4f6;
+            padding: 14px;
+            border-radius: 10px;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+
+        .ok {
+            color: #166534;
+            font-weight: bold;
+        }
+
+        .err {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+
+        .search-results {
+            margin-top: 10px;
+            max-height: 360px;
+            overflow: auto;
+        }
+
+        .player-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 11px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            background: #fff;
+            transition: .12s ease;
+        }
+
+        .player-card:hover {
+            border-color: #9ca3af;
+            transform: translateY(-1px);
+        }
+
+        .player-card.active {
+            border-color: #166534;
+            box-shadow: 0 0 0 2px rgba(22, 101, 52, .12);
+        }
+
+        .player-name {
+            font-weight: 800;
+            font-size: 14px;
+            line-height: 1.25;
+            margin-bottom: 5px;
+        }
+
+        .player-extra {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.35;
+        }
+
+        .player-detail {
+            margin-top: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 14px;
+            background: #f9fafb;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .empty {
+            padding: 14px;
+            color: #6b7280;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px dashed #d1d5db;
+        }
+
+        .home-btn {
+            position: fixed;
+            top: 30px;
+            right: 27px;
+            width: 38px;
+            height: 38px;
+            border-radius: 6px;
+            background: #166534;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+            z-index: 9999;
+            transition: transform 0.15s, background 0.15s;
+        }
+
+        .home-btn:hover {
+            background: #14532d;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="home-btn" id="btnHome" title="Volver al panel">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+                stroke-width="2" />
+        </svg>
+    </div>
+    <div class="card">
+        <h1>Sincronización AAG</h1>
+
+        <p>
+            Esta Acción Actualiza Index de Jugadores <b>Matriculados</b>.
+        </p>
+
+        <button id="btnSync">Sync-jugadores</button>
+
+        <hr style="margin:24px 0;">
+
+        <h2>Buscar jugador</h2>
+
+        <p>
+            Buscá por nombre, apellido o matrícula.
+        </p>
+
+        <input id="buscadorJugador" placeholder="Ej: PEREZ o 123456" autocomplete="off"
+            style="padding:10px; width:100%; max-width:360px;">
+
+        <div id="resultadosBusqueda" style="margin-top:12px;"></div>
+
+        <pre id="resultado">Esperando acción...</pre>
+
+        <div class="card" style="margin-top:18px;">
+            <h2>Última sincronización AAG</h2>
+            <div id="detalleSync">Sin datos todavía.</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+        const SUPABASE_URL = "https://bnnfolhrqxgxjmobclrm.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ";
+        const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/swift-worker`;
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const btnSync = document.getElementById("btnSync");
+        const resultado = document.getElementById("resultado");
+        const buscadorJugador = document.getElementById("buscadorJugador");
+        const resultadosBusqueda = document.getElementById("resultadosBusqueda");
+
+        let searchTimer = null;
+        let ultimosResultados = [];
+
+        function normalizarTexto(txt) {
+            return String(txt || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .trim();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function formatIndex(value) {
+            const n = Number(String(value ?? "").replace(",", "."));
+            return Number.isFinite(n) ? n.toFixed(1) : "—";
+        }
+
+        function generoTexto(gender) {
+            const g = String(gender || "").toLowerCase();
+
+            if (
+                g === "female" ||
+                g === "f" ||
+                g === "1" ||
+                g === "dama" ||
+                g === "damas"
+            ) {
+                return "Dama";
+            }
+
+            return "Caballero";
+        }
+
+        function nombreDesdePlayer(p) {
+            return p.full_name ||
+                [p.last_name, p.first_name].filter(Boolean).join(", ") ||
+                "Sin nombre";
+        }
+
+        function origenTexto(p) {
+            return p.origen_busqueda === "players"
+                ? "Players"
+                : "Padrón AAG";
+        }
+
+        function socioTexto(p) {
+            return p.is_club_member ? "Sí" : "No";
+        }
+
+        function renderDetalleSync(data) {
+            const box = document.getElementById("detalleSync");
+            if (!box) return;
+
+            const changes = data.changes || {
+                added: [],
+                updated: [],
+                deactivated: []
+            };
+
+            box.innerHTML = `
+                <p><b>Resumen de la última sincronización</b></p>
+
+                <p>
+                    Altas: <b>${changes.added.length}</b><br>
+                    Modificados: <b>${changes.updated.length}</b><br>
+                    Dejaron de ser miembros: <b>${changes.deactivated.length}</b>
+                </p>
+
+                <h3>Altas</h3>
+                ${changes.added.length ? changes.added.map(p => `
+                    <div>
+                        ${p.matricula} - ${p.nombre} · Index ${p.index ?? "-"}
+                    </div>
+                `).join("") : "<p>No hubo altas.</p>"}
+
+                <h3>Modificados</h3>
+                ${changes.updated.length ? changes.updated.map(p => `
+                    <div style="margin-bottom:8px;">
+                        <b>${p.matricula} - ${p.nombre}</b><br>
+                        ${(p.changes || []).join("<br>")}
+                    </div>
+                `).join("") : "<p>No hubo modificaciones.</p>"}
+
+                <h3>Dejaron de ser miembros</h3>
+                ${changes.deactivated.length ? changes.deactivated.map(p => `
+                    <div>
+                        ${p.matricula} - ${p.nombre}
+                    </div>
+                `).join("") : "<p>No hubo bajas.</p>"}
+            `;
+        }
+
+        btnSync.addEventListener("click", async () => {
+            btnSync.disabled = true;
+            resultado.textContent = "Sincronizando con AAG... puede tardar un poco.";
+
+            try {
+                const res = await fetch(FUNCTION_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "sync_vmgc" })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok || !data.ok) {
+                    throw new Error(data.error || "Error desconocido");
+                }
+
+                resultado.innerHTML =
+                    `<span class="ok">Sincronización correcta</span>\n\n` +
+                    `Total recibido AAG: ${data.total_received}\n` +
+                    `Jugadores filtrados VMGC: ${data.total_filtered}\n` +
+                    `Jugadores actualizados en players: ${data.total_upserted}`;
+
+                renderDetalleSync(data);
+
+            } catch (err) {
+                resultado.innerHTML =
+                    `<span class="err">Error</span>\n\n${err.message || err}`;
+            } finally {
+                btnSync.disabled = false;
+            }
+        });
+
+        async function buscarJugadores() {
+            const qRaw = buscadorJugador.value.trim();
+
+            if (qRaw.length < 2) {
+                resultadosBusqueda.innerHTML =
+                    `<div class="empty">Escribí al menos 2 caracteres.</div>`;
+                return;
+            }
+
+            try {
+                resultadosBusqueda.innerHTML =
+                    `<div class="empty">Buscando jugadores...</div>`;
+
+                const q = normalizarTexto(qRaw).replace(/\s+/g, "%");
+
+                const { data: playersData, error: playersError } = await supabase
+                    .from("players")
+                    .select(`
+                    id,
+                    first_name,
+                    last_name,
+                    full_name,
+                    gender,
+                    current_index,
+                    aag_member_number,
+                    country,
+                    club_name,
+                    is_club_member,
+                    option_club_id,
+                    source,
+                    search_text
+                `)
+                    .ilike("search_text", `%${q}%`)
+                    .limit(15);
+
+                if (playersError) throw playersError;
+
+                const playerClubIds = [
+                    ...new Set(
+                        (playersData || [])
+                            .map(p => p.option_club_id)
+                            .filter(Boolean)
+                            .map(Number)
+                    )
+                ];
+
+                let playersClubsMap = {};
+
+                if (playerClubIds.length) {
+
+                    const { data: playerClubsData, error: playerClubsError } =
+                        await supabase
+                            .from("aag_clubs")
+                            .select(`
+                            option_club_id,
+                            city,
+                            province
+                        `)
+                            .in("option_club_id", playerClubIds);
+
+                    if (playerClubsError) throw playerClubsError;
+
+                    playersClubsMap = Object.fromEntries(
+                        (playerClubsData || []).map(c => [
+                            Number(c.option_club_id),
+                            c
+                        ])
+                    );
+                }
+
+                const { data: aagData, error: aagError } = await supabase
+                    .from("aag_enrolleds")
+                    .select(`
+                    enrollment_number,
+                    first_name,
+                    last_name,
+                    full_name,
+                    gender,
+                    current_index,
+                    option_club_id,
+                    club_name,
+                    search_text
+                `)
+                    .ilike("search_text", `%${q}%`)
+                    .limit(15);
+
+                if (aagError) throw aagError;
+
+                const clubIds = [
+                    ...new Set(
+                        (aagData || [])
+                            .map(p => p.option_club_id)
+                            .filter(Boolean)
+                            .map(Number)
+                    )
+                ];
+
+                let clubsMap = {};
+
+                if (clubIds.length) {
+                    const { data: clubsData, error: clubsError } = await supabase
+                        .from("aag_clubs")
+                        .select(`
+                        option_club_id,
+                        city,
+                        province
+                    `)
+                        .in("option_club_id", clubIds);
+
+                    if (clubsError) throw clubsError;
+
+                    clubsMap = Object.fromEntries(
+                        (clubsData || []).map(c => [
+                            Number(c.option_club_id),
+                            c
+                        ])
+                    );
+                }
+
+                const players = (playersData || []).map(p => {
+
+                    const clubInfo =
+                        playersClubsMap[Number(p.option_club_id)] || {};
+
+                    return {
+                        ...p,
+                        club_city: clubInfo.city || "",
+                        club_province: clubInfo.province || "",
+                        origen_busqueda: "players"
+                    };
+                });
+
+                const yaEstanEnPlayers = new Set(
+                    players.map(p => String(p.aag_member_number || ""))
+                );
+
+                const externos = (aagData || [])
+                    .filter(p => !yaEstanEnPlayers.has(String(p.enrollment_number || "")))
+                    .map(p => {
+                        const clubInfo =
+                            clubsMap[Number(p.option_club_id)] || {};
+
+                        return {
+                            id: `aag:${p.enrollment_number}`,
+                            origen_busqueda: "aag_enrolleds",
+                            enrollment_number: p.enrollment_number,
+                            aag_member_number: p.enrollment_number,
+                            first_name: p.first_name,
+                            last_name: p.last_name,
+                            full_name: p.full_name,
+                            gender: p.gender,
+                            current_index: p.current_index,
+                            option_club_id: p.option_club_id,
+                            club_name: p.club_name,
+                            club_city: clubInfo.city || "",
+                            club_province: clubInfo.province || "",
+                            country: "Argentina",
+                            is_club_member: Number(p.option_club_id) === 408
+                        };
+                    });
+
+                function scoreJugador(p) {
+                    const buscado = normalizarTexto(qRaw);
+                    const partes = buscado.split(" ").filter(Boolean);
+
+                    const nombre = normalizarTexto(
+                        `${p.full_name || ""} ${p.last_name || ""} ${p.first_name || ""} ${p.aag_member_number || p.enrollment_number || ""}`
+                    );
+
+                    let score = 0;
+
+                    if (Number(p.option_club_id) === 408 || p.is_club_member === true) score += 10000;
+                    if (String(p.aag_member_number || p.enrollment_number || "") === qRaw) score += 8000;
+                    if (nombre.includes(buscado)) score += 4000;
+                    if (partes.every(parte => nombre.includes(parte))) score += 2500;
+                    score += partes.filter(parte => nombre.includes(parte)).length * 500;
+
+                    return score;
+                }
+
+                ultimosResultados = [...players, ...externos]
+                    .map(p => ({ ...p, _score: scoreJugador(p) }))
+                    .sort((a, b) => b._score - a._score)
+                    .slice(0, 8);
+
+                renderResultadosBusqueda();
+
+            } catch (error) {
+                console.error(error);
+                resultadosBusqueda.innerHTML =
+                    `<div class="empty">Error: ${escapeHtml(error.message || error)}</div>`;
+            }
+        }
+
+        function renderResultadosBusqueda() {
+            if (!ultimosResultados.length) {
+                resultadosBusqueda.innerHTML =
+                    `<div class="empty">No se encontraron jugadores.</div>`;
+                return;
+            }
+
+            resultadosBusqueda.innerHTML = `
+            <div class="search-results">
+                ${ultimosResultados.map((p, idx) => `
+                    <div class="player-card" data-player-idx="${idx}">
+                        <div class="player-name">${escapeHtml(nombreDesdePlayer(p))}</div>
+                        <div class="player-extra">
+                            Matrícula: ${escapeHtml(p.aag_member_number || "—")}
+                            · Index: ${escapeHtml(formatIndex(p.current_index))}
+                            · Club: ${escapeHtml(p.club_name || "—")}
+                            · ${origenTexto(p)}
+                        </div>
+                    </div>
+                `).join("")}
+            </div>
+
+            <div id="detalleJugador"></div>
+        `;
+
+            resultadosBusqueda.querySelectorAll("[data-player-idx]").forEach(card => {
+                card.addEventListener("click", () => {
+                    resultadosBusqueda
+                        .querySelectorAll(".player-card")
+                        .forEach(c => c.classList.remove("active"));
+
+                    card.classList.add("active");
+
+                    const p = ultimosResultados[Number(card.dataset.playerIdx)];
+                    renderDetalleJugador(p);
+                });
+            });
+        }
+
+        function renderDetalleJugador(p) {
+            const detalle = document.getElementById("detalleJugador");
+            if (!detalle || !p) return;
+
+            detalle.innerHTML = `
+                <div class="player-detail">
+                    <b>${escapeHtml(nombreDesdePlayer(p))}</b><br><br>
+
+                    Matrícula AAG: <b>${escapeHtml(p.aag_member_number || "—")}</b><br>
+                    Index actual: <b>${escapeHtml(formatIndex(p.current_index))}</b><br>
+                    Género: <b>${escapeHtml(generoTexto(p.gender))}</b><br>
+                    Club: <b>${escapeHtml(p.club_name || "—")}</b><br>
+                    Club ID: <b>${escapeHtml(p.option_club_id || "—")}</b><br>
+                    Localidad: <b>${escapeHtml(p.club_city || "—")}</b><br>
+                    Provincia: <b>${escapeHtml(p.club_province || "—")}</b><br>
+                </div>
+            `;
+        }
+
+        buscadorJugador.addEventListener("input", () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(buscarJugadores, 350);
+        });
+
+        buscadorJugador.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") buscarJugadores();
+        });
+
+        document.getElementById("btnHome")?.addEventListener("click", () => {
+            window.location.href = "panel.html";
+        });
+    </script>
+</body>
+
+</html>

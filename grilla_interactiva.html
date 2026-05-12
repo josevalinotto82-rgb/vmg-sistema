@@ -320,7 +320,7 @@
     }
 
     .slot-self-btn:hover {
-      background: #14532d;
+      background: #166534;
     }
 
     .slot-libre-link {
@@ -369,7 +369,7 @@
     }
 
     .slot-inline-manual-btn {
-      background: #2563eb;
+      background: #0841bb;
       color: white;
       padding: 7px 10px;
       font-size: 12px;
@@ -676,6 +676,12 @@
       border-radius: 12px;
       box-shadow: 0 10px 25px rgba(0, 0, 0, .18);
       padding: 10px;
+
+      display: flex;
+      flex-direction: column;
+
+      max-height: 360px;
+      overflow: hidden;
     }
 
     .player-search-popup.hidden {
@@ -684,11 +690,34 @@
 
     #playerSearchInput {
       width: 100%;
+      flex: 0 0 auto;
       padding: 9px 10px;
       border: 1px solid #d1d5db;
       border-radius: 9px;
       font-size: 14px;
       box-sizing: border-box;
+    }
+
+    #btnManualPopup {
+      flex: 0 0 auto;
+    }
+
+    #playerSearchResults {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    #playerManualPopup {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    #playerManualPopup .manual-form {
+      min-height: 0;
     }
 
     .search-result-item {
@@ -722,7 +751,7 @@
     }
 
     .home-btn:hover {
-      background: #14532d;
+      background: #166534;
       transform: scale(1.05);
     }
   </style>
@@ -897,49 +926,128 @@
     const popup = document.getElementById("playerSearchPopup");
     const input = document.getElementById("playerSearchInput");
     const results = document.getElementById("playerSearchResults");
+    const manual = document.getElementById("playerManualPopup");
 
     if (!popup || !input || !results) {
       console.error("Falta el HTML del popup de búsqueda");
       return;
     }
 
+    // Limpiar estado anterior
+    input.value = "";
     input.dataset.modoPareja = opciones.modoPareja || (requiresPartner() ? "1" : "0");
     input.dataset.jugadorBaseId = opciones.jugadorBaseId || "";
+    results.innerHTML = opciones.mensaje || "";
+
+    if (manual) {
+      manual.style.display = "none";
+      manual.innerHTML = "";
+    }
 
     const rect = elemento.getBoundingClientRect();
     const anchoPopup = 300;
     const margen = 10;
-    const left = Math.min(rect.left + window.scrollX, window.scrollX + window.innerWidth - anchoPopup - margen);
+
+    const left = Math.min(
+      rect.left + window.scrollX,
+      window.scrollX + window.innerWidth - anchoPopup - margen
+    );
 
     popup.style.left = `${Math.max(margen, left)}px`;
-    popup.style.top = `${rect.bottom + window.scrollY + 6}px`;
-
-    input.value = "";
-    results.innerHTML = opciones.mensaje || "";
 
     popup.classList.remove("hidden");
-    input.focus();
+    popup.style.visibility = "hidden";
+    popup.style.maxHeight = "360px";
+    popup.style.overflow = "hidden";
+
+    requestAnimationFrame(() => {
+      const espacioAbajo = window.innerHeight - rect.bottom;
+      const espacioArriba = rect.top;
+
+      const altoEstimadoPopup = Math.min(popup.offsetHeight || 360, 360);
+      const abrirArriba = espacioAbajo < altoEstimadoPopup + 16 && espacioArriba > espacioAbajo;
+
+      popup.style.left = `${Math.max(margen, left)}px`;
+      popup.style.maxHeight = `${Math.max(220, Math.min(360, abrirArriba ? espacioArriba - 12 : espacioAbajo - 12))}px`;
+
+      if (abrirArriba) {
+        popup.style.top = "auto";
+        popup.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+        popup.style.position = "fixed";
+      } else {
+        popup.style.bottom = "auto";
+        popup.style.top = `${rect.bottom + 6}px`;
+        popup.style.position = "fixed";
+      }
+
+      popup.style.visibility = "visible";
+      input.focus();
+    });
+
+  }
+
+  function reposicionarBuscadorJugador() {
+    const popup = document.getElementById("playerSearchPopup");
+    const input = document.getElementById("playerSearchInput");
+
+    if (!popup || !input || popup.classList.contains("hidden")) return;
+
+    const slotId = slotBusquedaActivo;
+    if (!slotId) return;
+
+    const trigger = document.querySelector(`[data-open-inline="${slotId}"], [data-self-slot="${slotId}"]`);
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const margen = 10;
+
+    const espacioAbajo = window.innerHeight - rect.bottom;
+    const espacioArriba = rect.top;
+
+    const altoActual = Math.min(popup.scrollHeight || 360, 360);
+    const abrirArriba = espacioAbajo < altoActual + 16 && espacioArriba > espacioAbajo;
+
+    popup.style.position = "fixed";
+    popup.style.maxHeight = `${Math.max(220, Math.min(360, abrirArriba ? espacioArriba - 12 : espacioAbajo - 12))}px`;
+
+    if (abrirArriba) {
+      popup.style.top = "auto";
+      popup.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+    } else {
+      popup.style.bottom = "auto";
+      popup.style.top = `${rect.bottom + 6}px`;
+    }
   }
 
   function abrirCargaManualPopup() {
     const wrap = document.getElementById("playerManualPopup");
     if (!wrap || !slotBusquedaActivo) return;
 
+    wrap.innerHTML = "";
     wrap.style.display = "block";
+
+    const popup = document.getElementById("playerSearchPopup");
+    if (popup) {
+      popup.style.maxHeight = "360px";
+      popup.style.overflow = "hidden";
+    }
+
     wrap.innerHTML = `
-    <div class="manual-form">
-      <input id="popup-nombre" placeholder="Nombre *" />
-      <input id="popup-apellido" placeholder="Apellido *" />
-      <input id="popup-index" placeholder="Índice" />
-      <select id="popup-genero">
-        <option value="">Género *</option>
-        <option value="male">Caballero</option>
-        <option value="female">Dama</option>
-      </select>
-      <input id="popup-pais" placeholder="País" />
-      <button id="btnGuardarManualPopup" type="button">Guardar jugador</button>
-    </div>
-  `;
+      <div class="manual-form">
+        <input id="popup-nombre" placeholder="Nombre *" />
+        <input id="popup-apellido" placeholder="Apellido *" />
+        <input id="popup-index" placeholder="Índice" />
+        <select id="popup-genero">
+          <option value="">Género *</option>
+          <option value="male">Caballero</option>
+          <option value="female">Dama</option>
+        </select>
+        <input id="popup-pais" placeholder="País" />
+        <button id="btnGuardarManualPopup" type="button">Guardar jugador</button>
+      </div>
+    `;
+
+    reposicionarBuscadorJugador();
   }
 
   function cerrarBuscadorJugador() {
@@ -954,6 +1062,13 @@
       input.dataset.jugadorBaseId = "";
     }
     if (results) results.innerHTML = "";
+
+    if (popup) {
+      popup.style.top = "";
+      popup.style.bottom = "";
+      popup.style.position = "";
+    }
+
     slotBusquedaActivo = null;
   }
 
@@ -978,6 +1093,8 @@
         </button>
       </div>
     `).join("");
+
+    reposicionarBuscadorJugador();
   }
 
   // ==============================
@@ -1300,6 +1417,7 @@
   }
 
   function registrationTypeForPlayer(jugador, fallback = "aag_match") {
+    if (jugador.id === APP.miPlayerId) return "self";
     return jugador.aag_member_number ? fallback : "manual_guest";
   }
 
@@ -1621,67 +1739,138 @@
 
   async function searchPlayers(term) {
     const texto = String(term || "").trim();
+    if (!texto || texto.length < 2) return [];
 
     const cacheKey = normalizarBusqueda(texto);
+    if (searchCache.has(cacheKey)) return searchCache.get(cacheKey);
 
-    if (searchCache.has(cacheKey)) {
-      return searchCache.get(cacheKey);
+    const q = normalizarBusqueda(texto).replace(/\s+/g, "%");
+
+    const { data: playersData, error: playersError } = await supabase
+      .from("players")
+      .select("id, first_name, last_name, full_name, aag_member_number, current_index, gender, club_name, country, is_club_member, search_text")
+      .ilike("search_text", `%${q}%`)
+      .limit(15);
+
+    if (playersError) throw playersError;
+
+    const { data: aagData, error: aagError } = await supabase
+      .from("aag_enrolleds")
+      .select("enrollment_number, first_name, last_name, full_name, gender, current_index, option_club_id, club_name, search_text")
+      .ilike("search_text", `%${q}%`)
+      .limit(15);
+
+    if (aagError) throw aagError;
+
+    console.log("AAG DATA:", aagData, aagError);
+
+    const players = (playersData || []).map(p => ({
+      ...p,
+      origen_busqueda: "players"
+    }));
+
+    const yaEstanEnPlayers = new Set(
+      players.map(p => String(p.aag_member_number || ""))
+    );
+
+    const externos = (aagData || [])
+      .filter(p => !yaEstanEnPlayers.has(String(p.enrollment_number || "")))
+      .map(p => ({
+        id: `aag:${p.enrollment_number}`,
+        origen_busqueda: "aag_enrolleds",
+        enrollment_number: p.enrollment_number,
+        aag_member_number: p.enrollment_number,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        full_name: p.full_name,
+        gender: p.gender,
+        current_index: p.current_index,
+        option_club_id: p.option_club_id,
+        club_name: p.club_name,
+        country: "Argentina",
+        is_club_member: Number(p.option_club_id) === 408
+      }));
+
+    function scoreJugador(p) {
+      const buscado = normalizarBusqueda(texto);
+      const partes = buscado.split(" ").filter(Boolean);
+
+      const nombre = normalizarBusqueda(
+        `${p.full_name || ""} ${p.last_name || ""} ${p.first_name || ""} ${p.aag_member_number || p.enrollment_number || ""}`
+      );
+
+      let score = 0;
+
+      // Prioridad Villa María
+      if (Number(p.option_club_id) === 408 || p.is_club_member === true) score += 10000;
+
+      // Coincidencia exacta de matrícula
+      if (String(p.aag_member_number || p.enrollment_number || "") === texto) score += 8000;
+
+      // Coincidencia fuerte de nombre completo
+      if (nombre.includes(buscado)) score += 4000;
+
+      // Todas las palabras encontradas
+      if (partes.every(parte => nombre.includes(parte))) score += 2500;
+
+      // Suma parcial
+      score += partes.filter(parte => nombre.includes(parte)).length * 500;
+
+      return score;
     }
 
-    const esMatricula = /^\d+$/.test(texto);
+    const resultado = [...players, ...externos]
+      .map(p => ({ ...p, _score: scoreJugador(p) }))
+      .sort((a, b) => b._score - a._score)
+      .slice(0, 4);
 
-    if (!texto) return [];
+    searchCache.set(cacheKey, resultado);
+    return resultado;
+  }
 
-    if (esMatricula) {
-      const { data, error } = await supabase
-        .from("players")
-        .select("id, first_name, last_name, full_name, aag_member_number, current_index, gender, club_name, country")
-        .eq("aag_member_number", texto)
-        .limit(8);
-
-      if (error) throw error;
-      const resultado = data || [];
-      searchCache.set(cacheKey, resultado);
-      return resultado;
+  async function asegurarJugadorEnPlayers(jugador) {
+    if (jugador.origen_busqueda === "players" && jugador.id && !String(jugador.id).startsWith("aag:")) {
+      return jugador;
     }
 
-    const partes = normalizarBusqueda(texto).split(" ").filter(Boolean);
-    const primerTermino = partes[0];
+    const matricula = jugador.enrollment_number || jugador.aag_member_number;
+
+    const row = {
+      aag_member_number: matricula,
+      first_name: jugador.first_name || "",
+      last_name: jugador.last_name || "",
+      gender: jugador.gender || "male",
+      current_index: jugador.current_index ?? null,
+      option_club_id: jugador.option_club_id ?? null,
+      club_name: jugador.club_name || "",
+      country: jugador.country || "Argentina",
+      source: "AAG",
+      is_club_member: Number(jugador.option_club_id) === 408,
+      aag_last_sync_at: new Date().toISOString(),
+      search_text: [
+        jugador.last_name,
+        jugador.first_name,
+        jugador.first_name,
+        jugador.last_name,
+        matricula
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+    };
 
     const { data, error } = await supabase
       .from("players")
-      .select("id, first_name, last_name, full_name, aag_member_number, current_index, gender, club_name, country")
-      .or(
-        `full_name.ilike.%${primerTermino}%,first_name.ilike.%${primerTermino}%,last_name.ilike.%${primerTermino}%`
-      )
-      .limit(30);
+      .upsert(row, { onConflict: "aag_member_number" })
+      .select("*")
+      .single();
 
     if (error) throw error;
 
-    const jugadoresFiltrados = (data || []).filter(j => {
-      const nombreCompleto = [
-        j.full_name,
-        j.first_name,
-        j.last_name,
-        `${j.last_name || ""} ${j.first_name || ""}`,
-        `${j.first_name || ""} ${j.last_name || ""}`
-      ].join(" ");
-
-      return coincideBusqueda(nombreCompleto, texto);
-    });
-
-    const clubLocal = "VILLA MARIA GOLF CLUB";
-
-    const ordenados = jugadoresFiltrados.sort((a, b) => {
-      const aLocal = (a.club_name || "").toUpperCase().includes(clubLocal);
-      const bLocal = (b.club_name || "").toUpperCase().includes(clubLocal);
-
-      if (aLocal && !bLocal) return -1;
-      if (!aLocal && bLocal) return 1;
-      return 0;
-    });
-
-    return ordenados.slice(0, 3);
+    searchCache.clear();
+    return data;
   }
 
   async function validatePlayerNotDuplicated(playerId) {
@@ -2863,6 +3052,7 @@
         } catch (error) {
           showTransientMessage(error.message || "No se pudo bloquear la línea.", "error");
         }
+
         return;
       }
 
@@ -2870,12 +3060,58 @@
       if (pickPlayerTrigger) {
         e.preventDefault();
         e.stopPropagation();
+
         try {
-          await pickPlayerInline(pickPlayerTrigger.dataset.pickPlayer, pickPlayerTrigger.dataset.playerId);
+          const slotId = pickPlayerTrigger.dataset.pickPlayer;
+          const playerId = pickPlayerTrigger.dataset.playerId;
+
+          const candidatos = await searchPlayers(document.getElementById("playerSearchInput")?.value || "");
+          const elegido = candidatos.find(j => String(j.id) === String(playerId));
+
+          if (!elegido) throw new Error("No se encontró el jugador seleccionado.");
+
+          const jugador = await asegurarJugadorEnPlayers(elegido);
+
+          const input = document.getElementById("playerSearchInput");
+          const modoPareja = input?.dataset?.modoPareja === "1";
+          const jugadorBaseId = input?.dataset?.jugadorBaseId || "";
+
+          if (!requiresPartner() || !modoPareja) {
+            await occupySlotWithPlayer(slotId, jugador, "aag_match");
+            cerrarBuscadorJugador();
+            await loadGrid();
+            return;
+          }
+
+          if (!jugadorBaseId) {
+            input.dataset.jugadorBaseId = jugador.id;
+            input.value = "";
+            document.getElementById("playerSearchResults").innerHTML = `
+        <div style="margin-bottom:8px; font-weight:700; color:#166534;">
+          Primer jugador elegido: ${safeText(jugador.full_name)}
+        </div>
+        <div class="helper-text" style="padding:8px;">
+          Ahora buscá al compañero.
+        </div>
+      `;
+            return;
+          }
+
+          const jugadorBase = await fetchPlayerById(jugadorBaseId);
+
+          if (jugadorBase.id === jugador.id) {
+            throw new Error("No podés elegir el mismo jugador dos veces.");
+          }
+
+          await occupySlotWithPair(slotId, jugadorBase, jugador);
+          cerrarBuscadorJugador();
+          await loadGrid();
+
         } catch (error) {
           console.error(error);
-          alert(error.message || "No se pudo seleccionar el jugador.");
+          showTransientMessage(error.message || "No se pudo seleccionar el jugador.", "error");
         }
+
         return;
       }
 

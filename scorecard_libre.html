@@ -879,67 +879,175 @@
             try {
                 setEstado("Buscando jugadores...");
 
-                const partes = normalizarTexto(qRaw)
-                    .split(/[,\s]+/)
-                    .map(x => x.trim())
-                    .filter(Boolean);
+                const q = normalizarTexto(qRaw).replace(/\s+/g, "%");
 
-                const filtros = partes.flatMap(p => [
-                    `full_name.ilike.%${p}%`,
-                    `first_name.ilike.%${p}%`,
-                    `last_name.ilike.%${p}%`,
-                    `aag_member_number.ilike.%${p}%`
-                ]).join(",");
-
-                const { data, error } = await supabase
+                const { data: playersData, error: playersError } = await supabase
                     .from("players")
-                    .select("id, first_name, last_name, full_name, gender, current_index, aag_member_number, country, is_club_member")
-                    .or(filtros)
-                    .limit(80);
+                    .select(`
+                    id,
+                    first_name,
+                    last_name,
+                    full_name,
+                    gender,
+                    current_index,
+                    aag_member_number,
+                    country,
+                    club_name,
+                    is_club_member,
+                    search_text
+                `)
+                    .ilike("search_text", `%${q}%`)
+                    .limit(15);
 
-                if (error) throw error;
+                if (playersError) throw playersError;
 
-                const buscado = partes.join(" ");
+                const { data: aagData, error: aagError } = await supabase
+                    .from("aag_enrolleds")
+                    .select(`
+                    enrollment_number,
+                    first_name,
+                    last_name,
+                    full_name,
+                    gender,
+                    current_index,
+                    option_club_id,
+                    club_name,
+                    search_text
+                `)
+                    .ilike("search_text", `%${q}%`)
+                    .limit(15);
 
-                const ordenados = (data || [])
-                    .map(p => {
-                        const nombre = normalizarTexto(nombreDesdePlayer(p));
-                        const nombreInvertido = normalizarTexto(`${p.first_name || ""} ${p.last_name || ""}`);
-                        const matricula = normalizarTexto(p.aag_member_number || "");
+                if (aagError) throw aagError;
 
-                        let score = 0;
+                const players = (playersData || []).map(p => ({
+                    ...p,
+                    origen_busqueda: "players"
+                }));
 
-                        if (nombre.includes(buscado) || nombreInvertido.includes(buscado)) score += 1000;
-                        if (partes.every(parte => nombre.includes(parte) || nombreInvertido.includes(parte) || matricula.includes(parte))) score += 500;
-                        score += partes.filter(parte => nombre.includes(parte) || nombreInvertido.includes(parte) || matricula.includes(parte)).length * 100;
+                const yaEstanEnPlayers = new Set(
+                    players.map(p => String(p.aag_member_number || ""))
+                );
 
-                        return { ...p, _scoreBusqueda: score };
-                    })
-                    .filter(p => {
-                        const nombre = normalizarTexto(nombreDesdePlayer(p));
-                        const nombreInvertido = normalizarTexto(`${p.first_name || ""} ${p.last_name || ""}`);
-                        const matricula = normalizarTexto(p.aag_member_number || "");
+                const externos = (aagData || [])
+                    .filter(p => !yaEstanEnPlayers.has(String(p.enrollment_number || "")))
+                    .map(p => ({
+                        id: `aag:${p.enrollment_number}`,
+                        origen_busqueda: "aag_enrolleds",
+                        enrollment_number: p.enrollment_number,
+                        aag_member_number: p.enrollment_number,
+                        first_name: p.first_name,
+                        last_name: p.last_name,
+                        full_name: p.full_name,
+                        gender: p.gender,
+                        current_index: p.current_index,
+                        option_club_id: p.option_club_id,
+                        club_name: p.club_name,
+                        country: "Argentina",
+                        is_club_member: Number(p.option_club_id) === 408
+                    }));
 
-                        return partes.every(parte =>
-                            nombre.includes(parte) ||
-                            nombreInvertido.includes(parte) ||
-                            matricula.includes(parte)
-                        );
-                    })
-                    .sort((a, b) =>
-                        b._scoreBusqueda - a._scoreBusqueda ||
-                        String(a.last_name || "").localeCompare(String(b.last_name || ""), "es") ||
-                        String(a.first_name || "").localeCompare(String(b.first_name || ""), "es")
-                    )
-                    .slice(0, 30);
+                function scoreJugador(p) {
+                    const buscado = normalizarTexto(qRaw);
+                    const partes = buscado.split(" ").filter(Boolean);
 
-                renderResultados(ordenados);
-                setEstado(`Encontrados ${ordenados.length} jugadores.`, "ok");
-            } catch (err) {
-                console.error(err);
-                resultadosBusqueda.innerHTML = `<div class="empty">Error buscando jugadores.</div>`;
-                setEstado(err.message || "Error buscando jugadores.", "error");
+                    const nombre = normalizarTexto(
+                        `${p.full_name || ""} ${p.last_name || ""} ${p.first_name || ""} ${p.aag_member_number || p.enrollment_number || ""}`
+                    );
+
+                    let score = 0;
+
+                    if (Number(p.option_club_id) === 408 || p.is_club_member === true) score += 10000;
+                    if (String(p.aag_member_number || p.enrollment_number || "") === qRaw) score += 8000;
+                    if (nombre.includes(buscado)) score += 4000;
+                    if (partes.every(parte => nombre.includes(parte))) score += 2500;
+                    score += partes.filter(parte => nombre.includes(parte)).length * 500;
+
+                    return score;
+                }
+
+                const items = [...players, ...externos]
+                    .map(p => ({ ...p, _score: scoreJugador(p) }))
+                    .sort((a, b) => b._score - a._score)
+                    .slice(0, 3);
+
+                if (!items.length) {
+                    resultadosBusqueda.innerHTML = `<div class="empty">No se encontraron jugadores.</div>`;
+                    setEstado("Sin resultados.", "warn");
+                    return;
+                }
+
+                resultadosBusqueda.innerHTML = items.map(p => `
+                <div class="player-card" data-player-id="${escapeHtml(p.id)}">
+                    <div class="player-name">${escapeHtml(nombreDesdePlayer(p))}</div>
+                    <div class="player-extra">
+                    Matrícula: ${escapeHtml(p.aag_member_number || "—")}
+                    · Index: ${escapeHtml(formatIndex(p.current_index))}
+                    · Club: ${escapeHtml(p.club_name || "—")}
+                    · ${p.origen_busqueda === "players" ? "Players" : "Padrón AAG"}
+                    </div>
+                </div>
+                `).join("");
+
+                resultadosBusqueda.querySelectorAll("[data-player-id]").forEach(card => {
+                    card.addEventListener("click", async () => {
+                        const p = items.find(x => String(x.id) === String(card.dataset.playerId));
+                        if (!p) return;
+
+                        const player = await asegurarJugadorEnPlayers(p);
+                        seleccionarJugadorDesdePlayers(player);
+                    });
+                });
+
+                setEstado(`Se encontraron ${items.length} jugador(es).`, "ok");
+
+            } catch (error) {
+                console.error(error);
+                resultadosBusqueda.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message || error)}</div>`;
+                setEstado("Error buscando jugadores.", "error");
             }
+        }
+
+        async function asegurarJugadorEnPlayers(jugador) {
+            if (jugador.origen_busqueda === "players" && jugador.id && !String(jugador.id).startsWith("aag:")) {
+                return jugador;
+            }
+
+            const matricula = jugador.enrollment_number || jugador.aag_member_number;
+
+            const row = {
+                aag_member_number: matricula,
+                first_name: jugador.first_name || "",
+                last_name: jugador.last_name || "",
+                gender: normalizarGenero(jugador.gender),
+                current_index: toNumber(jugador.current_index),
+                option_club_id: jugador.option_club_id ?? null,
+                club_name: jugador.club_name || "",
+                country: jugador.country || "Argentina",
+                source: "AAG",
+                is_club_member: Number(jugador.option_club_id) === 408,
+                aag_last_sync_at: new Date().toISOString(),
+                search_text: [
+                    jugador.last_name,
+                    jugador.first_name,
+                    jugador.first_name,
+                    jugador.last_name,
+                    matricula
+                ]
+                    .filter(Boolean)
+                    .join(" ")
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toUpperCase()
+            };
+
+            const { data, error } = await supabase
+                .from("players")
+                .upsert(row, { onConflict: "aag_member_number" })
+                .select("*")
+                .single();
+
+            if (error) throw error;
+            return data;
         }
 
         function renderResultados(items) {
@@ -977,7 +1085,7 @@
                 official_index: toNumber(p.current_index),
                 aag_member_number: p.aag_member_number || "",
                 country: p.country || "Argentina",
-                club_name: p.is_club_member ? CLUB_NOMBRE : ""
+                club_name: p.club_name || (p.is_club_member ? CLUB_NOMBRE : "")
             };
 
             crearScorecardBase();
@@ -1073,8 +1181,8 @@
             <label>Segmento</label>
             <select id="scoreSegmento">
               <option value="18" ${scoreActual.hole_segment === "18" ? "selected" : ""}>18 hoyos</option>
-              <option value="front9" ${scoreActual.hole_segment === "front9" ? "selected" : ""}>Front 9</option>
-              <option value="back9" ${scoreActual.hole_segment === "back9" ? "selected" : ""}>Back 9</option>
+              <option value="front9" ${scoreActual.hole_segment === "front9" ? "selected" : ""}>9 Ida</option>
+              <option value="back9" ${scoreActual.hole_segment === "back9" ? "selected" : ""}>9 Vta.</option>
             </select>
           </div>
           <div class="field">

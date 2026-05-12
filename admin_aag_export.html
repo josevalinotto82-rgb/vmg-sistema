@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Exportar AAG - VMGC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f4f8;
+            margin: 0;
+            padding: 24px;
+            color: #1f2937
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .08)
+        }
+
+        h1 {
+            color: #14532d;
+            margin-top: 0
+        }
+
+        button,
+        select {
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #d1d5db
+        }
+
+        button {
+            background: #166534;
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer
+        }
+
+        pre {
+            background: #111827;
+            color: #e5e7eb;
+            padding: 14px;
+            border-radius: 12px;
+            overflow: auto;
+            max-height: 460px
+        }
+
+        .ok {
+            color: #166534;
+            font-weight: 700
+        }
+
+        .err {
+            color: #b91c1c;
+            font-weight: 700
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f3f4f6;
+            color: #111827;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .home-btn {
+            position: fixed;
+            top: 30px;
+            right: 27px;
+            width: 38px;
+            height: 38px;
+            border-radius: 6px;
+            background: #166534;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+            z-index: 9999;
+            transition: transform 0.15s, background 0.15s;
+        }
+
+        .home-btn:hover {
+            background: #14532d;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="home-btn" id="btnHome" title="Volver al panel">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+                stroke-width="2" />
+        </svg>
+    </div>
+
+    <h1>Exportar torneos a AAG</h1>
+
+    <div class="card">
+        <label><b>Torneo archivado</b></label><br><br>
+
+        <select id="torneoSelect" style="min-width:360px;"></select>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; margin-bottom:12px;">
+            <button id="btnValidarAAG">
+                Validar AAG
+            </button>
+
+            <button id="btnGenerar">
+                Generar Exp.
+            </button>
+
+            <button id="btnEnviarAAG">
+                Enviar / Act. AAG
+            </button>
+
+            <button id="btnRefreshAAG">
+                Ver Estado AAG
+            </button>
+        </div>
+
+        <details style="margin-top:10px;">
+            <summary style="cursor:pointer; font-weight:700; color:#374151;">
+                Herramientas técnicas
+            </summary>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+                <button id="btnSyncFields" style="background:#6b7280;">
+                    Sincronizar campos AAG
+                </button>
+            </div>
+        </details>
+
+        <pre id="resultadoEnvio">Esperando envío...</pre>
+    </div>
+
+    <div class="card">
+        <div id="estado">Cargando torneos...</div>
+    </div>
+
+    <div class="card">
+        <h3>Resultado / Payload JSON AAG</h3>
+        <pre id="jsonPreview">Sin datos todavía.</pre>
+    </div>
+
+    <div class="card">
+        <h3>Exports AAG actuales</h3>
+
+        <table id="tablaExports" style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr>
+                    <th>ID AAG</th>
+                    <th>Tee / Grupo</th>
+                    <th>Estado</th>
+                    <th>Evaluadas</th>
+                    <th>Válidas</th>
+                    <th>Error</th>
+                    <th>Agregadas</th>
+                    <th>Enviado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+        const supabase = createClient(
+            "https://bnnfolhrqxgxjmobclrm.supabase.co",
+            "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+        );
+
+        const FUNCTION_URL = "https://bnnfolhrqxgxjmobclrm.supabase.co/functions/v1/swift-worker";
+
+        const torneoSelect = document.getElementById("torneoSelect");
+        const btnGenerar = document.getElementById("btnGenerar");
+        const estado = document.getElementById("estado");
+        const jsonPreview = document.getElementById("jsonPreview");
+
+        document.getElementById("btnSyncFields").addEventListener("click", async () => {
+            const out = document.getElementById("resultadoEnvio");
+            out.textContent = "Sincronizando campos AAG...";
+
+            try {
+                const res = await fetch(FUNCTION_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "sync_fields" })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok || !data.ok) {
+                    throw new Error(data.error || "Error desconocido");
+                }
+
+                out.textContent =
+                    `Campos: ${data.fields}\n` +
+                    `Tees / salidas: ${data.teeouts}`;
+
+            } catch (err) {
+                out.textContent = "Error: " + (err.message || err);
+            }
+        });
+
+        document.getElementById("btnEnviarAAG").addEventListener("click", async () => {
+            const out = document.getElementById("resultadoEnvio");
+
+            try {
+                out.textContent = "Enviando exports del torneo a AAG...";
+
+                // 👉 traer TODOS los exports pendientes del torneo seleccionado
+                const { data: exportsPendientes, error } = await supabase
+                    .from("aag_exports")
+                    .select(`
+                        id,
+                        title,
+                        created_at,
+                        aag_tournament_id
+                    `)
+                    .eq("tournament_id", torneoSelect.value)
+                    .eq("status", "pending")
+                    .order("created_at", { ascending: true });
+
+                if (error) throw error;
+
+                if (!exportsPendientes || !exportsPendientes.length) {
+                    throw new Error("No hay exports pendientes para este torneo.");
+                }
+
+                const resultados = [];
+
+                // 👉 enviar uno por uno
+                for (const exp of exportsPendientes) {
+
+                    const res = await fetch(FUNCTION_URL, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            action: exp.aag_tournament_id
+                                ? "update_export"
+                                : "send_export",
+
+                            export_id: exp.id
+                        })
+                    });
+
+                    const json = await res.json();
+
+                    resultados.push({
+                        export_id: exp.id,
+                        ok: json.ok,
+                        status: json.status,
+                        response: json.response,
+                        error: json.error || null,
+                        metrics: json.metrics || null,
+                        update_summary: json.update_summary || null
+                    });
+                }
+
+                out.textContent = JSON.stringify(resultados, null, 2);
+
+                await cargarExportsDelTorneo(torneoSelect.value);
+
+            } catch (err) {
+                out.textContent = "Error: " + (err.message || err);
+            }
+        });
+
+        document.getElementById("btnRefreshAAG")
+            .addEventListener("click", async () => {
+
+                const out =
+                    document.getElementById("resultadoEnvio");
+
+                try {
+
+                    out.textContent =
+                        "Actualizando estado real AAG...";
+
+                    const res = await fetch(FUNCTION_URL, {
+
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+
+                            action:
+                                "refresh_tournament_exports",
+
+                            tournament_id:
+                                torneoSelect.value
+                        })
+                    });
+
+                    const json = await res.json();
+
+                    out.textContent =
+                        JSON.stringify(json, null, 2);
+
+                    await cargarExportsDelTorneo(
+                        torneoSelect.value
+                    );
+
+                } catch (err) {
+
+                    out.textContent =
+                        "Error: " + (err.message || err);
+                }
+            });
+
+        function setEstado(txt, tipo = "") {
+            estado.className = tipo;
+            estado.textContent = txt;
+        }
+
+
+
+        function normalizarFechaISO(fecha) {
+            if (!fecha) return new Date().toISOString();
+            return new Date(fecha + "T09:00:00-03:00").toISOString();
+        }
+
+        function holeValue(holeScores, n) {
+            if (!holeScores) return null;
+
+            const h = holeScores[n] || holeScores[String(n)];
+
+            if (!h) return null;
+
+            // 👉 si viene como objeto
+            if (typeof h === "object") {
+                return h.strokes ?? null;
+            }
+
+            // 👉 si alguna vez viene como número
+            return h;
+        }
+
+        async function cargarTorneos() {
+            const { data, error } = await supabase
+                .from("tournaments")
+                .select("id, name, tournament_date, status")
+                .eq("status", "archived")
+                .order("tournament_date", { ascending: false });
+
+            if (error) throw error;
+
+            torneoSelect.innerHTML = (data || []).map(t => `
+                <option value="${t.id}">
+                ${t.tournament_date || ""} · ${t.name || "Torneo"}
+                </option>
+            `).join("");
+
+            setEstado(`Torneos archivados cargados: ${data?.length || 0}`, "ok");
+
+            if (data?.length) {
+                await cargarExportsDelTorneo(data[0].id);
+            }
+        }
+
+        async function cargarExportsDelTorneo(tournamentId) {
+
+            const tbody =
+                document.querySelector("#tablaExports tbody");
+
+            tbody.innerHTML = "";
+
+            const { data, error } = await supabase
+                .from("aag_exports")
+                .select(`
+                    id,
+                    title,
+                    status,
+                    sent_at,
+                    aag_tournament_id,
+                    aag_total_scorecards,
+                    aag_valid_scorecards,
+                    aag_error_scorecards,
+                    aag_remote_status,
+                    aag_last_check_at,
+                    deleted_at,
+                    aag_added_scorecards
+                `)
+                .eq("tournament_id", tournamentId)
+                .eq("is_current", true)
+                .order("created_at", { ascending: false });
+
+            if (error) throw error;
+
+            tbody.innerHTML = (data || []).map(r => `
+                <tr>
+                    <td>${r.aag_tournament_id || "-"}</td>
+                    <td>${r.title || "-"}</td>
+                    <td>
+                        ${r.status || "-"}
+                        <br>
+                        <small style="color:#6b7280;">
+                            ${r.aag_remote_status || ""}
+                        </small>
+                    </td>
+                    <td>${r.aag_total_scorecards ?? "-"}</td>
+                    <td>${r.aag_valid_scorecards ?? "-"}</td>
+                    <td>${r.aag_error_scorecards ?? "-"}</td>
+                    <td>${r.aag_added_scorecards ?? "-"}</td>
+                    <td>${r.sent_at
+                    ? new Date(r.sent_at).toLocaleString()
+                    : "-"}</td>
+                    <td>
+                    
+                    ${r.aag_remote_status === "Abierto" ? `
+                        <button
+                            class="btnDeleteAAG"
+                            data-export-id="${r.id}"
+                            style="background:#b91c1c;">
+                            Eliminar AAG
+                        </button>
+                    ` : ""}
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function normalizarTeeParaAAG(teeName, gender) {
+            const t = String(teeName || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase();
+
+            const g = String(gender || "").toLowerCase();
+
+            if (t.includes("negra")) return "negro";
+            if (t.includes("amarilla")) return "amarillo";
+            if (t.includes("blanca")) return "blanco";
+
+            if (t.includes("roja")) {
+                return g === "female" ? "rojo damas" : "rojo caballeros";
+            }
+
+            if (t.includes("albatros")) {
+                return g === "female" ? "albatros damas" : "albatros caballeros";
+            }
+
+            if (t.includes("eagles") || t.includes("eagle")) {
+                return g === "female" ? "eagles damas" : "eagles caballeros";
+            }
+
+            if (t.includes("birdies") || t.includes("birdie")) {
+                return g === "female" ? "birdies damas" : "birdies caballeros";
+            }
+
+            return t;
+        }
+
+        async function validarExportAAG(tournamentId) {
+
+            const errores = [];
+            const warnings = [];
+
+            const { data: torneo, error: torneoError } =
+                await supabase
+                    .from("tournaments")
+                    .select("*")
+                    .eq("id", tournamentId)
+                    .single();
+
+            if (torneoError || !torneo) {
+                throw new Error("No se encontró torneo.");
+            }
+
+            // ===================================================
+            // VALIDAR MODALIDAD
+            // ===================================================
+
+            const nombreModo =
+                String(torneo.name || "")
+                    .toLowerCase();
+
+            if (
+                nombreModo.includes("fourball") ||
+                nombreModo.includes("americana") ||
+                nombreModo.includes("scramble")
+            ) {
+
+                errores.push(
+                    "La modalidad no es compatible con AAG."
+                );
+            }
+
+            // ===================================================
+            // VALIDAR HOYOS
+            // ===================================================
+
+            const hoyos =
+                Number(torneo.hole_count || 18);
+
+            if (![9, 18].includes(hoyos)) {
+
+                errores.push(
+                    `AAG solo permite exportar torneos de 9 o 18 hoyos.`
+                );
+            }
+
+            // ===================================================
+            // TRAER SCORECARDS
+            // ===================================================
+
+            const { data: scorecards, error: scError } =
+                await supabase
+                    .from("scorecards")
+                    .select("*")
+                    .eq("tournament_id", tournamentId)
+                    .eq("card_status", "valid");
+
+            if (scError) throw scError;
+
+            if (!scorecards?.length) {
+
+                errores.push(
+                    "No hay scorecards válidas."
+                );
+            }
+
+            // ===================================================
+            // DUPLICADOS
+            // ===================================================
+
+            const claves = new Set();
+
+            for (const sc of scorecards || []) {
+
+                // Si no tiene matrícula, eso se valida después.
+                // No lo contamos como duplicado.
+                if (!sc.aag_member_number) continue;
+
+                const clave =
+                    `${sc.aag_member_number}_${1}`;
+
+                if (claves.has(clave)) {
+
+                    errores.push(
+                        `Tarjeta duplicada para matrícula ${sc.aag_member_number}`
+                    );
+                }
+
+                claves.add(clave);
+            }
+
+            // ===================================================
+            // VALIDAR TARJETAS
+            // ===================================================
+
+            for (const sc of scorecards || []) {
+
+                // ---------------------------
+                // tee
+                // ---------------------------
+
+                if (!sc.tee_name) {
+
+                    errores.push(
+                        `Jugador sin tee asignado: ${sc.display_name}`
+                    );
+                }
+
+                // ---------------------------
+                // hoyos jugables
+                // ---------------------------
+
+                const hs = sc.hole_scores || {};
+
+                let jugables = 0;
+
+                for (let i = 1; i <= 18; i++) {
+
+                    const h =
+                        hs[i] ||
+                        hs[String(i)];
+
+                    const golpes =
+                        typeof h === "object"
+                            ? h?.strokes
+                            : h;
+
+                    if (
+                        golpes !== null &&
+                        golpes !== undefined &&
+                        Number(golpes) > 0
+                    ) {
+                        jugables++;
+                    }
+                }
+
+                // ---------------------------
+                // matrícula
+                // ---------------------------
+
+                if (!sc.aag_member_number && jugables > 0) {
+
+                    warnings.push(
+                        `Se excluirá por falta de matrícula AAG: ${sc.display_name || sc.player_name || "SIN NOMBRE"}`
+                    );
+                }
+
+                if (jugables === 0) {
+
+                    warnings.push(
+                        `Se excluirá por tarjeta vacía: ${sc.display_name}`
+                    );
+                }
+
+                if (jugables > 0 && hoyos === 18 && jugables < 18) {
+                    warnings.push(
+                        `Se excluirá por tarjeta incompleta (${jugables}/18 hoyos): ${sc.display_name}`
+                    );
+                }
+
+                if (jugables > 0 && hoyos === 9 && jugables < 9) {
+                    warnings.push(
+                        `Se excluirá por tarjeta incompleta (${jugables}/9 hoyos): ${sc.display_name}`
+                    );
+                }
+
+            }
+
+            return {
+                ok: errores.length === 0,
+                errores,
+                warnings
+            };
+        }
+
+        function normalizarIniHole(hole, batchesHoles = 18) {
+            const h = Number(hole);
+
+            if (Number(batchesHoles) === 18) return 1;
+
+            if (h >= 10) return 10;
+            return 1;
+        }
+
+        async function generarAagPayloadsDesdeTorneo(tournamentId) {
+
+            const { data: torneo } = await supabase
+                .from("tournaments")
+                .select("*")
+                .eq("id", tournamentId)
+                .single();
+
+            const { data: scorecards } = await supabase
+                .from("scorecards")
+                .select("*")
+                .eq("tournament_id", tournamentId)
+                .eq("card_status", "valid");
+
+            console.log("SCORECARDS VALIDAS:", scorecards);
+
+            // 👉 traer mapping AAG
+            const { data: teesAAG, error: teesError } = await supabase
+                .from("aag_teeouts")
+                .select("*");
+
+            if (teesError) throw teesError;
+
+            const { data: fieldsAAG, error: fieldsError } = await supabase
+                .from("aag_fields")
+                .select("aag_field_id, holes_amount, field_name");
+
+            if (fieldsError) throw fieldsError;
+
+            const fieldById = new Map(
+                (fieldsAAG || []).map(f => [
+                    Number(f.aag_field_id),
+                    f
+                ])
+            );
+
+            if (teesError) throw teesError;
+
+            console.log("TEES AAG:", teesAAG);
+
+            // 👉 agrupar por tee + género
+            const grupos = {};
+
+            for (const sc of scorecards) {
+
+                if (!sc.aag_member_number || !sc.hole_scores) continue;
+
+                let jugables = 0;
+
+                for (let i = 1; i <= 18; i++) {
+                    const golpes = holeValue(sc.hole_scores, i);
+
+                    if (
+                        golpes !== null &&
+                        golpes !== undefined &&
+                        Number(golpes) > 0
+                    ) {
+                        jugables++;
+                    }
+                }
+
+                const hoyosTorneo = Number(torneo.hole_count || 18);
+
+                if (hoyosTorneo === 18 && jugables < 18) continue;
+                if (hoyosTorneo === 9 && jugables < 9) continue;
+
+                const key = `${sc.tee_id}_${sc.player_gender}`;
+
+                if (!grupos[key]) grupos[key] = [];
+                grupos[key].push(sc);
+            }
+
+            console.log("GRUPOS ARMADOS:", grupos);
+
+            const payloads = [];
+
+            for (const key of Object.keys(grupos)) {
+
+                const grupo = grupos[key];
+                const ejemplo = grupo[0];
+
+                // 👉 buscar tee AAG por nombre + género
+                const teeBuscado = normalizarTeeParaAAG(
+                    ejemplo.tee_name,
+                    ejemplo.player_gender
+                );
+
+                const hoyosTorneo = Number(torneo.hole_count || 18);
+
+                const teeMatch = teesAAG.find(t => {
+                    const nombreAag = String(t.tee_name || "")
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "")
+                        .toLowerCase();
+
+                    const field = fieldById.get(Number(t.aag_field_id));
+
+                    const holesField = Number(
+                        field?.holes_amount || 18
+                    );
+
+                    return Number(t.category) === (ejemplo.player_gender === "female" ? 1 : 0)
+                        && nombreAag.includes(teeBuscado)
+                        && (
+                            holesField === hoyosTorneo ||
+                            (hoyosTorneo === 9 && holesField === 18)
+                        );
+                });
+
+                if (!teeMatch) {
+                    throw new Error(
+                        `No se encontró salida AAG compatible para ${ejemplo.tee_name} ` +
+                        `(${ejemplo.player_gender}) jugando ${torneo.hole_count || 18} hoyos. ` +
+                        `Revisá si AAG tiene cargada una cancha/salida de ${torneo.hole_count || 18} hoyos para ese tee.`
+                    );
+                }
+
+                const scoreCards = grupo.map(sc => {
+
+                    const hoyosConScore = [];
+
+                    for (let i = 1; i <= 18; i++) {
+                        const golpes = holeValue(sc.hole_scores, i);
+
+                        if (
+                            golpes !== null &&
+                            golpes !== undefined &&
+                            Number(golpes) > 0
+                        ) {
+                            hoyosConScore.push(i);
+                        }
+                    }
+
+                    const tiene1a9 = hoyosConScore.some(h => h >= 1 && h <= 9);
+                    const tiene10a18 = hoyosConScore.some(h => h >= 10 && h <= 18);
+
+                    let iniHole = 1;
+
+                    if (!tiene1a9 && tiene10a18) {
+                        iniHole = 10;
+                    }
+
+                    const card = {
+                        EnrollmentNumber: String(sc.aag_member_number),
+                        BatchNumber: 1,
+                        IniHole: iniHole
+                    };
+
+                    for (let i = 1; i <= 18; i++) {
+                        card[`ScoreGrossHole${String(i).padStart(2, "0")}`] =
+                            holeValue(sc.hole_scores, i);
+                    }
+
+                    card.ScoreGrossTotal = null;
+                    card.ScoreGrossIda = null;
+                    card.ScoreGrossVta = null;
+
+                    return card;
+                });
+
+                const payload = {
+                    Title: torneo.name,
+                    SubTitle: "Resultados oficiales",
+                    GameMode: 1,
+                    BatchesHoles: Number(torneo.hole_count || 18),
+                    BatchesCount: 1,
+                    StartDate: normalizarFechaISO(torneo.tournament_date),
+
+                    Field: Number(teeMatch.aag_field_id),
+                    TeeOut: Number(teeMatch.aag_teeout_id),
+                    Category: Number(teeMatch.category),
+                    EndHandicap: 54,
+                    Active: true,
+                    InitialHole: 1,
+
+                    ScoreCards: scoreCards
+                };
+
+                payloads.push({
+                    payload,
+
+                    meta: {
+                        tee_name:
+                            ejemplo.tee_name,
+
+                        gender:
+                            ejemplo.player_gender,
+
+                        aag_teeout_id:
+                            teeMatch.aag_teeout_id,
+
+                        aag_field_id:
+                            teeMatch.aag_field_id
+                    }
+                });
+            }
+
+            return payloads;
+        }
+
+        async function guardarExport(
+            tournamentId,
+            payload,
+            meta
+        ) {
+            console.log("FUNCTION_URL:", FUNCTION_URL);
+            console.log("Payload a guardar:", {
+                action: "save_export",
+                tournament_id: tournamentId,
+                payload,
+                meta
+            });
+
+            const res = await fetch(FUNCTION_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    action: "save_export",
+                    tournament_id: tournamentId,
+                    payload,
+                    meta
+                })
+            });
+
+            const json = await res.json();
+
+            if (!res.ok || !json.ok) {
+                throw new Error(json.error || "No pude guardar el export AAG");
+            }
+
+            return json.export_id;
+        }
+
+        torneoSelect.addEventListener("change", async () => {
+            await cargarExportsDelTorneo(torneoSelect.value);
+        });
+
+        document.getElementById("btnValidarAAG")
+            .addEventListener("click", async () => {
+
+                const tournamentId =
+                    torneoSelect.value;
+
+                if (!tournamentId) return;
+
+                try {
+
+                    setEstado(
+                        "Validando torneo AAG..."
+                    );
+
+                    const resultado =
+                        await validarExportAAG(
+                            tournamentId
+                        );
+
+                    jsonPreview.textContent =
+                        JSON.stringify(
+                            resultado,
+                            null,
+                            2
+                        );
+
+                    if (resultado.ok) {
+
+                        setEstado(
+                            "VALIDACIÓN AAG OK",
+                            "ok"
+                        );
+
+                    } else {
+
+                        setEstado(
+                            "VALIDACIÓN AAG CON ERRORES",
+                            "err"
+                        );
+                    }
+
+                } catch (err) {
+
+                    console.error(err);
+
+                    setEstado(
+                        err.message || String(err),
+                        "err"
+                    );
+                }
+            });
+
+        btnGenerar.addEventListener("click", async () => {
+            const tournamentId = torneoSelect.value;
+            if (!tournamentId) return;
+
+            try {
+                setEstado("Generando payload AAG...");
+
+                const payloads = await generarAagPayloadsDesdeTorneo(tournamentId);
+
+                const ids = [];
+
+                for (const item of payloads) {
+
+                    const id = await guardarExport(
+                        tournamentId,
+                        item.payload,
+                        item.meta
+                    );
+
+                    ids.push(id);
+                }
+
+                jsonPreview.textContent = JSON.stringify(payloads, null, 2);
+
+                setEstado(`Exports generados: ${ids.join(", ")}`, "ok");
+
+                await cargarExportsDelTorneo(tournamentId);
+
+            } catch (err) {
+                console.error(err);
+                setEstado(err.message || String(err), "err");
+            }
+        });
+
+        document.addEventListener("click", async (e) => {
+            const btn = e.target.closest(".btnDeleteAAG");
+            if (!btn) return;
+
+            const exportId = btn.dataset.exportId;
+
+            if (!exportId) return;
+
+            const confirmar = confirm(
+                "¿Seguro que querés eliminar este torneo en AAG?\n\nSolo se puede eliminar si está Abierto."
+            );
+
+            if (!confirmar) return;
+
+            const out = document.getElementById("resultadoEnvio");
+
+            try {
+                btn.disabled = true;
+                out.textContent = "Eliminando torneo en AAG...";
+
+                const res = await fetch(FUNCTION_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        action: "delete_tournament",
+                        export_id: exportId
+                    })
+                });
+
+                const json = await res.json();
+
+                if (!res.ok || !json.ok) {
+                    throw new Error(json.error || json.response || "No se pudo eliminar.");
+                }
+
+                out.textContent = JSON.stringify(json, null, 2);
+
+                await cargarExportsDelTorneo(torneoSelect.value);
+
+            } catch (err) {
+                out.textContent = "Error: " + (err.message || err);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        cargarTorneos().catch(err => {
+            console.error(err);
+            setEstado(err.message || String(err), "err");
+        });
+
+        document.getElementById("btnHome")?.addEventListener("click", () => {
+            window.location.href = "panel.html";
+        });
+    </script>
+
+</body>
+
+</html>
