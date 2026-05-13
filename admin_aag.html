@@ -192,6 +192,31 @@
 
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        async function exigirAdmin() {
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                window.location.href = "login.html";
+                throw new Error("Sin sesión");
+            }
+
+            const { data: profile, error } = await supabase
+                .from("profiles")
+                .select("role, active")
+                .eq("id", session.user.id)
+                .maybeSingle();
+
+            if (error || !profile || profile.active !== true || profile.role !== "admin") {
+                alert("No tenés permiso para entrar a esta página.");
+                window.location.href = "panel.html";
+                throw new Error("Sin permiso admin");
+            }
+
+            return session.user;
+        }
+
+        await exigirAdmin();
+
         const btnSync = document.getElementById("btnSync");
         const resultado = document.getElementById("resultado");
         const buscadorJugador = document.getElementById("buscadorJugador");

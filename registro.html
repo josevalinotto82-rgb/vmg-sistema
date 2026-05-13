@@ -120,17 +120,18 @@
                 .from("players")
                 .select("*")
                 .eq("aag_member_number", matricula)
-                .eq("is_club_member", true)
-                .eq("option_club_id", 408)
                 .maybeSingle();
 
             if (error || !data) {
-                msg.textContent = "Solo socios del Villa María Golf Club pueden registrarse.";
+                msg.textContent = "No encontré esa matrícula en la base de jugadores.";
                 return;
             }
 
-            if (data.profile_id) {
-                msg.textContent = "Esta matrícula ya está registrada.";
+            if (
+                Number(data.option_club_id) !== 408 &&
+                data.is_club_member !== true
+            ) {
+                msg.textContent = "Solo socios del Villa María Golf Club pueden registrarse.";
                 return;
             }
 
@@ -165,7 +166,10 @@
                 email,
                 password,
                 options: {
-                    emailRedirectTo: "https://josevalinotto82-rgb.github.io/vmg-sistema/login.html"
+                    emailRedirectTo: "https://josevalinotto82-rgb.github.io/vmg-sistema/login.html",
+                    data: {
+                        aag_member_number: jugadorEncontrado.aag_member_number
+                    }
                 }
             });
 

@@ -534,32 +534,35 @@
 
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    console.log("SCRIPT NUEVO CARGADO - VERSION 1");
-
     const supabase = createClient(
       "https://bnnfolhrqxgxjmobclrm.supabase.co",
       "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
     );
 
-    // 🔐 PROTECCIÓN ADMIN
-    const { data: { session } } = await supabase.auth.getSession();
+    async function exigirAdmin() {
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (!session) {
-      window.location.href = "login.html";
-      throw new Error("Usuario no logueado");
+      if (!session) {
+        window.location.href = "login.html";
+        throw new Error("Sin sesión");
+      }
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("role, active")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (error || !profile || profile.active !== true || profile.role !== "admin") {
+        alert("No tenés permiso para entrar a esta página.");
+        window.location.href = "panel.html";
+        throw new Error("Sin permiso admin");
+      }
+
+      return session.user;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, active")
-      .eq("id", session.user.id)
-      .maybeSingle();
-
-    if (!profile || profile.active !== true || profile.role !== "admin") {
-      alert("Acceso restringido");
-      window.location.href = "panel.html";
-      throw new Error("Acceso restringido");
-    }
+    await exigirAdmin();
 
     const torneosListaEl = document.getElementById("torneosLista");
 

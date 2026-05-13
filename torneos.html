@@ -590,8 +590,12 @@
 
         function valorGross(j) {
             if (esNoValido(j)) return 999999;
+
             const gross = parseNumero(j.gross);
-            return gross === null ? 999999 : gross;
+
+            if (gross === null || gross <= 0) return 999999;
+
+            return gross;
         }
 
         function coincideBusquedaJugador(nombreJugador, busqueda) {
@@ -624,9 +628,12 @@
 
             const total = parseNumero(j.total);
             const net = parseNumero(j.net);
+            const gross = parseNumero(j.gross);
 
-            if (total !== null) return total;
-            if (net !== null) return net;
+            if (total !== null && total > 0) return total;
+            if (net !== null && net > 0) return net;
+            if (gross !== null && gross > 0) return gross;
+
             return 999999;
         }
 
@@ -923,18 +930,208 @@
       `;
         }
 
+        function limpiarValorHistorico(valor) {
+            if (valor === undefined || valor === null) return "";
+
+            const texto = String(valor).trim();
+
+            if (!texto) return "";
+
+            return texto;
+        }
+
+        function detectarEstadoHistorico(p) {
+            const valores = [
+                p.gross,
+                p.neto,
+                p.total
+            ].map(v => String(v || "").toUpperCase().trim());
+
+            if (valores.includes("NPT")) return "npt";
+            if (valores.includes("DESC")) return "desc";
+
+            return "valid";
+        }
+
+        function detectarGeneroCategoria(nombreCategoria) {
+            const n = normalizarTexto(nombreCategoria);
+
+            if (n.includes("dama")) return "female";
+            if (n.includes("damas")) return "female";
+            if (n.includes("seniora")) return "female";
+
+            if (n.includes("caballero")) return "male";
+            if (n.includes("caballeros")) return "male";
+            if (n.includes("senior")) return "male";
+
+            return "";
+        }
+
+        function ordenCategoriaHistorica(nombreCategoria) {
+            const n = normalizarTexto(nombreCategoria);
+
+            if (n.includes("scratch")) return 0;
+
+            // NEGRAS: 0 a 9
+            if (
+                n.includes("negra") ||
+                n.includes("negras") ||
+                n.includes("0 9") ||
+                n.includes("0 a 9") ||
+                n.includes("hasta 9")
+            ) return 10;
+
+            // AMARILLAS: 9.1 a 15
+            if (
+                n.includes("amarilla") ||
+                n.includes("amarillas") ||
+                n.includes("9 1") ||
+                n.includes("9.1") ||
+                n.includes("9,1")
+            ) return 20;
+
+            // BLANCAS A: 15.1 a 21
+            if (
+                n.includes("15 1") ||
+                n.includes("15.1") ||
+                n.includes("15,1") ||
+                n.includes("15 a 21")
+            ) return 30;
+
+            // BLANCAS B: 21.1 a 54
+            if (
+                n.includes("21 1") ||
+                n.includes("21.1") ||
+                n.includes("21,1") ||
+                n.includes("21 a 54") ||
+                n.includes("54")
+            ) return 40;
+
+            // DAMAS ROJAS
+            if (
+                n.includes("dama") ||
+                n.includes("damas") ||
+                n.includes("roja") ||
+                n.includes("rojas")
+            ) return 50;
+
+            return 99;
+        }
+
+        async function cargarTorneoHistorico() {
+            const { data: torneo, error } = await supabase
+                .from("historical_tournaments")
+                .select("id, fecha, torneo, modalidad, players")
+                .eq("id", torneoId)
+                .single();
+
+            if (error || !torneo) {
+                document.getElementById("titulo").textContent = "Torneo histórico no encontrado";
+                document.getElementById("subtitulo").textContent = "";
+                document.getElementById("contenido").innerHTML =
+                    `<div class="empty">No hay datos históricos para mostrar.</div>`;
+                return;
+            }
+
+            torneoActual = {
+                id: torneo.id,
+                name: torneo.torneo,
+                tournament_date: torneo.fecha,
+                game_modes: {
+                    name: torneo.modalidad || ""
+                },
+                legacy: true
+            };
+
+            document.getElementById("titulo").textContent = torneo.torneo;
+            document.getElementById("subtitulo").textContent =
+                `${formatearFecha(torneo.fecha)} · ${torneo.modalidad || ""}`;
+
+            const players = torneo.players || [];
+
+            const categoriasMap = new Map();
+
+            players.forEach(p => {
+                const nombreCat = String(p.categoria || "Sin categoría").trim();
+
+                if (!categoriasMap.has(nombreCat)) {
+                    categoriasMap.set(nombreCat, {
+                        id: nombreCat,
+                        name: nombreCat,
+                        display_order: categoriasMap.size + 1,
+                        gender: detectarGeneroCategoria(nombreCat)
+                    });
+                }
+            });
+
+            categorias = Array.from(categoriasMap.values())
+                .sort((a, b) => {
+
+                    const oa = ordenCategoriaHistorica(a.name);
+                    const ob = ordenCategoriaHistorica(b.name);
+
+                    if (oa !== ob) return oa - ob;
+
+                    return String(a.name || "")
+                        .localeCompare(String(b.name || ""), "es");
+                });
+
+            jugadores = players.map((p, index) => {
+                const categoriaNombre = String(p.categoria || "Sin categoría").trim();
+                const cat = categoriasMap.get(categoriaNombre);
+
+                const estado = detectarEstadoHistorico(p);
+
+                return {
+                    id: `legacy_player_${index}`,
+                    display_name: p.jugador || "",
+                    gross: limpiarValorHistorico(p.gross),
+                    net: limpiarValorHistorico(p.neto),
+                    total: limpiarValorHistorico(p.total),
+                    card_status: estado,
+                    category_id: cat?.id || categoriaNombre,
+                    official_index: limpiarValorHistorico(p.index),
+                    playing_handicap: limpiarValorHistorico(p.hp),
+                    player_gender: cat?.gender || "",
+                    legacy_position: p.posicion || "",
+                    hole_scores: p.hoyos || {}
+                };
+            });
+
+            hoyosPorScorecard = {};
+
+            jugadores.forEach(j => {
+                hoyosPorScorecard[j.id] = {};
+
+                const hoyos = j.hole_scores || {};
+
+                Object.entries(hoyos).forEach(([holeNumber, valor]) => {
+                    const hole = Number(holeNumber);
+                    hoyosPorScorecard[j.id][hole] = limpiarValorHistorico(valor);
+                });
+            });
+
+            renderTorneo();
+        }
+
         async function cargarTorneo() {
             try {
+
+                if (torneoId.startsWith("legacy_")) {
+                    await cargarTorneoHistorico();
+                    return;
+                }
+
                 const { data: torneo, error: errorTorneo } = await supabase
                     .from("tournaments")
                     .select(`
-            id,
-            name,
-            tournament_date,
-            game_modes (
-              name
-            )
-          `)
+                    id,
+                    name,
+                    tournament_date,
+                    game_modes (
+                    name
+                    )
+                `)
                     .eq("id", torneoId)
                     .single();
 
@@ -963,18 +1160,18 @@
                 const { data: scorecards, error: errorSc } = await supabase
                     .from("scorecards")
                     .select(`
-                        id,
-                        display_name,
-                        gross,
-                        net,
-                        total,
-                        card_status,
-                        category_id,
-                        official_index,
-                        playing_handicap,
-                        player_gender,
-                        hole_scores
-                        `)
+                    id,
+                    display_name,
+                    gross,
+                    net,
+                    total,
+                    card_status,
+                    category_id,
+                    official_index,
+                    playing_handicap,
+                    player_gender,
+                    hole_scores
+                `)
                     .eq("tournament_id", torneoId);
 
                 if (errorSc) throw errorSc;
@@ -998,10 +1195,8 @@
                     });
                 });
 
-                console.log("Tarjetas:", jugadores.length);
-                console.log("Hoyos cargados desde scorecards.hole_scores");
-
                 renderTorneo();
+
             } catch (err) {
                 console.error(err);
                 document.getElementById("titulo").textContent = "Error";
@@ -1152,21 +1347,43 @@
                 if (genero === "female") scratchDamasAgregado = true;
             }
 
-            categorias.forEach(cat => {
-                const generoCat = generoCategoria(cat);
+            console.log("CATEGORIAS ANTES DE ORDENAR:", categorias.map(c => c.name));
+            console.log("ORDENES:", categorias.map(c => ({
+                name: c.name,
+                orden: ordenCategoriaHistorica(c.name)
+            })));
 
-                if (generoCat === "male") renderScratch("male");
-                if (generoCat === "female") renderScratch("female");
+            categorias
+                .slice()
+                .sort((a, b) => {
+                    const oa = torneoActual?.legacy
+                        ? ordenCategoriaHistorica(a.name)
+                        : (a.display_order ?? 99);
 
-                const lista = jugadores
-                    .filter(j => j.category_id === cat.id)
-                    .slice()
-                    .sort(compararJugadores);
+                    const ob = torneoActual?.legacy
+                        ? ordenCategoriaHistorica(b.name)
+                        : (b.display_order ?? 99);
 
-                if (!lista.length) return;
+                    if (oa !== ob) return oa - ob;
 
-                renderTablaCategoria(cat.name, lista, false);
-            });
+                    return String(a.name || "").localeCompare(String(b.name || ""), "es");
+                })
+                .forEach(cat => {
+
+                    const generoCat = generoCategoria(cat);
+
+                    if (generoCat === "male") renderScratch("male");
+                    if (generoCat === "female") renderScratch("female");
+
+                    const lista = jugadores
+                        .filter(j => j.category_id === cat.id)
+                        .slice()
+                        .sort(compararJugadores);
+
+                    if (!lista.length) return;
+
+                    renderTablaCategoria(cat.name, lista, false);
+                });
 
             document.getElementById("contenido").innerHTML = html;
 

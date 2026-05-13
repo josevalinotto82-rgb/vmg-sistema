@@ -598,12 +598,37 @@
     <script type="module">
         import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-        const CLUB_NOMBRE = "Villa María Golf Club";
-
         const supabase = createClient(
             "https://bnnfolhrqxgxjmobclrm.supabase.co",
             "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
         );
+
+        async function exigirAdmin() {
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                window.location.href = "login.html";
+                throw new Error("Sin sesión");
+            }
+
+            const { data: profile, error } = await supabase
+                .from("profiles")
+                .select("role, active")
+                .eq("id", session.user.id)
+                .maybeSingle();
+
+            if (error || !profile || profile.active !== true || profile.role !== "admin") {
+                alert("No tenés permiso para entrar a esta página.");
+                window.location.href = "panel.html";
+                throw new Error("Sin permiso admin");
+            }
+
+            return session.user;
+        }
+
+        await exigirAdmin();
+
+        const CLUB_NOMBRE = "Villa María Golf Club";
 
         const COURSE_HOLES = {
             1: { par: 4, hcp: 15 }, 2: { par: 4, hcp: 3 }, 3: { par: 3, hcp: 5 }, 4: { par: 4, hcp: 11 }, 5: { par: 3, hcp: 9 }, 6: { par: 4, hcp: 1 },

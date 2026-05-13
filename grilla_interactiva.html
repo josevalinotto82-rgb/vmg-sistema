@@ -920,6 +920,9 @@
 
   let slotBusquedaActivo = null;
 
+  let realtimeChannel = null;
+  let realtimeReloadTimer = null;
+
   function abrirBuscadorJugador(slotId, elemento, opciones = {}) {
     slotBusquedaActivo = slotId;
 
@@ -1368,11 +1371,30 @@
   }
 
   function lockIsMine(slot) {
-    return !!slot && slot.locked_by_session === APP.sessionLockId && lockActive(slot);
-  }
+    if (!slot || !lockActive(slot)) return false;
 
+    if (APP.miPlayerId && String(slot.locked_by_player_id || "") === String(APP.miPlayerId)) {
+      return true;
+    }
+
+    return slot.locked_by_session === APP.sessionLockId;
+  }
+  
   function lockIsOther(slot) {
-    return !!slot?.locked_by_session && slot.locked_by_session !== APP.sessionLockId && lockActive(slot);
+    if (!slot?.locked_by_player_id && !slot?.locked_by_session) return false;
+    if (!lockActive(slot)) return false;
+
+    if (APP.esAdmin) return false;
+
+    if (APP.miPlayerId && String(slot.locked_by_player_id) === String(APP.miPlayerId)) {
+      return false;
+    }
+
+    if (slot.locked_by_session === APP.sessionLockId) {
+      return false;
+    }
+
+    return true;
   }
 
   function buildSlotResetPayload() {
@@ -1531,6 +1553,76 @@
     return data || [];
   }
 
+  function puedeReservarSlotDeSuLinea(slot) {
+    if (APP.esAdmin || !APP.miPlayerId) return false;
+    if (!slot || !isSlotEmpty(slot)) return false;
+
+    const slotsLinea = getLineSlots(slot.starting_line_id);
+    const slot1 = slotsLinea.find(s => Number(s.slot_number) === 1);
+
+    return (
+      slot1 &&
+      Number(slot1.slot_number) === 1 &&
+      String(slot1.linked_player_id) === String(APP.miPlayerId)
+    );
+  }
+
+  function esReservaMia(slot) {
+    return (
+      !APP.esAdmin &&
+      APP.miPlayerId &&
+      String(slot?.locked_by_player_id || "") === String(APP.miPlayerId) &&
+      String(slot?.notes || "") === "RESERVA_24H_SOCIO" &&
+      lockActive(slot)
+    );
+  }
+
+  function addHoursIso(hours) {
+    return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+  }
+
+  async function reservarSlotPor24Horas(slotId) {
+    if (!APP.miPlayerId) throw new Error("No hay jugador vinculado.");
+
+    const slot = await fetchSlotById(slotId);
+
+    if (!puedeReservarSlotDeSuLinea(slot)) {
+      throw new Error("Solo podés reservar lugares de tu misma línea si estás anotado en el slot 1.");
+    }
+
+    const { error } = await supabase
+      .from("line_slots")
+      .update({
+        locked_by_player_id: APP.miPlayerId,
+        locked_by_session: null,
+        lock_expires_at: addHoursIso(24),
+        notes: "RESERVA_24H_SOCIO"
+      })
+      .eq("id", slotId);
+
+    if (error) throw error;
+  }
+
+  async function liberarReservaSlot(slotId) {
+    const slot = await fetchSlotById(slotId);
+
+    if (!esReservaMia(slot)) {
+      throw new Error("Solo podés liberar tus propias reservas.");
+    }
+
+    const { error } = await supabase
+      .from("line_slots")
+      .update({
+        locked_by_player_id: null,
+        locked_by_session: null,
+        lock_expires_at: null,
+        notes: null
+      })
+      .eq("id", slotId);
+
+    if (error) throw error;
+  }
+
   async function fetchLines(blockIds) {
     if (!blockIds.length) return [];
     const { data, error } = await supabase
@@ -1606,6 +1698,68 @@
     }
   }
 
+  async function recargarGrillaRealtime() {
+    if (!state.torneo?.id || !state.lines?.length) return;
+
+    try {
+      const lineIds = state.lines.map(l => l.id);
+
+      state.slots = await fetchSlots(lineIds);
+      state.playerAlreadyRegistered = await fetchPlayerAlreadyRegistered(state.torneo.id);
+
+      rebuildIndexes();
+      renderView();
+
+    } catch (error) {
+      console.error("Error realtime grilla:", error);
+    }
+  }
+
+  function programarRecargaRealtime() {
+    clearTimeout(realtimeReloadTimer);
+
+    realtimeReloadTimer = setTimeout(() => {
+      recargarGrillaRealtime();
+    }, 350);
+  }
+
+  function suscribirRealtimeGrilla() {
+    if (!state.torneo?.id) return;
+
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel);
+      realtimeChannel = null;
+    }
+
+    realtimeChannel = supabase
+      .channel(`grilla-${state.torneo.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "line_slots"
+        },
+        () => {
+          programarRecargaRealtime();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "registrations"
+        },
+        () => {
+          programarRecargaRealtime();
+        }
+      )
+      .subscribe((status) => {
+        console.log("Realtime grilla:", status);
+      });
+  }
+
   async function loadGrid() {
     try {
       setStatus("Buscando torneo...");
@@ -1667,6 +1821,7 @@
 
       rebuildIndexes();
       renderView();
+      suscribirRealtimeGrilla();
     } catch (err) {
       console.error(err);
       setStatus("Error", "error");
@@ -1904,7 +2059,7 @@
     const { error } = await supabase
       .from("line_slots")
       .update({
-        locked_by_session: APP.sessionLockId,
+        locked_by_session: null,
         locked_by_player_id: APP.miPlayerId || null,
         lock_expires_at: addMinutesIso(CONFIG.LOCK_MINUTES),
       })
@@ -1918,7 +2073,12 @@
     if (!slotActual) return;
 
     const slotsLinea = await fetchLineSlotsFresh(slotActual.starting_line_id);
-    const idsMios = slotsLinea.filter((slot) => slot.locked_by_session === APP.sessionLockId).map((slot) => slot.id);
+    const idsMios = slotsLinea
+      .filter((slot) =>
+        slot.locked_by_session === APP.sessionLockId &&
+        String(slot.notes || "") !== "RESERVA_24H_SOCIO"
+      )
+      .map((slot) => slot.id);
     if (!idsMios.length) return;
 
     await supabase
@@ -2181,16 +2341,24 @@
       ? `<button class="slot-self-btn" data-self-slot="${slot.id}">Anotarme</button>`
       : "";
 
+    const botonReservar = puedeReservarSlotDeSuLinea(slot) && !esReservaMia(slot)
+      ? `<button class="slot-self-btn" type="button" data-reserve-slot="${slot.id}">Reservar 24 hs</button>`
+      : "";
+
+    const botonLiberarReserva = esReservaMia(slot)
+      ? `<button class="slot-inline-manual-btn" type="button" data-release-reserve-slot="${slot.id}">Liberar reserva</button>`
+      : "";
+
     const botonAgregarJugador = `<span class="slot-libre-link" data-open-inline="${slot.id}">Agregar jugador</span>`;
 
-    const accionesSlotLibre = botonAnotarme
-      ? `
-        <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
-          ${botonAnotarme}
-          ${botonAgregarJugador}
-        </div>
-      `
-      : botonAgregarJugador;
+    const accionesSlotLibre = `
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+        ${botonAnotarme}
+        ${botonReservar}
+        ${botonLiberarReserva}
+        ${botonAgregarJugador}
+      </div>
+    `;
 
     return `
       <td class="slot-cell slot-empty" data-slot-id="${slot.id}" data-slot-number="${slot.slot_number}" data-libre="1">
@@ -2266,12 +2434,15 @@
         participant_type: "empty",
       };
 
-      const bloqueadoPorOtro = lineLockedByOther || !torneoAbierto;
-      const bloqueadoPorMi = torneoAbierto && lineLockedByMine;
-      const cssLockClass = bloqueadoPorOtro ? "slot-locked-other" : (bloqueadoPorMi ? "slot-locked-mine" : "");
+      const slotBloqueadoPorOtro = lockIsOther(slot) || !torneoAbierto;
+      const slotBloqueadoPorMi = torneoAbierto && lockIsMine(slot);
+
+      const cssLockClass = slotBloqueadoPorOtro
+        ? "slot-locked-other"
+        : (slotBloqueadoPorMi ? "slot-locked-mine" : "");
 
       row += isSlotEmpty(slot)
-        ? renderFreeSlot(slot, torneoAbierto, lineLockedByOther)
+        ? renderFreeSlot(slot, torneoAbierto, slotBloqueadoPorOtro)
         : renderOccupiedSlot(line, slot, cssLockClass);
     }
 
@@ -2517,14 +2688,21 @@
   }
 
   async function createManualPlayer({ nombre, apellido, current_index, genero, pais }) {
+
     const first_name = String(nombre || "").trim();
     const last_name = String(apellido || "").trim();
 
     if (!first_name) throw new Error("El nombre es obligatorio.");
     if (!last_name) throw new Error("El apellido es obligatorio.");
-    if (!["male", "female"].includes(genero)) throw new Error("El género es obligatorio.");
+    if (!["male", "female"].includes(genero)) {
+      throw new Error("El género es obligatorio.");
+    }
 
-    const full_name = `${first_name} ${last_name}`.trim();
+    const search_text =
+      `${last_name} ${first_name} ${first_name} ${last_name}`
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase();
 
     const { data, error } = await supabase
       .from("players")
@@ -2534,13 +2712,20 @@
         current_index,
         gender: genero,
         country: pais || null,
+
         is_club_member: false,
+        is_aag_active: false,
+
+        source: "manual",
         aag_member_number: null,
+
+        search_text
       })
       .select()
       .single();
 
     if (error) throw error;
+
     return data;
   }
 
@@ -2565,6 +2750,7 @@
       starting_line_id: lineId,
       line_slot_id: slotId,
       linked_player_id: jugador.id,
+      created_by_player_id: APP.miPlayerId || null,
       display_name: jugador.full_name,
       participant_type: registrationTypeForPlayer(jugador, registrationFallbackType),
       club_name: jugador.club_name || null,
@@ -2893,6 +3079,37 @@
   // ==============================
   function installGlobalEvents() {
     document.addEventListener("click", async (e) => {
+
+      const reserveBtn = e.target.closest("[data-reserve-slot]");
+      if (reserveBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+          await reservarSlotPor24Horas(reserveBtn.dataset.reserveSlot);
+          await recargarGrillaRealtime();
+        } catch (error) {
+          showTransientMessage(error.message || "No se pudo reservar.", "error");
+        }
+
+        return;
+      }
+
+      const releaseBtn = e.target.closest("[data-release-reserve-slot]");
+      if (releaseBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+          await liberarReservaSlot(releaseBtn.dataset.releaseReserveSlot);
+          await recargarGrillaRealtime();
+        } catch (error) {
+          showTransientMessage(error.message || "No se pudo liberar la reserva.", "error");
+        }
+
+        return;
+      }
+
       const openInlineTrigger = e.target.closest("[data-open-inline]");
       if (openInlineTrigger) {
         e.preventDefault();

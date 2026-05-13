@@ -378,13 +378,19 @@
     }
 
     function buscarIdsPorJugador(textoBusqueda) {
+
       const palabras = separarPalabras(textoBusqueda);
+
       const ids = new Set();
 
       if (palabras.length === 0) return ids;
 
       jugadoresIndexados.forEach(j => {
-        const coincide = palabras.every(palabra => j.nombre.includes(palabra));
+
+        const coincide = palabras.every(palabra =>
+          j.nombre.includes(palabra)
+        );
+
         if (coincide) {
           j.ids.forEach(id => ids.add(id));
         }
@@ -393,7 +399,60 @@
       return ids;
     }
 
-    function renderTorneos() {
+    async function buscarIdsPorJugadorHistorico(textoBusqueda) {
+      const palabras = separarPalabras(textoBusqueda);
+
+      if (palabras.length === 0) return new Set();
+
+      let query = supabase
+        .from("historical_player_index")
+        .select("tournament_id")
+        .limit(1000);
+
+      palabras.forEach(palabra => {
+        query = query.ilike("jugador_normalizado", `%${palabra}%`);
+      });
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error(error);
+        return new Set();
+      }
+
+      return new Set((data || []).map(r => r.tournament_id));
+    }
+
+    async function cargarIndiceHistoricoJugadores() {
+
+      let todos = [];
+
+      let desde = 0;
+
+      const bloque = 1000;
+
+      while (true) {
+
+        const { data, error } = await supabase
+          .from("historical_player_index")
+          .select("tournament_id, jugador")
+          .range(desde, desde + bloque - 1);
+
+        if (error) throw error;
+
+        todos = todos.concat(data || []);
+
+        if (!data || data.length < bloque) {
+          break;
+        }
+
+        desde += bloque;
+      }
+
+      return todos;
+    }
+
+    async function renderTorneos() {
       const textoOriginal = document.getElementById("buscador").value;
       const texto = normalizarTexto(textoOriginal);
       const anio = document.getElementById("filtroAnio").value;
@@ -401,7 +460,17 @@
       const lista = document.getElementById("lista");
       const status = document.getElementById("status");
 
-      const idsJugador = buscarIdsPorJugador(texto);
+      let idsJugador = new Set();
+
+      if (texto) {
+        const idsJugadorModernos = buscarIdsPorJugador(texto);
+        const idsJugadorHistoricos = await buscarIdsPorJugadorHistorico(texto);
+
+        idsJugador = new Set([
+          ...idsJugadorModernos,
+          ...idsJugadorHistoricos
+        ]);
+      }
 
       const filtrados = torneos.filter(t => {
         const nombre = normalizarTexto(t.name);
@@ -458,19 +527,23 @@
       try {
         status.textContent = "Cargando torneos...";
 
+        // =========================
+        // TORNEOS MODERNOS
+        // =========================
+
         const { data: torneosData, error: errorTorneos } = await supabase
           .from("tournaments")
           .select(`
-            id,
-            name,
-            tournament_date,
-            game_mode_id,
-            status,
-            game_modes (
-              id,
-              name
-            )
-          `)
+        id,
+        name,
+        tournament_date,
+        game_mode_id,
+        status,
+        game_modes (
+          id,
+          name
+        )
+      `)
           .neq("status", "closed")
           .order("tournament_date", { ascending: false });
 
@@ -482,28 +555,118 @@
 
         if (errorScorecards) throw errorScorecards;
 
-        torneos = torneosData || [];
+        // =========================
+        // TORNEOS HISTORICOS
+        // =========================
+
+        const { data: historicosData, error: errorHistoricos } = await supabase
+          .from("historical_tournaments")
+          .select("id, fecha, torneo, modalidad")
+          .order("fecha", { ascending: false });
+
+        if (errorHistoricos) throw errorHistoricos;
+
+        // =========================
+        // NORMALIZAR TORNEOS
+        // =========================
+
+        const torneosModernos = (torneosData || []).map(t => ({
+          id: t.id,
+          name: t.name,
+          tournament_date: t.tournament_date,
+          game_modes: {
+            name: t.game_modes?.name || ""
+          },
+          legacy: false
+        }));
+
+        const torneosHistoricos = (historicosData || []).map(t => ({
+          id: t.id,
+          name: t.torneo || "TORNEO HISTÓRICO SIN NOMBRE",
+          tournament_date: t.fecha,
+          game_modes: {
+            name: t.modalidad || ""
+          },
+          legacy: true
+        }));
+
+        // =========================
+        // COMBINAR
+        // =========================
+
+        torneos = [
+          ...torneosModernos,
+          ...torneosHistoricos
+        ];
+
+        // =========================
+        // ORDENAR POR FECHA
+        // =========================
+
+        torneos.sort((a, b) => {
+          const fa = fechaAObjeto(a.tournament_date);
+          const fb = fechaAObjeto(b.tournament_date);
+
+          if (!fa || !fb) return 0;
+
+          return fb - fa;
+        });
+
+        // =========================
+        // INDICE DE JUGADORES
+        // =========================
+
         construirIndiceJugadores(scorecardsData || []);
 
+        // =========================
+        // JUGADORES HISTORICOS
+        // =========================
+
+        // agregar jugadores históricos
+
+
+        // =========================
+        // FILTRO AÑOS
+        // =========================
+
         const anios = [...new Set(
-          torneos.map(t => extraerAnio(t.tournament_date)).filter(Boolean)
+          torneos
+            .map(t => extraerAnio(t.tournament_date))
+            .filter(Boolean)
         )].sort((a, b) => b.localeCompare(a));
 
         const filtroAnio = document.getElementById("filtroAnio");
-        filtroAnio.innerHTML = `<option value="">Todos los años</option>` +
+
+        filtroAnio.innerHTML =
+          `<option value="">Todos los años</option>` +
           anios.map(a => `<option value="${a}">${a}</option>`).join("");
 
-        renderTorneos();
+        await renderTorneos();
+
       } catch (err) {
+
         console.error(err);
-        status.textContent = "Error: " + (err.message || "No se pudieron cargar los torneos.");
-        document.getElementById("lista").innerHTML = `<div class="empty">No se pudieron cargar los torneos.</div>`;
+
+        status.textContent =
+          "Error: " +
+          (err.message || "No se pudieron cargar los torneos.");
+
+        document.getElementById("lista").innerHTML =
+          `<div class="empty">No se pudieron cargar los torneos.</div>`;
       }
     }
 
-    document.getElementById("buscador").addEventListener("input", renderTorneos);
-    document.getElementById("filtroAnio").addEventListener("change", renderTorneos);
-    document.getElementById("filtroDia").addEventListener("change", renderTorneos);
+    document.getElementById("buscador").addEventListener("input", () => {
+      renderTorneos();
+    });
+
+    document.getElementById("filtroAnio").addEventListener("change", () => {
+      renderTorneos();
+    });
+
+    document.getElementById("filtroDia").addEventListener("change", () => {
+      renderTorneos();
+    });
 
     cargar();
 
