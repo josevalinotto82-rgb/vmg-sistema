@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Grilla interactiva - Villa María Golf</title>
+  <title>Grilla interactiva corregida - Villa María Golf</title>
   <style>
     :root {
       --bg: #f4f8f2;
@@ -919,6 +919,7 @@
   const searchCache = new Map();
 
   let slotBusquedaActivo = null;
+  let activeLockedLineId = null;
 
   let realtimeChannel = null;
   let realtimeReloadTimer = null;
@@ -1053,7 +1054,7 @@
     reposicionarBuscadorJugador();
   }
 
-  function cerrarBuscadorJugador() {
+  async function cerrarBuscadorJugador() {
     const popup = document.getElementById("playerSearchPopup");
     const input = document.getElementById("playerSearchInput");
     const results = document.getElementById("playerSearchResults");
@@ -1070,6 +1071,10 @@
       popup.style.top = "";
       popup.style.bottom = "";
       popup.style.position = "";
+    }
+
+    if (slotBusquedaActivo) {
+      try { await unlockLineFromSlot(slotBusquedaActivo); } catch (error) { console.error("No se pudo liberar la línea activa:", error); }
     }
 
     slotBusquedaActivo = null;
@@ -1379,14 +1384,18 @@
 
     return slot.locked_by_session === APP.sessionLockId;
   }
-  
+
   function lockIsOther(slot) {
     if (!slot?.locked_by_player_id && !slot?.locked_by_session) return false;
     if (!lockActive(slot)) return false;
 
-    if (APP.esAdmin) return false;
+    // Reserva 24 hs del socio: también la tiene que ver el admin como reservado.
+    if (String(slot.notes || "") === "RESERVA_24H_SOCIO") {
+      if (APP.miPlayerId && String(slot.locked_by_player_id || "") === String(APP.miPlayerId)) return false;
+      return true;
+    }
 
-    if (APP.miPlayerId && String(slot.locked_by_player_id) === String(APP.miPlayerId)) {
+    if (APP.miPlayerId && String(slot.locked_by_player_id || "") === String(APP.miPlayerId)) {
       return false;
     }
 
@@ -2044,28 +2053,80 @@
   // ==============================
   // Locks
   // ==============================
+  function isMyTemporaryLock(slot) {
+    if (!slot || !lockActive(slot)) return false;
+    if (String(slot.notes || "") === "RESERVA_24H_SOCIO") return false;
+
+    if (slot.locked_by_session === APP.sessionLockId) return true;
+
+    if (APP.miPlayerId && String(slot.locked_by_player_id || "") === String(APP.miPlayerId)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  async function unlockMyTemporaryLocks(exceptLineId = null) {
+    const filtros = [];
+
+    filtros.push(`locked_by_session.eq.${APP.sessionLockId}`);
+
+    if (APP.miPlayerId) {
+      filtros.push(`locked_by_player_id.eq.${APP.miPlayerId}`);
+    }
+
+    let query = supabase
+      .from("line_slots")
+      .update({
+        locked_by_session: null,
+        locked_by_player_id: null,
+        lock_expires_at: null,
+      })
+      .or(filtros.join(","))
+      .neq("notes", "RESERVA_24H_SOCIO");
+
+    if (exceptLineId) {
+      query = query.neq("starting_line_id", exceptLineId);
+    }
+
+    const { error } = await query;
+    if (error) throw error;
+
+    if (!exceptLineId || String(activeLockedLineId || "") !== String(exceptLineId)) {
+      activeLockedLineId = exceptLineId || null;
+    }
+  }
+
   async function lockLineFromSlot(slotId) {
     const slotActual = getSlotById(slotId) || await fetchSlotById(slotId);
     if (!slotActual) throw new Error("No se encontró el slot.");
 
+    // Regla central: un usuario solo puede tener una línea bloqueada a la vez.
+    // Antes de bloquear la nueva, libero cualquier bloqueo temporal propio en otra línea.
+    await unlockMyTemporaryLocks(slotActual.starting_line_id);
+
     const slotsLinea = await fetchLineSlotsFresh(slotActual.starting_line_id);
     if (slotsLinea.some(lockIsOther)) {
-      throw new Error("Esa línea está siendo seleccionada por otro usuario.");
+      throw new Error("Esa línea está siendo seleccionada o reservada por otro usuario.");
     }
 
-    const ids = slotsLinea.map((slot) => slot.id);
+    const ids = slotsLinea
+      .filter((slot) => String(slot.notes || "") !== "RESERVA_24H_SOCIO")
+      .map((slot) => slot.id);
+
     if (!ids.length) throw new Error("No se encontraron slots para bloquear.");
 
     const { error } = await supabase
       .from("line_slots")
       .update({
-        locked_by_session: null,
+        locked_by_session: APP.sessionLockId,
         locked_by_player_id: APP.miPlayerId || null,
         lock_expires_at: addMinutesIso(CONFIG.LOCK_MINUTES),
       })
       .in("id", ids);
 
     if (error) throw error;
+    activeLockedLineId = slotActual.starting_line_id;
   }
 
   async function unlockLineFromSlot(slotId) {
@@ -2074,14 +2135,12 @@
 
     const slotsLinea = await fetchLineSlotsFresh(slotActual.starting_line_id);
     const idsMios = slotsLinea
-      .filter((slot) =>
-        slot.locked_by_session === APP.sessionLockId &&
-        String(slot.notes || "") !== "RESERVA_24H_SOCIO"
-      )
+      .filter(isMyTemporaryLock)
       .map((slot) => slot.id);
+
     if (!idsMios.length) return;
 
-    await supabase
+    const { error } = await supabase
       .from("line_slots")
       .update({
         locked_by_session: null,
@@ -2089,6 +2148,12 @@
         lock_expires_at: null,
       })
       .in("id", idsMios);
+
+    if (error) throw error;
+
+    if (String(activeLockedLineId || "") === String(slotActual.starting_line_id)) {
+      activeLockedLineId = null;
+    }
   }
 
   // ==============================
@@ -2852,7 +2917,7 @@
     });
 
     await linkPartnerRegistrations(reg1.id, reg2.id);
-    cerrarBuscadorJugador();
+    await cerrarBuscadorJugador();
     await loadGrid();
   }
 
@@ -3121,6 +3186,9 @@
 
         try {
           await closeAllInlineEditors();
+          if (slotBusquedaActivo && String(slotBusquedaActivo) !== String(slotId)) {
+            await await cerrarBuscadorJugador();
+          }
           await lockLineFromSlot(slotId);
 
           abrirBuscadorJugador(slotId, openInlineTrigger, {
@@ -3172,7 +3240,7 @@
 
           if (!requiresPartner() || !modoPareja) {
             await occupySlotWithPlayer(slotBusquedaActivo, jugador, "manual_guest");
-            cerrarBuscadorJugador();
+            await cerrarBuscadorJugador();
             return;
           }
 
@@ -3260,6 +3328,9 @@
           }
 
           await closeAllInlineEditors();
+          if (slotBusquedaActivo && String(slotBusquedaActivo) !== String(slotId)) {
+            await await cerrarBuscadorJugador();
+          }
           await lockLineFromSlot(slotId);
           abrirBuscadorJugador(slotId, selfSlotTrigger, {
             modoPareja: "1",
@@ -3295,7 +3366,7 @@
 
           if (!requiresPartner() || !modoPareja) {
             await occupySlotWithPlayer(slotId, jugador, "aag_match");
-            cerrarBuscadorJugador();
+            await cerrarBuscadorJugador();
             await loadGrid();
             return;
           }
@@ -3321,7 +3392,7 @@
           }
 
           await occupySlotWithPair(slotId, jugadorBase, jugador);
-          cerrarBuscadorJugador();
+          await cerrarBuscadorJugador();
           await loadGrid();
 
         } catch (error) {
@@ -3442,7 +3513,7 @@
       if (e.target.closest("[data-open-inline]") || e.target.closest("[data-self-slot]")) return;
 
       const slotId = slotBusquedaActivo;
-      cerrarBuscadorJugador();
+      await cerrarBuscadorJugador();
       if (slotId) await unlockLineFromSlot(slotId);
     });
 
