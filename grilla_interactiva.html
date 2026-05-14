@@ -2810,6 +2810,13 @@
     if (updateError) throw updateError;
 
     await deleteRegistrationsBySlotIds([slotId]);
+
+    console.log("REGISTRO A CREAR:", {
+      nombre: jugador.full_name,
+      matricula: jugador.aag_member_number,
+      jugador
+    });
+
     await createRegistration({
       tournament_id: state.torneo.id,
       starting_line_id: lineId,
@@ -2818,6 +2825,7 @@
       created_by_player_id: APP.miPlayerId || null,
       display_name: jugador.full_name,
       participant_type: registrationTypeForPlayer(jugador, registrationFallbackType),
+      aag_member_number: jugador.aag_member_number || null,
       club_name: jugador.club_name || null,
       country: jugador.country || null,
       reported_index: jugador.current_index ?? null,
@@ -2886,6 +2894,10 @@
     if (updateError2) throw updateError2;
 
     await deleteRegistrationsBySlotIds([slot1.id, slot2.id]);
+
+    console.log("REG1:", jugador1);
+    console.log("REG2:", jugador2);
+
     await unlockLineFromSlot(slotId);
 
     const reg1 = await createRegistration({
@@ -2895,6 +2907,7 @@
       linked_player_id: jugador1.id,
       display_name: jugador1.full_name,
       participant_type: registrationTypeForPlayer(jugador1, "self"),
+      aag_member_number: jugador1.aag_member_number || null,
       club_name: jugador1.club_name || null,
       country: jugador1.country || null,
       reported_index: jugador1.current_index ?? null,
@@ -2909,6 +2922,7 @@
       linked_player_id: jugador2.id,
       display_name: jugador2.full_name,
       participant_type: registrationTypeForPlayer(jugador2, "aag_match"),
+      aag_member_number: jugador2.aag_member_number || null,
       club_name: jugador2.club_name || null,
       country: jugador2.country || null,
       reported_index: jugador2.current_index ?? null,

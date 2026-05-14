@@ -559,7 +559,7 @@
 
     await exigirAdmin();
 
-    console.log("SCRIPT NUEVO CARGADO - VERSION 1");
+    console.log("OFICIALIZACION VERSION INDEX AAG VIVO 2026-05-14");
 
     const $ = (id) => document.getElementById(id);
 
@@ -593,9 +593,13 @@
     let registrations = [];
     let categorias = [];
     let tees = [];
+
     let regMap = new Map();
     let categoriaMap = new Map();
     let teeMap = new Map();
+
+    let aagEnrolledsMap = new Map();
+
     let filasVistaCache = null;
     let autoCategoriaDesdeIndexManual = false;
 
@@ -752,12 +756,49 @@
       return Array.isArray(reg.line_slots) ? reg.line_slots[0] : reg.line_slots;
     }
 
-    function obtenerIndiceAAG(reg) {
-      const desdeSlot = extraerLineSlot(reg)?.manual_index;
-      const desdeReg = reg.reported_index;
-      const desdePlayer = reg.player?.current_index;
+    function normalizarMatriculaAAG(valor) {
+      const txt = String(valor ?? "").trim();
+      if (!txt) return null;
+      return txt.replace(/\.0$/, "");
+    }
 
-      const valor = desdeSlot ?? desdeReg ?? desdePlayer;
+    function obtenerMatriculaAAG(reg) {
+      return normalizarMatriculaAAG(
+        reg?.aag_member_number ||
+        reg?.player?.aag_member_number ||
+        extraerLineSlot(reg)?.aag_member_number ||
+        null
+      );
+    }
+
+    function obtenerJugadorAAGVivo(reg) {
+      const mat = obtenerMatriculaAAG(reg);
+      if (!mat) return null;
+      return aagEnrolledsMap.get(String(mat)) || null;
+    }
+
+    function obtenerIndiceAAG(reg) {
+      const jugadorAAG = obtenerJugadorAAGVivo(reg);
+      const desdeAAG = jugadorAAG?.current_index;
+
+      console.log("INDEX OFICIALIZACION", {
+        jugador: reg.display_name,
+        matricula: obtenerMatriculaAAG(reg),
+        aag: jugadorAAG,
+        indexAAG: desdeAAG,
+        indexPlayer: reg.player?.current_index,
+        indexReg: reg.reported_index,
+        indexSlot: extraerLineSlot(reg)?.manual_index
+      });
+
+      // Si encuentra AAG, NO usar nada viejo.
+      if (desdeAAG != null) return toNumber(desdeAAG);
+
+      const desdePlayer = reg.player?.current_index;
+      const desdeReg = reg.reported_index;
+      const desdeSlot = extraerLineSlot(reg)?.manual_index;
+
+      const valor = desdePlayer ?? desdeReg ?? desdeSlot;
       return toNumber(valor);
     }
 
@@ -1064,105 +1105,127 @@
         const { data: torneo, error: errorTorneo } = await supabase
           .from("tournaments")
           .select(`
-            id,
-            name,
-            tournament_date,
-            status,
-            game_mode_id,
-            game_modes (
-              id,
-              name,
-              participation_type,
-              calculation_params
-            )
-          `)
+        id,
+        name,
+        tournament_date,
+        status,
+        game_mode_id,
+        game_modes (
+          id,
+          name,
+          participation_type,
+          calculation_params
+        )
+      `)
           .eq("id", torneoIdSeleccionado)
           .single();
+
         if (errorTorneo) throw errorTorneo;
 
         torneoActual = torneo;
         torneoFecha.value = fechaTexto(torneo.tournament_date);
 
-        const [categoriasRes, teesRes, regsRes] = await Promise.all([
+        const [categoriasRes, teesRes, regsRes, aagRes] = await Promise.all([
           supabase
             .from("tournament_categories")
             .select("id, name, index_min, index_max, tee_id, display_order, gender, slope, course_rating, par, hole_segment")
             .eq("tournament_id", torneo.id)
             .order("display_order", { ascending: true }),
+
           supabase
             .from("tees")
             .select("id, name, display_order")
             .order("display_order", { ascending: true }),
+
           supabase
             .from("registrations")
             .select(`
-              id,
-              tournament_id,
-              linked_player_id,
-              display_name,
-              participant_type,
-              aag_member_number,
-              club_name,
-              country,
-              reported_index,
-              category_id,
-              registration_status,
-              needs_admin_review,
-              partner_registration_id,
-              starting_line_id,
-              line_slot_id,
-              created_at,
-              player:players!linked_player_id (
-                gender,
-                aag_member_number,
-                current_index
-              ),
-              line_slots (
-                id,
-                manual_index
-              ),
-              starting_lines (
-                id,
-                line_time,
-                starting_hole,
-                label
-              ),
-              scorecards (
-                id,
-                official_index,
-                manual_index,
-                playing_handicap,
-                category_id,
-                category_name,
-                tee_id,
-                tee_name,
-                card_status,
-                display_name,
-                aag_member_number,
-                aag_exportable,
-                hole_segment,
-                slope,
-                course_rating,
-                par,
-                hole_scores
-              )
-            `)
+          id,
+          tournament_id,
+          linked_player_id,
+          display_name,
+          participant_type,
+          aag_member_number,
+          club_name,
+          country,
+          reported_index,
+          category_id,
+          registration_status,
+          needs_admin_review,
+          partner_registration_id,
+          starting_line_id,
+          line_slot_id,
+          created_at,
+          player:players!linked_player_id (
+            gender,
+            aag_member_number,
+            current_index
+          ),
+          line_slots (
+            id,
+            manual_index,
+            aag_member_number
+          ),
+          starting_lines (
+            id,
+            line_time,
+            starting_hole,
+            label
+          ),
+          scorecards (
+            id,
+            official_index,
+            manual_index,
+            playing_handicap,
+            category_id,
+            category_name,
+            tee_id,
+            tee_name,
+            card_status,
+            display_name,
+            aag_member_number,
+            aag_exportable,
+            hole_segment,
+            slope,
+            course_rating,
+            par,
+            hole_scores
+          )
+        `)
             .eq("tournament_id", torneo.id)
             .neq("registration_status", "cancelled")
-            .order("created_at", { ascending: true })
+            .order("created_at", { ascending: true }),
+
+          supabase
+            .from("aag_enrolleds")
+            .select("enrollment_number, current_index, gender, club_name")
         ]);
 
         if (categoriasRes.error) throw categoriasRes.error;
         if (teesRes.error) throw teesRes.error;
         if (regsRes.error) throw regsRes.error;
+        if (aagRes.error) throw aagRes.error;
+
+        aagEnrolledsMap = new Map(
+          (aagRes.data || [])
+            .filter(j => j.enrollment_number)
+            .map(j => [normalizarMatriculaAAG(j.enrollment_number), j])
+        );
+
+        console.log("AAG MAP CARGADO", {
+          total: aagEnrolledsMap.size,
+          muestra: Array.from(aagEnrolledsMap.entries()).slice(0, 5)
+        });
 
         categorias = categoriasRes.data || [];
         tees = teesRes.data || [];
         registrations = regsRes.data || [];
+
         rebuildIndexes();
 
         renderTabla();
         actualizarResumen();
+
         setEstado(`Datos cargados · ${torneoActual?.game_modes?.name || "Modalidad sin definir"}`, "ok");
       } catch (err) {
         console.error(err);
@@ -1852,11 +1915,41 @@
     }
 
     async function actualizarRegistroConfirmado(regId, categoriaId) {
+      const reg = getRegistrationById(regId);
+      const matricula = obtenerMatriculaAAG(reg);
+      const indiceAAG = obtenerIndiceAAG(reg);
+
+      const payloadReg = {
+        category_id: categoriaId,
+        registration_status: "confirmed",
+        needs_admin_review: false
+      };
+
+      if (matricula) payloadReg.aag_member_number = matricula;
+      if (indiceAAG != null) payloadReg.reported_index = indiceAAG;
+
       const { error } = await supabase
         .from("registrations")
-        .update({ category_id: categoriaId, registration_status: "confirmed", needs_admin_review: false })
+        .update(payloadReg)
         .eq("id", regId);
+
       if (error) throw error;
+
+      if (reg?.line_slot_id) {
+        const payloadSlot = {};
+
+        if (matricula) payloadSlot.aag_member_number = matricula;
+        if (indiceAAG != null) payloadSlot.manual_index = indiceAAG;
+
+        if (Object.keys(payloadSlot).length > 0) {
+          const { error: slotError } = await supabase
+            .from("line_slots")
+            .update(payloadSlot)
+            .eq("id", reg.line_slot_id);
+
+          if (slotError) throw slotError;
+        }
+      }
     }
 
     async function guardarOficializacionSingle(regId, silencioso = false) {
