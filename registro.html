@@ -154,11 +154,26 @@
             }
 
             const email = emailEl.value.trim();
-            const telefono = telefonoEl.value.trim();
+            const telefono = document.getElementById("telefono").value.trim();
+            console.log("TELÉFONO A GUARDAR:", telefono);
             const password = passwordEl.value;
 
-            if (!email || !password) {
-                msg.textContent = "Completá email y contraseña.";
+            if (!email || !telefono || !password) {
+                msg.textContent = "Completá email, teléfono y contraseña.";
+                return;
+            }
+
+            const { error: preUpdateError } = await supabase
+                .from("players")
+                .update({
+                    email,
+                    phone: telefono
+                })
+                .eq("id", jugadorEncontrado.id);
+
+            if (preUpdateError) {
+                console.error(preUpdateError);
+                msg.textContent = preUpdateError.message;
                 return;
             }
 
@@ -188,9 +203,7 @@
             });
 
             await supabase.from("players").update({
-                profile_id: userId,
-                email,
-                phone: telefono
+                profile_id: userId
             }).eq("id", jugadorEncontrado.id);
 
             msg.style.color = "#166534";
