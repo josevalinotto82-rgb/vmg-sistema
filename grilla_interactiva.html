@@ -1136,7 +1136,6 @@
       return;
     }
 
-    // Limpiar estado anterior
     input.value = "";
     input.dataset.modoPareja = opciones.modoPareja || (requiresPartner() ? "1" : "0");
     input.dataset.jugadorBaseId = opciones.jugadorBaseId || "";
@@ -1156,37 +1155,52 @@
       window.scrollX + window.innerWidth - anchoPopup - margen
     );
 
-    popup.style.left = `${Math.max(margen, left)}px`;
-
     popup.classList.remove("hidden");
     popup.style.visibility = "hidden";
     popup.style.maxHeight = "360px";
     popup.style.overflow = "hidden";
 
     requestAnimationFrame(() => {
-      const espacioAbajo = window.innerHeight - rect.bottom;
-      const espacioArriba = rect.top;
+      if (window.innerWidth <= 760) {
+        const visualHeight = window.visualViewport?.height || window.innerHeight;
+        const visualTop = window.visualViewport?.offsetTop || 0;
 
-      const altoEstimadoPopup = Math.min(popup.offsetHeight || 360, 360);
-      const abrirArriba = espacioAbajo < altoEstimadoPopup + 16 && espacioArriba > espacioAbajo;
-
-      popup.style.left = `${Math.max(margen, left)}px`;
-      popup.style.maxHeight = `${Math.max(220, Math.min(360, abrirArriba ? espacioArriba - 12 : espacioAbajo - 12))}px`;
-
-      if (abrirArriba) {
-        popup.style.top = "auto";
-        popup.style.bottom = `${window.innerHeight - rect.top + 6}px`;
         popup.style.position = "fixed";
-      } else {
+        popup.style.left = "12px";
+        popup.style.right = "12px";
+        popup.style.width = "auto";
+        popup.style.top = `${visualTop + 12}px`;
         popup.style.bottom = "auto";
-        popup.style.top = `${rect.bottom + 6}px`;
-        popup.style.position = "fixed";
+        popup.style.transform = "";
+        popup.style.maxHeight = `${Math.max(260, visualHeight - 24)}px`;
+      } else {
+        const espacioAbajo = window.innerHeight - rect.bottom;
+        const espacioArriba = rect.top;
+
+        const altoEstimadoPopup = Math.min(popup.offsetHeight || 360, 360);
+        const abrirArriba = espacioAbajo < altoEstimadoPopup + 16 && espacioArriba > espacioAbajo;
+
+        popup.style.left = `${Math.max(margen, left)}px`;
+        popup.style.maxHeight = `${Math.max(220, Math.min(360, abrirArriba ? espacioArriba - 12 : espacioAbajo - 12))}px`;
+
+        if (abrirArriba) {
+          popup.style.top = "auto";
+          popup.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+          popup.style.position = "fixed";
+        } else {
+          popup.style.bottom = "auto";
+          popup.style.top = `${rect.bottom + 6}px`;
+          popup.style.position = "fixed";
+        }
+
+        popup.style.transform = "";
       }
 
       popup.style.visibility = "visible";
       input.focus();
-    });
 
+      setTimeout(reposicionarBuscadorJugador, 250);
+    });
   }
 
   function reposicionarBuscadorJugador() {
@@ -1194,6 +1208,22 @@
     const input = document.getElementById("playerSearchInput");
 
     if (!popup || !input || popup.classList.contains("hidden")) return;
+
+    if (window.innerWidth <= 760) {
+      const visualHeight = window.visualViewport?.height || window.innerHeight;
+      const visualTop = window.visualViewport?.offsetTop || 0;
+
+      popup.style.position = "fixed";
+      popup.style.left = "12px";
+      popup.style.right = "12px";
+      popup.style.width = "auto";
+      popup.style.top = `${visualTop + 12}px`;
+      popup.style.bottom = "auto";
+      popup.style.transform = "";
+      popup.style.maxHeight = `${Math.max(260, visualHeight - 24)}px`;
+
+      return;
+    }
 
     const slotId = slotBusquedaActivo;
     if (!slotId) return;
@@ -1220,6 +1250,11 @@
       popup.style.bottom = "auto";
       popup.style.top = `${rect.bottom + 6}px`;
     }
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", reposicionarBuscadorJugador);
+    window.visualViewport.addEventListener("scroll", reposicionarBuscadorJugador);
   }
 
   function abrirCargaManualPopup() {
