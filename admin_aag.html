@@ -16,7 +16,7 @@
         }
 
         .card {
-            max-width: 620px;
+            max-width: 920px;
             margin: auto;
             background: #fff;
             padding: 24px;
@@ -24,9 +24,28 @@
             box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
         }
 
+        .inner-card {
+            margin-top: 18px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            padding: 18px;
+            border-radius: 16px;
+        }
+
         h1 {
             margin-top: 0;
             color: #3e5740;
+        }
+
+        h2 {
+            color: #166534;
+            margin-bottom: 8px;
+        }
+
+        h3 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #374151;
         }
 
         button {
@@ -61,6 +80,75 @@
         .err {
             color: #b91c1c;
             font-weight: bold;
+        }
+
+        .muted {
+            color: #6b7280;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin: 14px 0 18px;
+        }
+
+        .summary-box {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 14px;
+            background: #f9fafb;
+        }
+
+        .summary-box b {
+            display: block;
+            font-size: 28px;
+            color: #166534;
+        }
+
+        .sync-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .sync-table th,
+        .sync-table td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .sync-table th {
+            background: #f9fafb;
+            color: #374151;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .badge-new {
+            color: #065f46;
+            background: #d1fae5;
+        }
+
+        .badge-index {
+            color: #92400e;
+            background: #fef3c7;
+        }
+
+        .badge-down {
+            color: #991b1b;
+            background: #fee2e2;
         }
 
         .search-results {
@@ -143,6 +231,20 @@
             background: #14532d;
             transform: scale(1.05);
         }
+
+        @media (max-width: 760px) {
+            body {
+                padding: 16px;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sync-table {
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 
@@ -153,14 +255,24 @@
                 stroke-width="2" />
         </svg>
     </div>
+
     <div class="card">
         <h1>Sincronización AAG</h1>
 
         <p>
-            Esta Acción Actualiza Index de Jugadores <b>Matriculados</b>.
+            Esta acción sincroniza solamente los jugadores del <b>Villa María Golf Club</b>
+            <span class="muted">(Club AAG 408)</span> y arma un detalle de:
+            altas, cambios de index y jugadores que dejaron de ser miembros.
         </p>
 
-        <button id="btnSync">Sync-jugadores</button>
+        <button id="btnSync">Sync-jugadores VMGC</button>
+
+        <pre id="resultado">Esperando acción...</pre>
+
+        <div class="inner-card">
+            <h2>Última sincronización AAG</h2>
+            <div id="detalleSync">Sin datos todavía.</div>
+        </div>
 
         <hr style="margin:24px 0;">
 
@@ -174,13 +286,6 @@
             style="padding:10px; width:100%; max-width:360px;">
 
         <div id="resultadosBusqueda" style="margin-top:12px;"></div>
-
-        <pre id="resultado">Esperando acción...</pre>
-
-        <div class="card" style="margin-top:18px;">
-            <h2>Última sincronización AAG</h2>
-            <div id="detalleSync">Sin datos todavía.</div>
-        </div>
     </div>
 
     <script type="module">
@@ -189,11 +294,15 @@
         const SUPABASE_URL = "https://bnnfolhrqxgxjmobclrm.supabase.co";
         const SUPABASE_KEY = "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ";
         const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/swift-worker`;
+        const VMGC_CLUB_ID = 408;
 
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        let currentSession = null;
+
         async function exigirAdmin() {
             const { data: { session } } = await supabase.auth.getSession();
+            currentSession = session;
 
             if (!session) {
                 window.location.href = "login.html";
@@ -247,6 +356,39 @@
             return Number.isFinite(n) ? n.toFixed(1) : "—";
         }
 
+        function toIndexNumber(value) {
+            const n = Number(String(value ?? "").replace(",", "."));
+            return Number.isFinite(n) ? Math.round(n * 10) / 10 : null;
+        }
+
+        function mismaMatricula(value) {
+            return String(value ?? "").trim();
+        }
+
+        function esVMGC(p) {
+            return Number(p?.option_club_id) === VMGC_CLUB_ID || p?.is_club_member === true;
+        }
+
+        function estaActivoAAG(p) {
+            return p?.is_aag_active !== false;
+        }
+
+        function esMiembroVMGCActivo(p) {
+            return !!p && esVMGC(p) && estaActivoAAG(p);
+        }
+
+        function nombreDesdePlayer(p) {
+            return p.full_name ||
+                [p.last_name, p.first_name].filter(Boolean).join(", ") ||
+                "Sin nombre";
+        }
+
+        function origenTexto(p) {
+            return p.origen_busqueda === "players"
+                ? "Players"
+                : "Padrón AAG";
+        }
+
         function generoTexto(gender) {
             const g = String(gender || "").toLowerCase();
 
@@ -263,93 +405,316 @@
             return "Caballero";
         }
 
-        function nombreDesdePlayer(p) {
-            return p.full_name ||
-                [p.last_name, p.first_name].filter(Boolean).join(", ") ||
-                "Sin nombre";
+        async function selectAllRows({ table, select, orderBy = "aag_member_number", filters }) {
+            const pageSize = 1000;
+            let from = 0;
+            let all = [];
+
+            while (true) {
+                let query = supabase
+                    .from(table)
+                    .select(select)
+                    .range(from, from + pageSize - 1);
+
+                if (orderBy) query = query.order(orderBy, { ascending: true });
+
+                if (typeof filters === "function") {
+                    query = filters(query);
+                }
+
+                const { data, error } = await query;
+                if (error) throw error;
+
+                all = all.concat(data || []);
+
+                if (!data || data.length < pageSize) break;
+                from += pageSize;
+            }
+
+            return all;
         }
 
-        function origenTexto(p) {
-            return p.origen_busqueda === "players"
-                ? "Players"
-                : "Padrón AAG";
+        async function getPlayersSnapshot() {
+            const rows = await selectAllRows({
+                table: "players",
+                select: `
+                    id,
+                    first_name,
+                    last_name,
+                    full_name,
+                    gender,
+                    current_index,
+                    aag_member_number,
+                    country,
+                    club_name,
+                    option_club_id,
+                    is_club_member,
+                    is_aag_active,
+                    source,
+                    search_text,
+                    index_updated_at
+                `,
+                orderBy: "aag_member_number",
+                filters: q => q.not("aag_member_number", "is", null)
+            });
+
+            const map = new Map();
+
+            for (const p of rows || []) {
+                const matricula = mismaMatricula(p.aag_member_number);
+                if (!matricula) continue;
+                map.set(matricula, p);
+            }
+
+            return map;
         }
 
-        function socioTexto(p) {
-            return p.is_club_member ? "Sí" : "No";
+        function armarCambiosSync(beforeMap, afterMap, workerData = {}) {
+            const added = [];
+            const updated = [];
+            const deactivated = [];
+
+            for (const [matricula, after] of afterMap.entries()) {
+                const before = beforeMap.get(matricula);
+
+                if (!esMiembroVMGCActivo(after)) continue;
+
+                if (!before || !esMiembroVMGCActivo(before)) {
+                    added.push({
+                        matricula,
+                        nombre: nombreDesdePlayer(after),
+                        index: toIndexNumber(after.current_index),
+                        club: after.club_name || "Villa María Golf Club"
+                    });
+                    continue;
+                }
+
+                const oldIndex = toIndexNumber(before.current_index);
+                const newIndex = toIndexNumber(after.current_index);
+
+                if (oldIndex !== newIndex) {
+                    updated.push({
+                        matricula,
+                        nombre: nombreDesdePlayer(after),
+                        old_index: oldIndex,
+                        new_index: newIndex,
+                        club: after.club_name || "Villa María Golf Club"
+                    });
+                }
+            }
+
+            for (const [matricula, before] of beforeMap.entries()) {
+                if (!esMiembroVMGCActivo(before)) continue;
+
+                const after = afterMap.get(matricula);
+
+                if (!after || !esMiembroVMGCActivo(after)) {
+                    deactivated.push({
+                        matricula,
+                        nombre: nombreDesdePlayer(after || before),
+                        old_index: toIndexNumber(before.current_index),
+                        new_index: after ? toIndexNumber(after.current_index) : null,
+                        old_club: before.club_name || "Villa María Golf Club",
+                        new_club: after?.club_name || "Sin club VMGC",
+                        reason: !after
+                            ? "Ya no aparece en players después de sincronizar."
+                            : "Ya no figura como miembro activo del club 408."
+                    });
+                }
+            }
+
+            added.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+            updated.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+            deactivated.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+
+            return {
+                added,
+                updated,
+                deactivated,
+                totals: {
+                    before_vmgc: [...beforeMap.values()].filter(esMiembroVMGCActivo).length,
+                    after_vmgc: [...afterMap.values()].filter(esMiembroVMGCActivo).length,
+                    total_received: workerData.total_received ?? workerData.totalReceived ?? null,
+                    total_filtered: workerData.total_filtered ?? workerData.totalFiltered ?? null,
+                    total_upserted: workerData.total_upserted ?? workerData.totalUpserted ?? null
+                }
+            };
         }
 
-        function renderDetalleSync(data) {
+        function renderTabla(rows, tipo) {
+            if (!rows.length) return `<p class="muted">No hubo movimientos.</p>`;
+
+            if (tipo === "updated") {
+                return `
+                    <table class="sync-table">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Jugador</th>
+                                <th>Index viejo</th>
+                                <th>Index nuevo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(p => `
+                                <tr>
+                                    <td>${escapeHtml(p.matricula)}</td>
+                                    <td>${escapeHtml(p.nombre)}</td>
+                                    <td><b>${escapeHtml(formatIndex(p.old_index))}</b></td>
+                                    <td><b>${escapeHtml(formatIndex(p.new_index))}</b></td>
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            if (tipo === "deactivated") {
+                return `
+                    <table class="sync-table">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Jugador</th>
+                                <th>Index anterior</th>
+                                <th>Motivo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(p => `
+                                <tr>
+                                    <td>${escapeHtml(p.matricula)}</td>
+                                    <td>${escapeHtml(p.nombre)}</td>
+                                    <td>${escapeHtml(formatIndex(p.old_index))}</td>
+                                    <td>${escapeHtml(p.reason || "Dejó de ser miembro VMGC")}</td>
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            return `
+                <table class="sync-table">
+                    <thead>
+                        <tr>
+                            <th>Matrícula</th>
+                            <th>Jugador</th>
+                            <th>Index</th>
+                            <th>Club</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(p => `
+                            <tr>
+                                <td>${escapeHtml(p.matricula)}</td>
+                                <td>${escapeHtml(p.nombre)}</td>
+                                <td>${escapeHtml(formatIndex(p.index))}</td>
+                                <td>${escapeHtml(p.club || "Villa María Golf Club")}</td>
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderDetalleSync(changes) {
             const box = document.getElementById("detalleSync");
             if (!box) return;
 
-            const changes = data.changes || {
-                added: [],
-                updated: [],
-                deactivated: []
-            };
+            const totals = changes.totals || {};
 
             box.innerHTML = `
-                <p><b>Resumen de la última sincronización</b></p>
+                <p><b>Resumen de la última sincronización VMGC 408</b></p>
 
-                <p>
-                    Altas: <b>${changes.added.length}</b><br>
-                    Modificados: <b>${changes.updated.length}</b><br>
-                    Dejaron de ser miembros: <b>${changes.deactivated.length}</b>
+                <div class="summary-grid">
+                    <div class="summary-box">
+                        <span>Altas nuevas</span>
+                        <b>${changes.added.length}</b>
+                    </div>
+                    <div class="summary-box">
+                        <span>Cambios de index</span>
+                        <b>${changes.updated.length}</b>
+                    </div>
+                    <div class="summary-box">
+                        <span>Bajas VMGC</span>
+                        <b>${changes.deactivated.length}</b>
+                    </div>
+                </div>
+
+                <p class="muted">
+                    Miembros VMGC antes: <b>${totals.before_vmgc ?? "—"}</b> ·
+                    Miembros VMGC después: <b>${totals.after_vmgc ?? "—"}</b>
+                    ${totals.total_received != null ? ` · Total recibido AAG: <b>${escapeHtml(totals.total_received)}</b>` : ""}
+                    ${totals.total_filtered != null ? ` · Filtrados VMGC: <b>${escapeHtml(totals.total_filtered)}</b>` : ""}
+                    ${totals.total_upserted != null ? ` · Upsert en players: <b>${escapeHtml(totals.total_upserted)}</b>` : ""}
                 </p>
 
-                <h3>Altas</h3>
-                ${changes.added.length ? changes.added.map(p => `
-                    <div>
-                        ${p.matricula} - ${p.nombre} · Index ${p.index ?? "-"}
-                    </div>
-                `).join("") : "<p>No hubo altas.</p>"}
+                <h3><span class="badge badge-new">ALTAS</span></h3>
+                ${renderTabla(changes.added, "added")}
 
-                <h3>Modificados</h3>
-                ${changes.updated.length ? changes.updated.map(p => `
-                    <div style="margin-bottom:8px;">
-                        <b>${p.matricula} - ${p.nombre}</b><br>
-                        ${(p.changes || []).join("<br>")}
-                    </div>
-                `).join("") : "<p>No hubo modificaciones.</p>"}
+                <h3><span class="badge badge-index">CAMBIOS DE INDEX</span></h3>
+                ${renderTabla(changes.updated, "updated")}
 
-                <h3>Dejaron de ser miembros</h3>
-                ${changes.deactivated.length ? changes.deactivated.map(p => `
-                    <div>
-                        ${p.matricula} - ${p.nombre}
-                    </div>
-                `).join("") : "<p>No hubo bajas.</p>"}
+                <h3><span class="badge badge-down">DEJARON DE SER MIEMBROS</span></h3>
+                ${renderTabla(changes.deactivated, "deactivated")}
             `;
         }
 
         btnSync.addEventListener("click", async () => {
             btnSync.disabled = true;
-            resultado.textContent = "Sincronizando con AAG... puede tardar un poco.";
+            resultado.textContent = "Tomando foto previa de players VMGC 408...";
 
             try {
+                const beforeMap = await getPlayersSnapshot();
+
+                resultado.textContent = "Sincronizando con AAG... puede tardar un poco.";
+
                 const res = await fetch(FUNCTION_URL, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "sync_vmgc" })
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": currentSession?.access_token ? `Bearer ${currentSession.access_token}` : undefined,
+                        "apikey": SUPABASE_KEY
+                    },
+                    body: JSON.stringify({
+                        action: "sync_vmgc",
+                        club_id: VMGC_CLUB_ID,
+                        detail_changes: true
+                    })
                 });
 
-                const data = await res.json();
+                const text = await res.text();
+                let data = {};
 
-                if (!res.ok || !data.ok) {
-                    throw new Error(data.error || "Error desconocido");
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (_) {
+                    data = { raw_response: text };
                 }
+
+                if (!res.ok || data.ok === false) {
+                    throw new Error(data.error || data.message || text || "Error desconocido");
+                }
+
+                resultado.textContent = "Leyendo players actualizados y armando detalle...";
+
+                const afterMap = await getPlayersSnapshot();
+                const changes = armarCambiosSync(beforeMap, afterMap, data);
 
                 resultado.innerHTML =
                     `<span class="ok">Sincronización correcta</span>\n\n` +
-                    `Total recibido AAG: ${data.total_received}\n` +
-                    `Jugadores filtrados VMGC: ${data.total_filtered}\n` +
-                    `Jugadores actualizados en players: ${data.total_upserted}`;
+                    `Club: Villa María Golf Club (${VMGC_CLUB_ID})\n` +
+                    `Altas: ${changes.added.length}\n` +
+                    `Cambios de index: ${changes.updated.length}\n` +
+                    `Dejaron de ser miembros: ${changes.deactivated.length}`;
 
-                renderDetalleSync(data);
+                renderDetalleSync(changes);
 
             } catch (err) {
+                console.error(err);
                 resultado.innerHTML =
-                    `<span class="err">Error</span>\n\n${err.message || err}`;
+                    `<span class="err">Error</span>\n\n${escapeHtml(err.message || err)}`;
             } finally {
                 btnSync.disabled = false;
             }
@@ -373,20 +738,21 @@
                 const { data: playersData, error: playersError } = await supabase
                     .from("players")
                     .select(`
-                    id,
-                    first_name,
-                    last_name,
-                    full_name,
-                    gender,
-                    current_index,
-                    aag_member_number,
-                    country,
-                    club_name,
-                    is_club_member,
-                    option_club_id,
-                    source,
-                    search_text
-                `)
+                        id,
+                        first_name,
+                        last_name,
+                        full_name,
+                        gender,
+                        current_index,
+                        aag_member_number,
+                        country,
+                        club_name,
+                        is_club_member,
+                        is_aag_active,
+                        option_club_id,
+                        source,
+                        search_text
+                    `)
                     .ilike("search_text", `%${q}%`)
                     .limit(15);
 
@@ -404,15 +770,10 @@
                 let playersClubsMap = {};
 
                 if (playerClubIds.length) {
-
                     const { data: playerClubsData, error: playerClubsError } =
                         await supabase
                             .from("aag_clubs")
-                            .select(`
-                            option_club_id,
-                            city,
-                            province
-                        `)
+                            .select(`option_club_id, city, province`)
                             .in("option_club_id", playerClubIds);
 
                     if (playerClubsError) throw playerClubsError;
@@ -428,16 +789,16 @@
                 const { data: aagData, error: aagError } = await supabase
                     .from("aag_enrolleds")
                     .select(`
-                    enrollment_number,
-                    first_name,
-                    last_name,
-                    full_name,
-                    gender,
-                    current_index,
-                    option_club_id,
-                    club_name,
-                    search_text
-                `)
+                        enrollment_number,
+                        first_name,
+                        last_name,
+                        full_name,
+                        gender,
+                        current_index,
+                        option_club_id,
+                        club_name,
+                        search_text
+                    `)
                     .ilike("search_text", `%${q}%`)
                     .limit(15);
 
@@ -457,11 +818,7 @@
                 if (clubIds.length) {
                     const { data: clubsData, error: clubsError } = await supabase
                         .from("aag_clubs")
-                        .select(`
-                        option_club_id,
-                        city,
-                        province
-                    `)
+                        .select(`option_club_id, city, province`)
                         .in("option_club_id", clubIds);
 
                     if (clubsError) throw clubsError;
@@ -475,7 +832,6 @@
                 }
 
                 const players = (playersData || []).map(p => {
-
                     const clubInfo =
                         playersClubsMap[Number(p.option_club_id)] || {};
 
@@ -512,7 +868,7 @@
                             club_city: clubInfo.city || "",
                             club_province: clubInfo.province || "",
                             country: "Argentina",
-                            is_club_member: Number(p.option_club_id) === 408
+                            is_club_member: Number(p.option_club_id) === VMGC_CLUB_ID
                         };
                     });
 
@@ -526,7 +882,7 @@
 
                     let score = 0;
 
-                    if (Number(p.option_club_id) === 408 || p.is_club_member === true) score += 10000;
+                    if (Number(p.option_club_id) === VMGC_CLUB_ID || p.is_club_member === true) score += 10000;
                     if (String(p.aag_member_number || p.enrollment_number || "") === qRaw) score += 8000;
                     if (nombre.includes(buscado)) score += 4000;
                     if (partes.every(parte => nombre.includes(parte))) score += 2500;
@@ -557,22 +913,22 @@
             }
 
             resultadosBusqueda.innerHTML = `
-            <div class="search-results">
-                ${ultimosResultados.map((p, idx) => `
-                    <div class="player-card" data-player-idx="${idx}">
-                        <div class="player-name">${escapeHtml(nombreDesdePlayer(p))}</div>
-                        <div class="player-extra">
-                            Matrícula: ${escapeHtml(p.aag_member_number || "—")}
-                            · Index: ${escapeHtml(formatIndex(p.current_index))}
-                            · Club: ${escapeHtml(p.club_name || "—")}
-                            · ${origenTexto(p)}
+                <div class="search-results">
+                    ${ultimosResultados.map((p, idx) => `
+                        <div class="player-card" data-player-idx="${idx}">
+                            <div class="player-name">${escapeHtml(nombreDesdePlayer(p))}</div>
+                            <div class="player-extra">
+                                Matrícula: ${escapeHtml(p.aag_member_number || "—")}
+                                · Index: ${escapeHtml(formatIndex(p.current_index))}
+                                · Club: ${escapeHtml(p.club_name || "—")}
+                                · ${origenTexto(p)}
+                            </div>
                         </div>
-                    </div>
-                `).join("")}
-            </div>
+                    `).join("")}
+                </div>
 
-            <div id="detalleJugador"></div>
-        `;
+                <div id="detalleJugador"></div>
+            `;
 
             resultadosBusqueda.querySelectorAll("[data-player-idx]").forEach(card => {
                 card.addEventListener("click", () => {
@@ -601,6 +957,8 @@
                     Género: <b>${escapeHtml(generoTexto(p.gender))}</b><br>
                     Club: <b>${escapeHtml(p.club_name || "—")}</b><br>
                     Club ID: <b>${escapeHtml(p.option_club_id || "—")}</b><br>
+                    Miembro VMGC: <b>${esVMGC(p) ? "Sí" : "No"}</b><br>
+                    Activo AAG: <b>${p.is_aag_active === false ? "No" : "Sí"}</b><br>
                     Localidad: <b>${escapeHtml(p.club_city || "—")}</b><br>
                     Provincia: <b>${escapeHtml(p.club_province || "—")}</b><br>
                 </div>
