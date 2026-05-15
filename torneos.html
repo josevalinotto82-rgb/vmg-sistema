@@ -320,7 +320,9 @@
 
         @media (max-width: 860px) {
             .container {
-                padding: 14px 8px 24px;
+                width: 100%;
+                max-width: 100%;
+                padding: 10px 6px 20px;
             }
 
             .card,
@@ -334,13 +336,44 @@
             }
 
             table {
-                min-width: 0;
+                min-width: 100%;
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            .tabla-wrap {
+                overflow-x: hidden;
+            }
+
+            .scorecard-table {
+                min-width: 0 !important;
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            .scorecard-table td {
+                font-size: 11px;
+                padding: 5px 2px;
+            }
+
+            td.nombre {
+                font-size: 13px;
+                line-height: 1.1;
+                word-break: break-word;
+            }
+
+            .card {
+                padding: 12px;
+            }
+
+            .categoria-card {
+                overflow: hidden;
             }
 
             th,
             td {
-                font-size: 12px;
-                padding: 8px 6px;
+                font-size: 11px;
+                padding: 6px 3px;
             }
 
             .scorecard-desktop {
@@ -425,6 +458,47 @@
 
             .double-bogey {
                 border-width: 3px;
+            }
+
+            table {
+                table-layout: auto;
+            }
+
+            th:nth-child(2),
+            td.nombre {
+                width: 42%;
+            }
+
+            td.nombre {
+                font-size: 12px;
+                line-height: 1.15;
+                white-space: normal;
+                word-break: normal;
+                overflow-wrap: break-word;
+            }
+
+            th,
+            td {
+                font-size: 10px;
+                padding: 6px 2px;
+            }
+
+            th:nth-child(1),
+            td:nth-child(1) {
+                width: 26px;
+            }
+
+            th:nth-child(3),
+            td:nth-child(3),
+            th:nth-child(4),
+            td:nth-child(4),
+            th:nth-child(5),
+            td:nth-child(5),
+            th:nth-child(6),
+            td:nth-child(6),
+            th:nth-child(7),
+            td:nth-child(7) {
+                width: 38px;
             }
         }
     </style>

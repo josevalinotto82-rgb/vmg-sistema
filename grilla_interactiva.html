@@ -754,6 +754,203 @@
       background: #166534;
       transform: scale(1.05);
     }
+
+    /* ==============================
+    MOBILE GRILLA VMGC
+    ============================== */
+    .mobile-grid {
+      display: none;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        margin: 0;
+        padding: 12px;
+        background: #f4f8f2;
+      }
+
+      .home-btn {
+        top: 12px;
+        right: 12px;
+      }
+
+      #tituloPrincipal {
+        font-size: 24px;
+        padding: 0 44px;
+      }
+
+      #subTituloTorneo {
+        font-size: 13px;
+      }
+
+      .status-grid {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: #f4f8f2;
+        padding: 8px 0;
+        margin-bottom: 8px;
+      }
+
+      .desktop-grid {
+        display: none !important;
+      }
+
+      .mobile-grid {
+        display: block;
+      }
+
+      .bloque-card {
+        padding: 10px;
+        margin-bottom: 14px;
+      }
+
+      .mobile-line-card {
+        background: #ffffff;
+        border: 1px solid #dbe3dc;
+        border-radius: 16px;
+        margin-bottom: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, .07);
+      }
+
+      .mobile-line-head {
+        background: #166534;
+        color: white;
+        padding: 10px 12px;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .mobile-line-title {
+        font-weight: 800;
+        font-size: 16px;
+      }
+
+      .mobile-line-meta {
+        font-size: 12px;
+        opacity: .9;
+        text-align: right;
+      }
+
+      .mobile-slots {
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .mobile-slot {
+        border: 1px solid #e5e7eb;
+        border-radius: 13px;
+        padding: 10px;
+        min-height: 54px;
+        background: #fafafa;
+      }
+
+      .mobile-slot-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .mobile-slot-num {
+        font-size: 11px;
+        color: #6b7280;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .mobile-slot-name {
+        margin-top: 4px;
+        font-size: 16px;
+        font-weight: 800;
+        color: #111827;
+        line-height: 1.2;
+      }
+
+      .mobile-slot-empty {
+        color: #6b7280;
+        font-style: italic;
+      }
+
+      .mobile-slot.slot-self {
+        background: #ecfdf5;
+        border-color: #a0d3b3;
+      }
+
+      .mobile-slot.slot-guest {
+        background: #eff6ff;
+        border-color: #96b2df;
+      }
+
+      .mobile-slot.slot-admin {
+        background: #fff4e5;
+        border-color: #f5d9a8;
+      }
+
+      .mobile-slot.slot-blocked,
+      .mobile-slot.slot-locked-other {
+        background: #e5e7eb;
+        color: #6b7280;
+      }
+
+      .mobile-actions {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .mobile-actions button {
+        border: none;
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .mobile-btn-main {
+        background: #166534;
+        color: white;
+      }
+
+      .mobile-btn-soft {
+        background: #e5e7eb;
+        color: #111827;
+      }
+
+      .player-search-popup {
+        width: calc(100vw - 24px) !important;
+        left: 12px !important;
+        right: 12px !important;
+        max-height: 75vh !important;
+        border-radius: 16px;
+      }
+
+      #playerSearchInput {
+        font-size: 16px;
+        padding: 12px;
+      }
+
+      .slot-result-btn {
+        padding: 12px;
+        font-size: 14px;
+      }
+
+      .manual-form input,
+      .manual-form select {
+        font-size: 16px;
+        padding: 11px;
+      }
+
+      .manual-form button {
+        padding: 12px;
+        font-size: 15px;
+      }
+    }
   </style>
 </head>
 
@@ -920,6 +1117,8 @@
 
   let slotBusquedaActivo = null;
   let activeLockedLineId = null;
+
+  let mobileMoveSlotOrigen = null;
 
   let realtimeChannel = null;
   let realtimeReloadTimer = null;
@@ -2724,9 +2923,220 @@
     return html;
   }
 
+  function renderMobileBlock(block) {
+    const lines = sortLinesForDisplay(
+      state.lines.filter((line) => line.starting_block_id === block.id)
+    );
+
+    let html = `
+    <div class="card bloque-card">
+  `;
+
+    if (isSimultaneousTournament()) {
+      html += `
+      <div class="mobile-line-card">
+        <div class="mobile-line-head">
+          <div class="mobile-line-title">Salida simultánea</div>
+          <div class="mobile-line-meta">${safeText(timeText(block.start_time))}</div>
+        </div>
+      </div>
+    `;
+    }
+
+    let lastHole = null;
+
+    for (const line of lines) {
+      const hole = Number(line.starting_hole || 0);
+
+      if (!isSimultaneousTournament() && hole !== lastHole) {
+        html += `
+        <div class="titulo-hoyo" style="border-radius:12px; margin:10px 0;">
+          Salida por Hoyo ${safeText(hole)}
+        </div>
+      `;
+        lastHole = hole;
+      }
+
+      html += renderMobileLine(line);
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
+  function renderMobileLine(line) {
+    const lineSlots = getLineSlots(line.id);
+    const lineByNumber = new Map(lineSlots.map((slot) => [slot.slot_number, slot]));
+
+    const torneoAbierto = isTournamentOpen();
+
+    const lineLockedByOther = lineSlots.some(lockIsOther);
+    const lineLockedByMine = torneoAbierto && lineSlots.some(lockIsMine);
+
+    const mainTitle = isSimultaneousTournament()
+      ? `Hoyo ${formatSimultaneousHoleLabel(line)}`
+      : timeText(line.line_time);
+
+    const meta = isSimultaneousTournament()
+      ? timeText(line.line_time || state.blockByLineId.get(line.id)?.start_time)
+      : `Hoyo ${line.starting_hole || ""}`;
+
+    let html = `
+    <div class="mobile-line-card ${lineLockedByOther ? "slot-locked-other" : ""} ${lineLockedByMine ? "slot-locked-mine" : ""}">
+      <div class="mobile-line-head">
+        <div class="mobile-line-title">${safeText(mainTitle)}</div>
+        <div class="mobile-line-meta">
+          ${safeText(meta)}
+          ${state.showAdminSequentialTimes ? `<br>9 hoyos: ${safeText(getPaso9Hoyos(line.line_time))}<br>Fin: ${safeText(getFinJuego(line.line_time))}` : ""}
+        </div>
+      </div>
+
+      <div class="mobile-slots">
+  `;
+
+    for (let i = 1; i <= CONFIG.SLOT_COUNT; i += 1) {
+      const slot = lineByNumber.get(i) || {
+        id: "",
+        slot_number: i,
+        starting_line_id: line.id,
+        display_name: "",
+        participant_type: "empty",
+      };
+
+      const slotBloqueadoPorOtro = lockIsOther(slot) || !torneoAbierto;
+      const slotBloqueadoPorMi = torneoAbierto && lockIsMine(slot);
+
+      const cssLockClass = slotBloqueadoPorOtro
+        ? "slot-locked-other"
+        : (slotBloqueadoPorMi ? "slot-locked-mine" : "");
+
+      html += isSlotEmpty(slot)
+        ? renderMobileFreeSlot(slot, torneoAbierto, slotBloqueadoPorOtro, cssLockClass)
+        : renderMobileOccupiedSlot(line, slot, cssLockClass);
+    }
+
+    html += `
+      </div>
+    </div>
+  `;
+
+    return html;
+  }
+
+  function renderMobileFreeSlot(slot, torneoAbierto, slotBloqueadoPorOtro, cssLockClass = "") {
+    const puedeReservar = puedeReservarSlotDeSuLinea(slot);
+    const reservaMia = esReservaMia(slot);
+
+    let acciones = "";
+
+    if (reservaMia) {
+      acciones = `
+      <button class="mobile-btn-soft" type="button" data-release-reserve-slot="${slot.id}">
+        Liberar reserva
+      </button>
+    `;
+    } else if (slotBloqueadoPorOtro) {
+      acciones = `<span class="helper-text">No disponible</span>`;
+    } else if (torneoAbierto) {
+      acciones = "";
+
+      if (!APP.esAdmin && !state.playerAlreadyRegistered) {
+        acciones += `
+        <button class="mobile-btn-main" type="button" data-self-slot="${slot.id}">
+          Anotarme
+        </button>
+      `;
+      }
+
+      acciones += `
+        <button class="mobile-btn-soft" type="button" data-open-inline="${slot.id}">
+          Agregar jugador
+        </button>
+      `;
+
+      if (puedeReservar) {
+        acciones += `
+        <button class="mobile-btn-soft" type="button" data-reserve-slot="${slot.id}">
+          Reservar 24 hs
+        </button>
+      `;
+      }
+
+      if (APP.esAdmin) {
+        acciones += `
+        <button class="mobile-btn-soft" type="button" data-block-slot="${slot.id}">
+          Bloquear
+        </button>
+      `;
+      }
+
+      if (APP.esAdmin && mobileMoveSlotOrigen && String(mobileMoveSlotOrigen) !== String(slot.id)) {
+        acciones += `
+        <button class="mobile-btn-main" type="button" data-mobile-move-to="${slot.id}">
+          Pegar acá
+        </button>
+      `;
+      }
+    }
+
+    return `
+    <div
+      class="mobile-slot mobile-slot-empty ${cssLockClass}"
+      data-slot-id="${slot.id}"
+      data-slot-number="${slot.slot_number}"
+      data-libre="1"
+    >
+      <div class="mobile-slot-top">
+        <div class="mobile-slot-num">Lugar ${safeText(slot.slot_number)}</div>
+      </div>
+
+      <div class="mobile-slot-name mobile-slot-empty">Libre</div>
+
+      <div class="mobile-actions">
+        ${acciones}
+      </div>
+    </div>
+  `;
+  }
+
+  function renderMobileOccupiedSlot(line, slot, cssLockClass = "") {
+    const participantType = String(slot?.participant_type || "");
+    const typeClass = getSlotCssType(slot);
+    const textoCompleto = participantType === "blocked" ? "Bloqueado" : normalizeSlotName(slot);
+    const texto = participantType === "blocked" ? "Bloqueado" : formatNombreCorto(textoCompleto);
+
+    return `
+    <div
+      class="mobile-slot ${typeClass} ${cssLockClass}"
+      data-slot-id="${slot.id}"
+      data-hora="${safeText(timeText(line.line_time))}"
+      data-hoyo="${safeText(line.label || line.starting_hole)}"
+      data-slot-number="${slot.slot_number}"
+      data-texto="${safeText(texto)}"
+      data-libre="0"
+      draggable="${APP.esAdmin ? "true" : "false"}"
+    >
+            <div class="mobile-slot-name" title="${safeText(textoCompleto)}">
+        ${safeText(texto)}
+      </div>
+
+      ${APP.esAdmin && participantType !== "blocked" ? `
+        <div class="mobile-actions">
+          <button class="mobile-btn-soft" type="button" data-mobile-move-from="${slot.id}">
+            Mover
+          </button>
+        </div>
+      ` : ""}
+    </div>
+  `;
+  }
+
   function renderView() {
     dom.torneoNombre.textContent = state.torneo?.name || "Sin nombre";
-    setStatus(statusLabelFromTournament(state.torneo?.status), state.torneo?.status === "open" ? "ok" : "error");
+    setStatus(
+      statusLabelFromTournament(state.torneo?.status),
+      state.torneo?.status === "open" ? "ok" : "error"
+    );
 
     if (!state.blocks.length) {
       dom.contenido.innerHTML = `<div class="card error">No hay bloques de salida cargados para este torneo.</div>`;
@@ -2734,7 +3144,15 @@
       return;
     }
 
-    dom.contenido.innerHTML = state.blocks.map(renderBlock).join("");
+    dom.contenido.innerHTML = `
+    <div class="desktop-grid">
+      ${state.blocks.map(renderBlock).join("")}
+    </div>
+
+    <div class="mobile-grid">
+      ${state.blocks.map(renderMobileBlock).join("")}
+    </div>
+  `;
   }
 
   // ==============================
@@ -3174,6 +3592,40 @@
         return;
       }
 
+      const btnMoveFrom = e.target.closest("[data-mobile-move-from]");
+      if (btnMoveFrom) {
+        if (!APP.esAdmin) return;
+
+        mobileMoveSlotOrigen = btnMoveFrom.dataset.mobileMoveFrom;
+        showTransientMessage("Jugador seleccionado. Tocá un lugar libre para moverlo.", "ok");
+        renderView();
+        return;
+      }
+
+      const btnMoveTo = e.target.closest("[data-mobile-move-to]");
+      if (btnMoveTo) {
+        if (!APP.esAdmin) return;
+
+        const destinoId = btnMoveTo.dataset.mobileMoveTo;
+
+        if (!mobileMoveSlotOrigen) {
+          showTransientMessage("Primero seleccioná un jugador para mover.", "error");
+          return;
+        }
+
+        try {
+          await moveSlotAdmin(mobileMoveSlotOrigen, destinoId);
+          mobileMoveSlotOrigen = null;
+          await loadGrid();
+          showTransientMessage("Jugador movido correctamente.", "ok");
+        } catch (error) {
+          console.error(error);
+          showTransientMessage(error.message || "No se pudo mover el jugador.", "error");
+        }
+
+        return;
+      }
+
       const releaseBtn = e.target.closest("[data-release-reserve-slot]");
       if (releaseBtn) {
         e.preventDefault();
@@ -3438,7 +3890,7 @@
         return;
       }
 
-      const occupiedSlot = e.target.closest("td[data-slot-id][data-libre='0']");
+      const occupiedSlot = e.target.closest("[data-slot-id][data-libre='0']");
       if (occupiedSlot) {
         if (!canEditGrid()) return;
 
