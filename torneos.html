@@ -1408,10 +1408,43 @@
                     .filter(j => jugadorEnRangoScratch(j, genero))
                     .slice()
                     .sort((a, b) => {
+
+                        const ea = String(a.card_status || "").toLowerCase();
+                        const eb = String(b.card_status || "").toLowerCase();
+
+                        if (ea !== "valid" || eb !== "valid") {
+                            return compararJugadores(a, b);
+                        }
+
                         const ag = valorGross(a);
                         const bg = valorGross(b);
+
                         if (ag !== bg) return ag - bg;
-                        return String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+
+                        // usar exactamente el mismo desempate
+                        // que usan las categorías normales
+
+                        const criterios = [
+                            [10, 18],
+                            [13, 18],
+                            [16, 18],
+                            [17, 18],
+                            [18, 18]
+                        ];
+
+                        const hoyosA = hoyosPorScorecard[a.id] || {};
+                        const hoyosB = hoyosPorScorecard[b.id] || {};
+
+                        for (const [desde, hasta] of criterios) {
+
+                            const sa = sumaHoyosArray(hoyosA, desde, hasta);
+                            const sb = sumaHoyosArray(hoyosB, desde, hasta);
+
+                            if (sa !== sb) return sa - sb;
+                        }
+
+                        return String(a.display_name || "")
+                            .localeCompare(String(b.display_name || ""), "es");
                     })
                     .slice(0, 3);
 
