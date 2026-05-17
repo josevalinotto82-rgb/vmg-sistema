@@ -719,6 +719,23 @@
             return total;
         }
 
+        function hcpJuego(j) {
+            const hcp = parseNumero(j.playing_handicap);
+            return hcp === null ? 0 : hcp;
+        }
+
+        function valorDesempateNeto(j, desde, hasta, divisorHcp) {
+            const hoyos = hoyosPorScorecard[j.id] || {};
+            const suma = sumaHoyosArray(hoyos, desde, hasta);
+            return suma - (hcpJuego(j) / divisorHcp);
+        }
+
+        function fmtDesempate(valor) {
+            const n = Number(valor);
+            if (Number.isNaN(n)) return "-";
+            return Number.isInteger(n) ? String(n) : n.toFixed(2);
+        }
+
         function tieneHoyosCompletos(hoyos, desde, hasta) {
             for (let i = desde; i <= hasta; i++) {
                 const valor = parseNumero(hoyos[i]);
@@ -743,42 +760,51 @@
             if (ea !== eb) return ea - eb;
 
             if (ea !== 0) {
-                return String(a.display_name || "").localeCompare(String(b.display_name || ""));
+                return String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
             }
 
             const aPrincipal = valorPrincipal(a);
             const bPrincipal = valorPrincipal(b);
             if (aPrincipal !== bPrincipal) return aPrincipal - bPrincipal;
 
+            // Desempate NETO para categorías:
+            // últimos 9 - 1/2 HCP
+            // últimos 6 - 1/3 HCP
+            // últimos 3 - 1/6 HCP
+            // último hoyo - 1/9 HCP
             const criterios = [
-                [10, 18],
-                [13, 18],
-                [16, 18],
-                [17, 18],
-                [18, 18]
+                { desde: 10, hasta: 18, divisor: 2 },
+                { desde: 13, hasta: 18, divisor: 3 },
+                { desde: 16, hasta: 18, divisor: 6 },
+                { desde: 18, hasta: 18, divisor: 9 }
             ];
 
-            const hoyosA = hoyosPorScorecard[a.id] || {};
-            const hoyosB = hoyosPorScorecard[b.id] || {};
+            for (const c of criterios) {
+                const va = valorDesempateNeto(a, c.desde, c.hasta, c.divisor);
+                const vb = valorDesempateNeto(b, c.desde, c.hasta, c.divisor);
 
-            for (const [desde, hasta] of criterios) {
-                const sa = sumaHoyosArray(hoyosA, desde, hasta);
-                const sb = sumaHoyosArray(hoyosB, desde, hasta);
-                if (sa !== sb) return sa - sb;
+                if (Math.abs(va - vb) > 0.00001) return va - vb;
             }
 
-            return String(a.display_name || "").localeCompare(String(b.display_name || ""));
+            return String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
         }
 
-        function obtenerDetalleDesempate(jugador, rivalesEmpatados) {
+        function obtenerDetalleDesempate(jugador, rivalesEmpatados, esScratch = false) {
             if (!rivalesEmpatados || rivalesEmpatados.length === 0) return "";
 
-            const criterios = [
+            const criteriosScratch = [
                 { desde: 10, hasta: 18, nombre: "Segunda vuelta" },
                 { desde: 13, hasta: 18, nombre: "Últimos 6 hoyos" },
                 { desde: 16, hasta: 18, nombre: "Últimos 3 hoyos" },
                 { desde: 17, hasta: 18, nombre: "Últimos 2 hoyos" },
                 { desde: 18, hasta: 18, nombre: "Último hoyo" }
+            ];
+
+            const criteriosNeto = [
+                { desde: 10, hasta: 18, nombre: "Últimos 9 hoyos", divisor: 2, textoHcp: "1/2 HCP" },
+                { desde: 13, hasta: 18, nombre: "Últimos 6 hoyos", divisor: 3, textoHcp: "1/3 HCP" },
+                { desde: 16, hasta: 18, nombre: "Últimos 3 hoyos", divisor: 6, textoHcp: "1/6 HCP" },
+                { desde: 18, hasta: 18, nombre: "Último hoyo", divisor: 9, textoHcp: "1/9 HCP" }
             ];
 
             const misHoyos = hoyosPorScorecard[jugador.id] || {};
@@ -787,31 +813,54 @@
                 const hoyosRival = hoyosPorScorecard[rival.id] || {};
                 const lineas = [];
 
+                const criterios = esScratch ? criteriosScratch : criteriosNeto;
+
                 for (const c of criterios) {
-                    const miSuma = sumaHoyosArray(misHoyos, c.desde, c.hasta);
-                    const suSuma = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
+                    let miValor;
+                    let suValor;
+                    let textoJugador;
+                    let textoRival;
+
+                    if (esScratch) {
+                        miValor = sumaHoyosArray(misHoyos, c.desde, c.hasta);
+                        suValor = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
+
+                        textoJugador = `${miValor}`;
+                        textoRival = `${suValor}`;
+                    } else {
+                        const miSuma = sumaHoyosArray(misHoyos, c.desde, c.hasta);
+                        const suSuma = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
+
+                        miValor = miSuma - (hcpJuego(jugador) / c.divisor);
+                        suValor = suSuma - (hcpJuego(rival) / c.divisor);
+
+                        textoJugador = `${miSuma} - ${c.textoHcp} = ${fmtDesempate(miValor)}`;
+                        textoRival = `${suSuma} - ${c.textoHcp} = ${fmtDesempate(suValor)}`;
+                    }
+
+                    const decisivo = Math.abs(miValor - suValor) > 0.00001;
 
                     lineas.push({
                         nombre: c.nombre,
-                        jugador: miSuma,
-                        rival: suSuma,
-                        decisivo: miSuma !== suSuma
+                        jugador: textoJugador,
+                        rival: textoRival,
+                        decisivo
                     });
 
-                    if (miSuma !== suSuma) {
+                    if (decisivo) {
                         return `
-              <div class="desempate-box">
-                <h4>Desempate automático</h4>
-                <div class="desempate-linea"><strong>Empatado con:</strong> ${rival.display_name}</div>
-                ${lineas.map(l => `
-                  <div class="desempate-linea">
-                    ${l.decisivo ? "<strong>" : ""}
-                    ${l.nombre}: ${l.jugador}${l.decisivo ? " ← criterio decisivo" : ""}
-                    ${l.decisivo ? "</strong>" : ""}
-                  </div>
-                `).join("")}
-              </div>
-            `;
+                    <div class="desempate-box">
+                        <h4>Desempate automático</h4>
+                        <div class="desempate-linea"><strong>Empatado con:</strong> ${rival.display_name}</div>
+                        ${lineas.map(l => `
+                            <div class="desempate-linea">
+                                ${l.decisivo ? "<strong>" : ""}
+                                ${l.nombre}: ${l.jugador} / Rival: ${l.rival}${l.decisivo ? " ← criterio decisivo" : ""}
+                                ${l.decisivo ? "</strong>" : ""}
+                            </div>
+                        `).join("")}
+                    </div>
+                `;
                     }
                 }
             }
@@ -997,7 +1046,7 @@
             ${datosTop}
           </div>
 
-          ${obtenerDetalleDesempate(j, empatados)}
+          ${obtenerDetalleDesempate(j, empatados, esScratch)}
           ${detalleDesktop(j)}
           ${detalleMobile(j)}
         </div>
