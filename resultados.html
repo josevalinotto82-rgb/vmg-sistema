@@ -531,7 +531,7 @@
         // TORNEOS MODERNOS
         // =========================
 
-        const { data: torneosData, error: errorTorneos } = await db
+        const { data: torneosData, error: errorTorneos } = await supabase
           .from("tournaments")
           .select(`
               id,
