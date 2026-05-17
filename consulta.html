@@ -1088,7 +1088,83 @@
 
         function medalClass(i) { return i === 0 ? "gold" : i === 1 ? "silver" : "bronze"; }
         function activeHoles(segment) { const s = String(segment || "18").toLowerCase(); if (s.includes("front")) return [1, 2, 3, 4, 5, 6, 7, 8, 9]; if (s.includes("back")) return [10, 11, 12, 13, 14, 15, 16, 17, 18]; return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]; }
-        function compareScore(a, b, field) { const av = n(a[field]); const bv = n(b[field]); if (av == null && bv == null) return String(a.display_name).localeCompare(String(b.display_name)); if (av == null) return 1; if (bv == null) return -1; return av - bv || (n(a.gross) ?? 999) - (n(b.gross) ?? 999) || String(a.display_name).localeCompare(String(b.display_name)); }
+        function sumaHoyosScorecard(sc, desde, hasta) {
+            const rows = holeRowsForScorecard(sc);
+            let total = 0;
+
+            for (let h = desde; h <= hasta; h++) {
+                const golpes = n(rows.get(h)?.strokes);
+                if (golpes == null) return 999999;
+                total += golpes;
+            }
+
+            return total;
+        }
+
+        function hcpJuego(sc) {
+            return n(sc.playing_handicap) ?? 0;
+        }
+
+        function valorDesempateNeto(sc, desde, hasta, divisorHcp) {
+            return sumaHoyosScorecard(sc, desde, hasta) - (hcpJuego(sc) / divisorHcp);
+        }
+
+        function compareScore(a, b, field) {
+            const av = n(a[field]);
+            const bv = n(b[field]);
+
+            if (av == null && bv == null) {
+                return String(a.display_name).localeCompare(String(b.display_name), "es");
+            }
+
+            if (av == null) return 1;
+            if (bv == null) return -1;
+
+            if (av !== bv) return av - bv;
+
+            // DESEMPATE SCRATCH (sin HCP)
+            if (field === "gross") {
+
+                const criteriosScratch = [
+                    { desde: 10, hasta: 18 }, // últimos 9
+                    { desde: 13, hasta: 18 }, // últimos 6
+                    { desde: 16, hasta: 18 }, // últimos 3
+                    { desde: 18, hasta: 18 }  // último hoyo
+                ];
+
+                for (const c of criteriosScratch) {
+
+                    const va = sumaHoyosScorecard(a, c.desde, c.hasta);
+                    const vb = sumaHoyosScorecard(b, c.desde, c.hasta);
+
+                    if (va !== vb) return va - vb;
+                }
+            }
+
+            // DESEMPATE NETO (con proporción de HCP)
+            if (field === "net") {
+
+                const criteriosNeto = [
+                    { desde: 10, hasta: 18, divisor: 2 }, // últimos 9 - 1/2 HCP
+                    { desde: 13, hasta: 18, divisor: 3 }, // últimos 6 - 1/3 HCP
+                    { desde: 16, hasta: 18, divisor: 6 }, // últimos 3 - 1/6 HCP
+                    { desde: 18, hasta: 18, divisor: 9 }  // último hoyo - 1/9 HCP
+                ];
+
+                for (const c of criteriosNeto) {
+
+                    const va = valorDesempateNeto(a, c.desde, c.hasta, c.divisor);
+                    const vb = valorDesempateNeto(b, c.desde, c.hasta, c.divisor);
+
+                    if (Math.abs(va - vb) > 0.00001) {
+                        return va - vb;
+                    }
+                }
+            }
+
+            return String(a.display_name)
+                .localeCompare(String(b.display_name), "es");
+        }
 
         async function init() {
             try {
