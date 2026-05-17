@@ -531,20 +531,20 @@
         // TORNEOS MODERNOS
         // =========================
 
-        const { data: torneosData, error: errorTorneos } = await supabase
+        const { data: torneosData, error: errorTorneos } = await db
           .from("tournaments")
           .select(`
-        id,
-        name,
-        tournament_date,
-        game_mode_id,
-        status,
-        game_modes (
-          id,
-          name
-        )
-      `)
-          .neq("status", "closed")
+              id,
+              name,
+              tournament_date,
+              game_mode_id,
+              status,
+              game_modes (
+                  id,
+                  name
+              )
+          `)
+          .in("status", ["officialized", "archived"])
           .order("tournament_date", { ascending: false });
 
         if (errorTorneos) throw errorTorneos;
