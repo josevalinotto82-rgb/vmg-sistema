@@ -395,20 +395,60 @@
       }
     }
 
+    .ticket-80 {
+      width: 72mm;
+      margin: 0 auto;
+      padding: 4mm;
+      font-family: Arial, sans-serif;
+      color: #000;
+      box-sizing: border-box;
+      page-break-after: always;
+    }
+
     @media print {
+
+      html,
+      body {
+        width: 80mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+      }
+
       body * {
-        visibility: hidden;
+        visibility: hidden !important;
+      }
+
+      .page,
+      .home-btn {
+        display: none !important;
+      }
+
+      #print-root {
+        display: block !important;
+        visibility: visible !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 80mm !important;
+        min-height: 20mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        color: black !important;
+        z-index: 999999 !important;
       }
 
       #print-root,
       #print-root * {
-        visibility: visible;
+        visibility: visible !important;
       }
 
-      #print-root {
-        position: absolute;
-        inset: 0;
-        background: white;
+      .ticket-80 {
+        width: 72mm !important;
+        margin: 0 auto !important;
+        padding: 4mm !important;
+        font-size: 12px !important;
       }
     }
 
@@ -436,6 +476,10 @@
       transform: scale(1.05);
     }
   </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
+  <script src="qz-ticket.js"></script>
+
 </head>
 
 <body>
@@ -2633,7 +2677,7 @@
       const line = extraerLinea(reg);
       const importe = obtenerPrecioTorneo();
       return `
-        <div style="width:80mm; padding:4mm; font-family:Arial,sans-serif; color:#000;">
+        <div class="ticket-80">
           <div style="text-align:center; font-size:14px; font-weight:700;">${CLUB_NOMBRE}</div>
           <div style="text-align:center; font-size:12px; margin-top:2px;">Cupón de pago NO FISCAL</div>
           <div style="border-top:1px dashed #000; margin:6px 0;"></div>
@@ -2658,7 +2702,7 @@
       const importe = obtenerPrecioTorneo();
       const nombrePareja = `${reg1.display_name || ""} / ${reg2.display_name || ""}`;
       return `
-        <div style="width:80mm; padding:4mm; font-family:Arial,sans-serif; color:#000;">
+        <div class="ticket-80">
           <div style="text-align:center; font-size:14px; font-weight:700;">${CLUB_NOMBRE}</div>
           <div style="text-align:center; font-size:12px; margin-top:2px;">Cupón de pago NO FISCAL</div>
           <div style="border-top:1px dashed #000; margin:6px 0;"></div>
@@ -2710,7 +2754,7 @@
         const numeroCupon = await obtenerNumeroCupon();
 
         const html = buildCuponHTMLIndividual(reg, numeroCupon);
-        doPrint(html);
+        await window.imprimirTicketQZ(html);
 
       } catch (error) {
         console.error(error);
