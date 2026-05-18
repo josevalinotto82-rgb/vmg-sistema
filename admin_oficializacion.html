@@ -478,6 +478,7 @@
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/auth/qz-auth.js"></script>
   <script src="./qz-ticket.js?v=1"></script>
 
 </head>
@@ -602,6 +603,45 @@
     }
 
     await exigirAdmin();
+
+    qz.security.setCertificatePromise(function(resolve, reject) {
+      fetch("https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/auth/signing/digital-certificate.txt")
+        .then(function(data) {
+          data.ok ? resolve(data.text()) : reject(data.text());
+        });
+    });
+    
+    qz.security.setSignatureAlgorithm("SHA512");
+    
+    qz.security.setSignaturePromise(function(toSign) {
+      return function(resolve, reject) {
+    
+        fetch("https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/auth/signing/sign-message.php?request=" + encodeURIComponent(toSign), {
+          cache: "no-store",
+          headers: {
+            "Content-Type": "text/plain"
+          }
+        })
+          .then(function(data) {
+            data.ok ? resolve(data.text()) : reject(data.text());
+          });
+    
+      };
+    });
+    
+        qz.security.setCertificatePromise(function(resolve, reject) {
+          resolve(`-----BEGIN CERTIFICATE-----
+        ACA VA EL CERTIFICADO
+        -----END CERTIFICATE-----`);
+        });
+        
+        qz.security.setSignaturePromise(function(toSign) {
+          return function(resolve, reject) {
+        
+            // DEMO
+            resolve();
+          };
+        });
 
     console.log("OFICIALIZACION VERSION INDEX AAG VIVO 2026-05-14");
 
