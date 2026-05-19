@@ -19,12 +19,17 @@ async function leerTexto(url, nombre) {
 async function configurarSeguridadQZ() {
   if (qzSecurityReady) return;
 
+  const perfilQZ = localStorage.getItem("vmgc_qz_profile") || "pc1";
+
+  const archivoCertificado = `./qz-certificate-${perfilQZ}.txt`;
+  const archivoClave = `./qz-private-key-${perfilQZ}.pem`;
+
   if (typeof KEYUTIL === "undefined" || typeof KJUR === "undefined") {
     throw new Error("No está cargado jsrsasign. Revisá el script en el HEAD.");
   }
 
   qz.security.setCertificatePromise(function (resolve, reject) {
-    leerTexto("./qz-certificate.txt", "qz-certificate.txt")
+    leerTexto(archivoCertificado, archivoCertificado)
       .then(function (cert) {
         if (!cert.includes("BEGIN CERTIFICATE")) {
           reject("El certificado no es válido");
@@ -40,7 +45,7 @@ async function configurarSeguridadQZ() {
 
   qz.security.setSignaturePromise(function (toSign) {
     return function (resolve, reject) {
-      leerTexto("./qz-private-key.pem", "qz-private-key.pem")
+      leerTexto(archivoClave, archivoClave)
         .then(function (privateKey) {
           if (!privateKey.includes("BEGIN PRIVATE KEY")) {
             reject("La private key no es válida");
