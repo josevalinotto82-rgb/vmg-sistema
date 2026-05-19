@@ -79,25 +79,40 @@ window.imprimirTicketQZ = async function (html) {
 
     const printers = await qz.printers.find();
 
-    let printerName = null;
+    let printerName = localStorage.getItem("vmgc_ticket_printer");
 
-    if (printers.includes("POS-80C")) {
-      printerName = "POS-80C";
-    }
-    else if (printers.includes("EPSON TM-T20II")) {
-      printerName = "EPSON TM-T20II";
-    }
-    else if (printers.includes("Epson TM-T20II")) {
-      printerName = "Epson TM-T20II";
+    if (printerName && !printers.includes(printerName)) {
+      localStorage.removeItem("vmgc_ticket_printer");
+      printerName = null;
     }
 
     if (!printerName) {
-      alert(
-        "No encontré impresora térmica.\n\n" +
-        printers.join("\n")
+      const opciones = printers.filter(p =>
+        String(p).toUpperCase().includes("EPSON") ||
+        String(p).toUpperCase().includes("POS") ||
+        String(p).toUpperCase().includes("RECEIPT")
       );
-      return;
+
+      const listado = opciones
+        .map((p, i) => `${i + 1}) ${p}`)
+        .join("\n");
+
+      const elegida = prompt(
+        "Elegí la impresora térmica para ESTA PC:\n\n" + listado
+      );
+
+      const index = Number(elegida) - 1;
+      printerName = opciones[index];
+
+      if (!printerName) {
+        alert("No elegiste una impresora válida.");
+        return;
+      }
+
+      localStorage.setItem("vmgc_ticket_printer", printerName);
     }
+
+    console.log("IMPRESORA USADA:", printerName);
 
     const config = qz.configs.create(printerName, {
       units: "mm",
