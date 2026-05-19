@@ -266,6 +266,10 @@
       background: #fcfcfc;
     }
 
+    .fila-invitado td {
+      background: #fff7ed !important;
+    }
+
     .player-name {
       font-weight: 700;
       font-size: 13px;
@@ -406,49 +410,24 @@
     }
 
     @media print {
-
-      html,
-      body {
-        width: 80mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: white !important;
-      }
-
       body * {
-        visibility: hidden !important;
-      }
-
-      .page,
-      .home-btn {
-        display: none !important;
-      }
-
-      #print-root {
-        display: block !important;
-        visibility: visible !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 80mm !important;
-        min-height: 20mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: white !important;
-        color: black !important;
-        z-index: 999999 !important;
+        visibility: hidden;
       }
 
       #print-root,
       #print-root * {
-        visibility: visible !important;
+        visibility: visible;
       }
 
-      .ticket-80 {
-        width: 72mm !important;
-        margin: 0 auto !important;
-        padding: 4mm !important;
-        font-size: 12px !important;
+      #print-root {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 150mm;
+        height: 297mm;
+        margin: 0;
+        padding: 0;
+        background: white;
       }
     }
 
@@ -478,8 +457,8 @@
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/auth/qz-auth.js"></script>
-  <script src="./qz-ticket.js?v=1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsrsasign@10.8.6/lib/jsrsasign-all-min.js"></script>
+  <script src="./qz-ticket.js?v=999"></script>
 
 </head>
 
@@ -551,16 +530,6 @@
       </div>
     </div>
 
-    <div class="card status-bar">
-      <div>
-        <b>Cuponera:</b> <span id="sucursalActual">No configurada</span>
-      </div>
-      <div class="actions-top">
-        <button id="btnSucursalS1" class="btn btn-secondary">Laura</button>
-        <button id="btnSucursalS2" class="btn btn-secondary">Gisela</button>
-      </div>
-    </div>
-
     <div class="card table-card">
       <div class="table-scroll" id="tablaWrap"></div>
     </div>
@@ -602,46 +571,48 @@
       return session.user;
     }
 
-    await exigirAdmin();
+    let adminActual = null;
 
-    qz.security.setCertificatePromise(function(resolve, reject) {
+    adminActual = await exigirAdmin();
+
+    qz.security.setCertificatePromise(function (resolve, reject) {
       fetch("https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/auth/signing/digital-certificate.txt")
-        .then(function(data) {
+        .then(function (data) {
           data.ok ? resolve(data.text()) : reject(data.text());
         });
     });
-    
+
     qz.security.setSignatureAlgorithm("SHA512");
-    
-    qz.security.setSignaturePromise(function(toSign) {
-      return function(resolve, reject) {
-    
+
+    qz.security.setSignaturePromise(function (toSign) {
+      return function (resolve, reject) {
+
         fetch("https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/auth/signing/sign-message.php?request=" + encodeURIComponent(toSign), {
           cache: "no-store",
           headers: {
             "Content-Type": "text/plain"
           }
         })
-          .then(function(data) {
+          .then(function (data) {
             data.ok ? resolve(data.text()) : reject(data.text());
           });
-    
+
       };
     });
-    
-        qz.security.setCertificatePromise(function(resolve, reject) {
-          resolve(`-----BEGIN CERTIFICATE-----
+
+    qz.security.setCertificatePromise(function (resolve, reject) {
+      resolve(`-----BEGIN CERTIFICATE-----
         ACA VA EL CERTIFICADO
         -----END CERTIFICATE-----`);
-        });
-        
-        qz.security.setSignaturePromise(function(toSign) {
-          return function(resolve, reject) {
-        
-            // DEMO
-            resolve();
-          };
-        });
+    });
+
+    qz.security.setSignaturePromise(function (toSign) {
+      return function (resolve, reject) {
+
+        // DEMO
+        resolve();
+      };
+    });
 
     console.log("OFICIALIZACION VERSION INDEX AAG VIVO 2026-05-14");
 
@@ -669,9 +640,8 @@
 
     const btnOficializarTorneo = document.getElementById("btnOficializarTorneo");
     const btnGuardarTodos = document.getElementById("btnGuardarTodos");
-    const sucursalActual = document.getElementById("sucursalActual");
-    const btnSucursalS1 = document.getElementById("btnSucursalS1");
-    const btnSucursalS2 = document.getElementById("btnSucursalS2");
+
+    configurarSucursalPorAdmin(adminActual);
 
     let torneoActual = null;
     let registrations = [];
@@ -690,8 +660,6 @@
     torneoSelect.addEventListener("change", cargarTodo);
     btnOficializarTorneo.addEventListener("click", oficializarTorneo);
     btnGuardarTodos.addEventListener("click", guardarTodosLosInscriptos);
-    btnSucursalS1?.addEventListener("click", () => setSucursal("S1"));
-    btnSucursalS2?.addEventListener("click", () => setSucursal("S2"));
     torneoPrecio?.addEventListener("blur", () => {
       torneoPrecio.value = formatearPesosInput(torneoPrecio.value);
     });
@@ -748,9 +716,24 @@
     }
 
     function mostrarSucursal() {
-      const s = localStorage.getItem("ticket_branch_code") || "NO CONFIGURADA";
-      if (sucursalActual) sucursalActual.textContent = s;
+      const s = localStorage.getItem("ticket_branch_code") || "S1";
       console.log("Sucursal actual:", s);
+    }
+
+    function configurarSucursalPorAdmin(user) {
+      const email = String(user?.email || "").toLowerCase();
+
+      const sucursalPorAdmin = {
+        "lau_m2000@hotmail.com": "S1", // Laura
+        "giselaantonino@gmail.com": "S2"  // Gisela
+      };
+
+      const sucursal = sucursalPorAdmin[email] || "S1";
+
+      localStorage.setItem("ticket_branch_code", sucursal);
+      mostrarSucursal();
+
+      console.log("Sucursal asignada por admin:", email, sucursal);
     }
 
     function money(v) {
@@ -1129,6 +1112,24 @@
       });
     }
 
+    function esSocioVMGC(reg) {
+      const clubName = String(
+        reg.club_name ||
+        reg.player?.club_name ||
+        obtenerJugadorAAGVivo(reg)?.club_name ||
+        ""
+      ).toLowerCase();
+
+      const optionClubId = String(
+        reg.option_club_id ||
+        reg.player?.option_club_id ||
+        obtenerJugadorAAGVivo(reg)?.option_club_id ||
+        ""
+      ).trim();
+
+      return optionClubId === "408" || clubName.includes("villa maría golf") || clubName.includes("villa maria golf");
+    }
+
     function actualizarResumen() {
       const total = registrations.length;
       let damas = 0;
@@ -1138,10 +1139,11 @@
 
       for (const reg of registrations) {
         const genero = normalizarGenero(reg.player?.gender || "");
-        const club = String(reg.club_name || "").trim().toLowerCase();
+
         if (genero === "female") damas++;
         if (genero === "male") caballeros++;
-        if (club.includes("villa maria")) socios++;
+
+        if (esSocioVMGC(reg)) socios++;
         else invitados++;
       }
 
@@ -1150,6 +1152,10 @@
       statCaballeros.textContent = caballeros;
       statSocios.textContent = socios;
       statInvitados.textContent = invitados;
+    }
+
+    function esInvitado(reg) {
+      return !esSocioVMGC(reg);
     }
 
     async function cargarTodo() {
@@ -1343,7 +1349,10 @@
           : `<span class="tag pending">Pendiente</span>`;
 
       return `
-        <tr class="${filaIncompleta ? "fila-revisar" : ""}">
+        <tr class="
+          ${filaIncompleta ? "fila-revisar" : ""}
+          ${esInvitado(reg) ? "fila-invitado" : ""}
+        ">
           <td class="col-center">${reg.aag_member_number || reg.player?.aag_member_number || "—"}</td>
           <td class="col-left">
             <div class="player-name">${reg.display_name || "Sin nombre"}</div>
@@ -1526,7 +1535,11 @@
       }
 
       return `
-        <tr class="fila-pareja ${filaIncompleta ? "fila-revisar" : ""}">
+        <tr class="
+          fila-pareja
+          ${filaIncompleta ? "fila-revisar" : ""}
+          ${(esInvitado(reg1) || esInvitado(reg2)) ? "fila-invitado" : ""}
+        ">
           <td class="col-center">
             <div class="stack-compact">
               <div>${reg1.aag_member_number || reg1.player?.aag_member_number || "—"}</div>
@@ -2267,129 +2280,15 @@
 
       const datosJuego = `${hora ? hora + "hs." : ""} / Tee: ${tee || "—"} / Hoyo ${hoyo || "—"}`;
 
-      return `
-        <style>
-          @page {
-              size: 150mm 297mm;
-              margin: 0;
-          }
-
-          #print-root {
-              margin: 0;
-              padding: 0;
-          }
-
-          body {
-              margin: 0;
-              background: white;
-              font-family: Arial, sans-serif;
-          }
-
-          .page {
-              position: relative;
-              width: 150mm;
-              height: 297mm;
-              overflow: hidden;
-          }
-
-          .overlay {
-              position: absolute;
-              width: 297mm;
-              height: 150mm;
-              white-space: nowrap;
-              transform-origin: top left;
-              transform: rotate(90deg);
-              left: 150mm;
-              top: 0;
-          }
-
-          .field {
-              position: absolute;
-              font-weight: bold;
-              color: black;
-              font-size: 14px;
-          }
-
-          .torneo {
-              top: 12mm;
-              left: 37mm;
-              width: 68mm;
-              max-width: 68mm;
-              text-align: left;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-          }
-
-          .fecha {
-              top: 12mm;
-              left: 120mm;
-              width: 30mm;
-              font-size: 20px;
-              text-align: center;
-              transform: translateX(-50%);
-          }
-
-          .jugadorA {
-              top: 27mm;
-              left: 37mm;
-              width: 45mm;
-              text-align: left;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-          }
-
-          .jugadorB {
-              top: 27mm;
-              left: 86mm;
-              width: 45mm;
-              text-align: right;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-          }
-
-          .handicap {
-              top: 27mm;
-              left: 149mm;
-              width: 30mm;
-              text-align: center;
-              transform: translateX(-50%);
-          }
-
-          .matricula {
-              top: 27mm;
-              left: 183mm;
-              width: 30mm;
-              text-align: center;
-              transform: translateX(-50%);
-          }
-
-          .datosdejuego {
-              top: 40mm;
-              left: 115mm;
-              width: 65mm;
-              text-align: center;
-              font-size: 12px;
-          }
-        </style>
-
-        <div class="page">
-          <div class="overlay">
-            <div class="field torneo" style="font-size:${fontSizeTorneo(torneo)}px;">${torneo}</div>
-            <div class="field fecha">${fecha}</div>
-
-            <div class="field jugadorA">${jugadorA}</div>
-            <div class="field jugadorB">${jugadorB}</div>
-
-            <div class="field handicap">${hcp}</div>
-            <div class="field matricula">${matricula}</div>
-
-            <div class="field datosdejuego">${datosJuego}</div>
-          </div>
-        </div>
-      `;
+      return buildTarjetaPreimpresaHTML({
+        torneo,
+        fecha,
+        jugadorA,
+        jugadorB,
+        handicap: hcp,
+        matricula,
+        datosJuego
+      });
     }
 
     function fontSizeTorneo(texto) {
@@ -2401,6 +2300,14 @@
       if (largo > 27) return 14;
       if (largo > 24) return 16;
       return 18;
+    }
+
+    function fontSizeJugador(nombre) {
+      const largo = String(nombre || "").length;
+
+      if (largo > 34) return 10;
+      if (largo > 28) return 11;
+      return 12;
     }
 
     function obtenerCategoriaSeleccionadaSingle(reg) {
@@ -2477,14 +2384,14 @@
               font-family: Arial, sans-serif;
           }
 
-          .page {
+          .print-page {
               position: relative;
               width: 150mm;
               height: 297mm;
               overflow: hidden;
           }
 
-          .overlay {
+          .print-overlay {
               position: absolute;
               width: 297mm;
               height: 150mm;
@@ -2503,7 +2410,7 @@
           }
 
           .torneo {
-              top: 12mm;
+              top: 10mm;
               left: 37mm;
               width: 68mm;
               max-width: 68mm;
@@ -2514,7 +2421,7 @@
           }
 
           .fecha {
-              top: 12mm;
+              top: 10mm;
               left: 120mm;
               width: 30mm;
               font-size: 20px;
@@ -2523,27 +2430,34 @@
           }
 
           .jugadorA {
-              top: 27mm;
-              left: 37mm;
-              width: 45mm;
-              text-align: left;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
+            top: 26mm;
+            left: 37mm;
+            width: 45mm;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
 
           .jugadorB {
-              top: 27mm;
-              left: 86mm;
-              width: 45mm;
-              text-align: right;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
+            top: 26mm;
+            left: 86mm;
+            width: 45mm;
+            text-align: right;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .jugador-individual {
+            width: 95mm !important;
+            max-width: 95mm !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
           }
 
           .handicap {
-              top: 27mm;
+              top: 26mm;
               left: 149mm;
               width: 30mm;
               text-align: center;
@@ -2551,7 +2465,7 @@
           }
 
           .matricula {
-              top: 27mm;
+              top: 26mm;
               left: 183mm;
               width: 30mm;
               text-align: center;
@@ -2559,7 +2473,7 @@
           }
 
           .datosdejuego {
-              top: 40mm;
+              top: 39mm;
               left: 115mm;
               width: 65mm;
               text-align: center;
@@ -2567,13 +2481,20 @@
           }
         </style>
 
-        <div class="page">
-          <div class="overlay">
+        <div class="print-page">
+          <div class="print-overlay">
             <div class="field torneo" title="${torneo}" style="font-size:${fontSizeTorneo(torneo)}px;">${torneo}</div>
             <div class="field fecha">${fecha}</div>
 
-            <div class="field jugadorA">${jugadorA}</div>
-            <div class="field jugadorB">${jugadorB}</div>
+            ${jugadorB
+          ? `
+            <div class="field jugadorA" style="font-size:${fontSizeJugador(jugadorA)}px;">${jugadorA}</div>
+            <div class="field jugadorB" style="font-size:${fontSizeJugador(jugadorB)}px;">${jugadorB}</div>
+          `
+                  : `
+            <div class="field jugadorA jugador-individual" style="font-size:${fontSizeJugador(jugadorA)}px;">${jugadorA}</div>
+          `
+        }
 
             <div class="field handicap">${handicap}</div>
             <div class="field matricula">${matricula}</div>
@@ -2764,25 +2685,32 @@
     }
 
     function doPrint(html) {
+
       printRoot.innerHTML = html;
 
       setTimeout(() => {
+
         window.print();
 
         setTimeout(() => {
           printRoot.innerHTML = "";
         }, 700);
+
       }, 150);
     }
 
     function imprimirTarjeta(regId) {
       const reg = getRegistrationById(regId);
+
       if (!reg) {
         alert("No encontré el jugador para imprimir.");
         return;
       }
 
       const html = buildTarjetaHTML(reg);
+
+      console.log("HTML TARJETA:", html);
+
       doPrint(html);
     }
 

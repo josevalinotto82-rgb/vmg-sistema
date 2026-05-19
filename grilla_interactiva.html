@@ -16,14 +16,16 @@
       --green: #166534;
       --green-soft: #ecfdf5;
       --green-dot: #a0d3b3;
-      --blue-soft: #eff6ff;
-      --blue-dot: #96b2df;
+      --orange-soft: #fff0da;
+      --orange-dot: #ffb340;
       --amber-soft: #fff4e5;
       --amber-dot: #f5d9a8;
       --red: #b91c1c;
       --gray-soft: #f9fafb;
       --lock-other: #e5e7eb;
       --lock-mine: #ecfdf5;
+      --violet-soft: #f3e8ff;
+      --violet-dot: #c4a7e7;
       --shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
       --radius: 14px;
       --slot-height: 44px;
@@ -260,13 +262,28 @@
     }
 
     .slot-guest .slot-box {
-      background: var(--blue-soft);
-      border-color: var(--blue-dot);
+      background: var(--orange-soft);
+      border-color: var(--orange-dot);
     }
 
     .slot-admin .slot-box {
       background: var(--amber-soft);
       border-color: #fccb87;
+    }
+
+    .slot-vmg .slot-box {
+      background: var(--green-soft);
+      border-color: var(--green-dot);
+    }
+
+    .slot-otro-club .slot-box {
+      background: var(--violet-soft);
+      border-color: var(--violet-dot);
+    }
+
+    .slot-manual .slot-box {
+      background: var(--orange-soft);
+      border-color: var(--orange-dot);
     }
 
     .slot-locked-other .slot-box,
@@ -295,7 +312,7 @@
     }
 
     .slot-indicator-guest {
-      background: var(--blue-dot);
+      background: var(--orange-dot);
     }
 
     .slot-indicator-admin {
@@ -463,7 +480,7 @@
     }
 
     .dot-guest {
-      background: var(--blue-dot);
+      background: var(--orange-dot);
     }
 
     .dot-admin {
@@ -494,6 +511,21 @@
 
       .bloque-card {
         padding: 12px 10px 10px;
+      }
+
+      .mobile-slot.slot-vmg {
+        background: #ecfdf5;
+        border-color: #a0d3b3;
+      }
+
+      .mobile-slot.slot-otro-club {
+        background: #f3e8ff;
+        border-color: #c4a7e7;
+      }
+
+      .mobile-slot.slot-manual {
+        background: #ffefef;
+        border-color: #96b2df;
       }
     }
 
@@ -1597,12 +1629,28 @@
   }
 
   function getSlotCssType(slot) {
-    const type = String(slot?.participant_type || "");
-    if (type === "self") return "slot-self";
-    if (type === "guest") return "slot-guest";
-    if (type === "admin") return "slot-admin";
+    const type = String(slot?.participant_type || "").toLowerCase();
+
     if (type === "blocked") return "slot-blocked";
-    return "";
+
+    // Jugador cargado manualmente: no tiene matrícula AAG
+    if (!slot?.aag_member_number) {
+      return "slot-manual";
+    }
+
+    const club = normalizarBusqueda(slot?.club_name || "");
+
+    // Socio Villa María Golf Club
+    if (
+      club.includes("VILLA MARIA GOLF") ||
+      club.includes("VILLA MARIA GOLF CLUB") ||
+      club === "408"
+    ) {
+      return "slot-vmg";
+    }
+
+    // Tiene matrícula pero es de otro club
+    return "slot-otro-club";
   }
 
   function lockActive(slot) {
@@ -2273,14 +2321,37 @@
 
   async function validatePlayerNotDuplicated(playerId) {
     if (!playerId) return true;
-    const { data, error } = await supabase
+
+    const { data: regData, error: regError } = await supabase
       .from("registrations")
       .select("id, display_name")
       .eq("tournament_id", state.torneo.id)
       .eq("linked_player_id", playerId)
       .limit(1);
-    if (error) throw error;
-    if (data?.length) throw new Error(`${data[0].display_name || "Ese jugador"} ya está anotado en este torneo.`);
+
+    if (regError) throw regError;
+
+    if (regData?.length) {
+      throw new Error(`${regData[0].display_name || "Ese jugador"} ya está anotado en este torneo.`);
+    }
+
+    const lineIds = state.lines.map(l => l.id);
+
+    if (lineIds.length) {
+      const { data: slotData, error: slotError } = await supabase
+        .from("line_slots")
+        .select("id, display_name")
+        .in("starting_line_id", lineIds)
+        .eq("linked_player_id", playerId)
+        .limit(1);
+
+      if (slotError) throw slotError;
+
+      if (slotData?.length) {
+        throw new Error(`${slotData[0].display_name || "Ese jugador"} ya está anotado en la grilla.`);
+      }
+    }
+
     return true;
   }
 
@@ -2571,8 +2642,8 @@
     const results = document.getElementById(`results-${slotId}`);
     if (input) {
       input.value = "";
-      input.focus();
       input.dataset.modoPareja = requiresPartner() ? "1" : "0";
+      input.dataset.jugadorBaseId = "";
     }
     if (results && requiresPartner()) {
       results.innerHTML = `<div class="helper-text">Buscá el primer jugador de la pareja. Después te pedirá el compañero.</div>`;
@@ -3200,8 +3271,17 @@
   }
 
   async function createRegistration(payload) {
-    const { data, error } = await supabase.from("registrations").insert(payload).select().single();
-    if (error) throw error;
+    const { data, error } = await supabase
+      .from("registrations")
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("ERROR INSERT registrations", { error, payload });
+      throw error;
+    }
+
     return data;
   }
 
@@ -3259,8 +3339,6 @@
 
     const lineId = slotActual.starting_line_id;
     const slotPayload = buildSlotPayloadFromPlayer(jugador, participantTypeForGrid(jugador));
-    const { error: updateError } = await supabase.from("line_slots").update(slotPayload).eq("id", slotId);
-    if (updateError) throw updateError;
 
     await deleteRegistrationsBySlotIds([slotId]);
 
@@ -3286,12 +3364,17 @@
       needs_admin_review: !jugador.aag_member_number,
     });
 
+    const { error: updateError } = await supabase
+      .from("line_slots")
+      .update(slotPayload)
+      .eq("id", slotId);
+
+    if (updateError) throw updateError;
+
     await unlockLineFromSlot(slotId);
 
-    // refrescar solo ese slot
     const slotActualizado = await fetchSlotById(slotId);
 
-    // actualizar memoria local
     const index = state.slots.findIndex(s => String(s.id) === String(slotId));
     if (index !== -1) {
       state.slots[index] = slotActualizado;
@@ -3300,13 +3383,10 @@
     rebuildIndexes();
     state.playerAlreadyRegistered = await fetchPlayerAlreadyRegistered(state.torneo.id);
 
-    // cerrar popup si existe
     const popup = document.getElementById("playerSearchPopup");
     if (popup) popup.classList.add("hidden");
 
-    // redibujar vista sin recargar todo desde Supabase
     renderView();
-
     setStatus("Jugador agregado correctamente.", "ok");
   }
 
@@ -3334,32 +3414,29 @@
     const slot1 = slotsLinea.find((s) => s.slot_number === bloque.inicio);
     const slot2 = slotsLinea.find((s) => s.slot_number === bloque.fin);
     if (!slot1 || !slot2) throw new Error("No se encontraron ambos casilleros de la pareja.");
-    if (!isSlotEmpty(slot1) || !isSlotEmpty(slot2)) {
+    const slot1Ocupado = !isSlotEmpty(slot1) && String(slot1.id) !== String(slotId);
+    const slot2Ocupado = !isSlotEmpty(slot2) && String(slot2.id) !== String(slotId);
+
+    if (slot1Ocupado || slot2Ocupado) {
       throw new Error(`Para anotar una pareja, los casilleros ${bloque.inicio}-${bloque.fin} deben estar ambos libres.`);
     }
 
     const payload1 = buildSlotPayloadFromPlayer(jugador1, participantTypeForGrid(jugador1));
     const payload2 = buildSlotPayloadFromPlayer(jugador2, participantTypeForGrid(jugador2));
 
-    const { error: updateError1 } = await supabase.from("line_slots").update(payload1).eq("id", slot1.id);
-    if (updateError1) throw updateError1;
-    const { error: updateError2 } = await supabase.from("line_slots").update(payload2).eq("id", slot2.id);
-    if (updateError2) throw updateError2;
-
-    await deleteRegistrationsBySlotIds([slot1.id, slot2.id]);
-
     console.log("REG1:", jugador1);
     console.log("REG2:", jugador2);
 
-    await unlockLineFromSlot(slotId);
+    await deleteRegistrationsBySlotIds([slot1.id, slot2.id]);
 
     const reg1 = await createRegistration({
       tournament_id: state.torneo.id,
       starting_line_id: slotActual.starting_line_id,
       line_slot_id: slot1.id,
       linked_player_id: jugador1.id,
+      created_by_player_id: APP.miPlayerId || null,
       display_name: jugador1.full_name,
-      participant_type: registrationTypeForPlayer(jugador1, "self"),
+      participant_type: registrationTypeForPlayer(jugador1, "aag_match"),
       aag_member_number: jugador1.aag_member_number || null,
       club_name: jugador1.club_name || null,
       country: jugador1.country || null,
@@ -3373,6 +3450,7 @@
       starting_line_id: slotActual.starting_line_id,
       line_slot_id: slot2.id,
       linked_player_id: jugador2.id,
+      created_by_player_id: APP.miPlayerId || null,
       display_name: jugador2.full_name,
       participant_type: registrationTypeForPlayer(jugador2, "aag_match"),
       aag_member_number: jugador2.aag_member_number || null,
@@ -3384,6 +3462,22 @@
     });
 
     await linkPartnerRegistrations(reg1.id, reg2.id);
+
+    const { error: updateError1 } = await supabase
+      .from("line_slots")
+      .update(payload1)
+      .eq("id", slot1.id);
+
+    if (updateError1) throw updateError1;
+
+    const { error: updateError2 } = await supabase
+      .from("line_slots")
+      .update(payload2)
+      .eq("id", slot2.id);
+
+    if (updateError2) throw updateError2;
+
+    await unlockLineFromSlot(slotId);
     await cerrarBuscadorJugador();
     await loadGrid();
   }
@@ -3688,7 +3782,7 @@
         try {
           await closeAllInlineEditors();
           if (slotBusquedaActivo && String(slotBusquedaActivo) !== String(slotId)) {
-            await await cerrarBuscadorJugador();
+            await cerrarBuscadorJugador();
           }
           await lockLineFromSlot(slotId);
 
@@ -3696,7 +3790,7 @@
             modoPareja: requiresPartner() ? "1" : "0",
             jugadorBaseId: "",
             mensaje: requiresPartner()
-              ? `<div class="helper-text" style="padding:8px;">Buscá el primer jugador de la pareja. Después te pedirá el compañero.</div>`
+              ? `<div style="padding:8px; font-weight:700; color:#166534;">Elegí el primer jugador de la pareja.</div>`
               : ""
           });
         } catch (error) {
@@ -3830,7 +3924,7 @@
 
           await closeAllInlineEditors();
           if (slotBusquedaActivo && String(slotBusquedaActivo) !== String(slotId)) {
-            await await cerrarBuscadorJugador();
+            await cerrarBuscadorJugador();
           }
           await lockLineFromSlot(slotId);
           abrirBuscadorJugador(slotId, selfSlotTrigger, {
@@ -3851,13 +3945,42 @@
         e.stopPropagation();
 
         try {
+
           const slotId = pickPlayerTrigger.dataset.pickPlayer;
           const playerId = pickPlayerTrigger.dataset.playerId;
 
-          const candidatos = await searchPlayers(document.getElementById("playerSearchInput")?.value || "");
-          const elegido = candidatos.find(j => String(j.id) === String(playerId));
+          let elegido = null;
 
-          if (!elegido) throw new Error("No se encontró el jugador seleccionado.");
+          if (String(playerId).startsWith("aag:")) {
+            const matricula = String(playerId).replace("aag:", "");
+
+            const { data, error } = await supabase
+              .from("aag_enrolleds")
+              .select("enrollment_number, first_name, last_name, full_name, gender, current_index, option_club_id, club_name, search_text")
+              .eq("enrollment_number", matricula)
+              .maybeSingle();
+
+            if (error) throw error;
+            if (!data) throw new Error("No se encontró el jugador AAG seleccionado.");
+
+            elegido = {
+              id: `aag:${data.enrollment_number}`,
+              origen_busqueda: "aag_enrolleds",
+              enrollment_number: data.enrollment_number,
+              aag_member_number: data.enrollment_number,
+              first_name: data.first_name,
+              last_name: data.last_name,
+              full_name: data.full_name,
+              gender: data.gender,
+              current_index: data.current_index,
+              option_club_id: data.option_club_id,
+              club_name: data.club_name,
+              country: "Argentina",
+              is_club_member: Number(data.option_club_id) === 408
+            };
+          } else {
+            elegido = await fetchPlayerById(playerId);
+          }
 
           const jugador = await asegurarJugadorEnPlayers(elegido);
 
@@ -3936,10 +4059,11 @@
 
           // 👉 si está bloqueado
           if (slot?.participant_type === "blocked") {
-            const ok = confirm("¿Querés desbloquear este slot?");
-            if (!ok) return;
+            await supabase
+              .from("line_slots")
+              .update(buildSlotResetPayload())
+              .eq("id", slotId);
 
-            await releaseSlot(slotId);
             await loadGrid();
             return;
           }

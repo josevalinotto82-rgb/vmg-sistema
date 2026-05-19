@@ -1,15 +1,103 @@
+let qzSecurityReady = false;
+
+async function leerTexto(url, nombre) {
+  const res = await fetch(url + "?v=" + Date.now(), { cache: "no-store" });
+
+  if (!res.ok) {
+    throw new Error("No se pudo cargar " + nombre + " - HTTP " + res.status);
+  }
+
+  const txt = (await res.text()).trim();
+
+  if (!txt || txt.startsWith("<!DOCTYPE") || txt.startsWith("<html")) {
+    throw new Error(nombre + " está devolviendo HTML, no el archivo correcto");
+  }
+
+  return txt;
+}
+
+async function configurarSeguridadQZ() {
+  if (qzSecurityReady) return;
+
+  if (typeof KEYUTIL === "undefined" || typeof KJUR === "undefined") {
+    throw new Error("No está cargado jsrsasign. Revisá el script en el HEAD.");
+  }
+
+  qz.security.setCertificatePromise(function (resolve, reject) {
+    leerTexto("./qz-certificate.txt", "qz-certificate.txt")
+      .then(function (cert) {
+        if (!cert.includes("BEGIN CERTIFICATE")) {
+          reject("El certificado no es válido");
+          return;
+        }
+
+        resolve(cert);
+      })
+      .catch(reject);
+  });
+
+  qz.security.setSignatureAlgorithm("SHA512");
+
+  qz.security.setSignaturePromise(function (toSign) {
+    return function (resolve, reject) {
+      leerTexto("./qz-private-key.pem", "qz-private-key.pem")
+        .then(function (privateKey) {
+          if (!privateKey.includes("BEGIN PRIVATE KEY")) {
+            reject("La private key no es válida");
+            return;
+          }
+
+          try {
+            const rsa = KEYUTIL.getKey(privateKey);
+            const sig = new KJUR.crypto.Signature({ alg: "SHA512withRSA" });
+
+            sig.init(rsa);
+            sig.updateString(toSign);
+
+            const hex = sig.sign();
+            const base64 = hextob64(hex);
+
+            resolve(base64);
+          } catch (e) {
+            reject("Error firmando con private key: " + (e.message || e));
+          }
+        })
+        .catch(reject);
+    };
+  });
+
+  qzSecurityReady = true;
+}
+
 window.imprimirTicketQZ = async function (html) {
   try {
-    if (!window.qz) {
-      alert("QZ Tray no está cargado. Revisá que qz-tray.js haya cargado correctamente.");
-      return;
-    }
+    await configurarSeguridadQZ();
 
     if (!qz.websocket.isActive()) {
       await qz.websocket.connect();
     }
 
-    const printerName = window.QZ_TICKET_PRINTER || "POS-80C";
+    const printers = await qz.printers.find();
+
+    let printerName = null;
+
+    if (printers.includes("POS-80C")) {
+      printerName = "POS-80C";
+    }
+    else if (printers.includes("EPSON TM-T20II")) {
+      printerName = "EPSON TM-T20II";
+    }
+    else if (printers.includes("Epson TM-T20II")) {
+      printerName = "Epson TM-T20II";
+    }
+
+    if (!printerName) {
+      alert(
+        "No encontré impresora térmica.\n\n" +
+        printers.join("\n")
+      );
+      return;
+    }
 
     const config = qz.configs.create(printerName, {
       units: "mm",
@@ -19,32 +107,22 @@ window.imprimirTicketQZ = async function (html) {
     });
 
     const contenido =
-      '<!DOCTYPE html>' +
-      '<html>' +
-      '<head>' +
-      '<meta charset="UTF-8">' +
-      '<style>' +
-      'html,body{margin:0;padding:0;width:80mm;background:#fff;font-family:Arial,sans-serif;color:#000;}' +
-      '.ticket-80{width:72mm;margin:0 auto;padding:4mm;box-sizing:border-box;font-family:Arial,sans-serif;color:#000;font-size:12px;}' +
-      '*{box-sizing:border-box;}' +
-      '</style>' +
-      '</head>' +
-      '<body>' +
+      '<html><head><style>' +
+      'html,body{margin:0;padding:0;width:80mm;font-family:Arial,sans-serif;color:#000;}' +
+      '.ticket-80{width:72mm;margin:0 auto;padding:4mm;box-sizing:border-box;font-size:12px;}' +
+      '</style></head><body>' +
       html +
-      '</body>' +
-      '</html>';
+      '</body></html>';
 
-    const data = [{
+    await qz.print(config, [{
       type: "pixel",
       format: "html",
       flavor: "plain",
       data: contenido
-    }];
-
-    await qz.print(config, data);
+    }]);
 
   } catch (err) {
-    console.error(err);
-    alert("No se pudo imprimir el cupón por QZ Tray: " + (err && err.message ? err.message : err));
+    console.error("ERROR QZ:", err);
+    alert("No se pudo imprimir el cupón por QZ Tray:\n" + (err.message || err));
   }
 };
