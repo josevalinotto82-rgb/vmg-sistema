@@ -435,7 +435,7 @@
         position: absolute !important;
         left: 0 !important;
         top: 0 !important;
-        width: 150mm !important;
+        width: 210mm !important;
         height: 297mm !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -448,8 +448,8 @@
       }
 
       .print-page {
-        page-break-after: avoid !important;
-        break-after: avoid !important;
+        page-break-after: inherit !important;
+        break-after: inherit !important;
       }
     }
 
@@ -2271,48 +2271,6 @@
       setEstado("Torneo oficializado correctamente", "ok");
     }
 
-    function buildTarjetaHTML(reg) {
-      const scorecard = extraerScorecard(reg);
-      const line = extraerLinea(reg);
-
-      const torneo = torneoActual?.name || "";
-      const fecha = fechaTexto(torneoActual?.tournament_date);
-
-      const nombreCompleto = scorecard?.display_name || reg.display_name || "";
-      const partes = nombreCompleto.includes(" / ")
-        ? nombreCompleto.split(" / ")
-        : [nombreCompleto, ""];
-
-      const jugadorA = partes[0] || "";
-      const jugadorB = partes[1] || "";
-
-      const hcp =
-        scorecard?.playing_handicap ??
-        document.getElementById(`hcp-${reg.id}`)?.value ??
-        "";
-      const matricula = scorecard?.aag_member_number || reg.player?.aag_member_number || reg.aag_member_number || "";
-
-      const hora = scorecard?.starting_time
-        ? String(scorecard.starting_time).slice(0, 5)
-        : horaTexto(line?.line_time);
-
-      const hoyo = scorecard?.starting_hole || line?.starting_hole || "";
-
-      const tee = obtenerTeeNombreSingle(reg);
-
-      const datosJuego = `${hora ? hora + "hs." : ""} / Tee: ${tee || "—"} / Hoyo ${hoyo || "—"}`;
-
-      return buildTarjetaPreimpresaHTML({
-        torneo,
-        fecha,
-        jugadorA,
-        jugadorB,
-        handicap: hcp,
-        matricula,
-        datosJuego
-      });
-    }
-
     function fontSizeTorneo(texto) {
       const largo = String(texto || "").trim().length;
 
@@ -2382,151 +2340,6 @@
       return categorias.find((c) => String(c.id) === String(catId)) || null;
     }
 
-    function buildTarjetaPreimpresaHTML({
-      torneo,
-      fecha,
-      jugadorA,
-      jugadorB = "",
-      handicap = "",
-      matricula = "",
-      datosJuego = ""
-    }) {
-      return `
-        <style>
-          @page { size: 150mm 297mm; margin: 0; }
-
-          #print-root {
-              margin: 0;
-              padding: 0;
-          }
-
-          body {
-              margin: 0;
-              background: white;
-              font-family: Arial, sans-serif;
-          }
-
-          .print-page {
-              position: relative;
-              width: 150mm;
-              height: 297mm;
-              overflow: hidden;
-          }
-
-          .print-overlay {
-              position: absolute;
-              width: 297mm;
-              height: 150mm;
-              white-space: nowrap;
-              transform-origin: top left;
-              transform: rotate(90deg);
-              left: 150mm;
-              top: 0;
-          }
-
-          .field {
-              position: absolute;
-              font-weight: bold;
-              color: black;
-              font-size: 14px;
-          }
-
-          .torneo {
-              top: 12mm;
-              left: 37mm;
-              width: 68mm;
-              max-width: 68mm;
-              text-align: left;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-          }
-
-          .fecha {
-              top: 12mm;
-              left: 120mm;
-              width: 30mm;
-              font-size: 20px;
-              text-align: center;
-              transform: translateX(-50%);
-          }
-
-          .jugadorA {
-            top: 28mm;
-            left: 37mm;
-            width: 45mm;
-            text-align: left;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          .jugadorB {
-            top: 28mm;
-            left: 86mm;
-            width: 45mm;
-            text-align: right;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          .jugador-individual {
-            width: 95mm !important;
-            max-width: 95mm !important;
-            overflow: visible !important;
-            text-overflow: unset !important;
-          }
-
-          .handicap {
-              top: 28mm;
-              left: 149mm;
-              width: 30mm;
-              text-align: center;
-              transform: translateX(-50%);
-          }
-
-          .matricula {
-              top: 28mm;
-              left: 183mm;
-              width: 30mm;
-              text-align: center;
-              transform: translateX(-50%);
-          }
-
-          .datosdejuego {
-              top: 39mm;
-              left: 115mm;
-              width: 65mm;
-              text-align: center;
-              font-size: 18px;
-          }
-        </style>
-
-        <div class="print-page">
-          <div class="print-overlay">
-            <div class="field torneo" title="${torneo}" style="font-size:${fontSizeTorneo(torneo)}px;">${torneo}</div>
-            <div class="field fecha">${fecha}</div>
-
-            ${jugadorB
-          ? `
-            <div class="field jugadorA" style="font-size:${fontSizeJugador(jugadorA)}px;">${jugadorA}</div>
-            <div class="field jugadorB" style="font-size:${fontSizeJugador(jugadorB)}px;">${jugadorB}</div>
-          `
-          : `
-            <div class="field jugadorA jugador-individual" style="font-size:${fontSizeJugador(jugadorA)}px;">${jugadorA}</div>
-          `
-        }
-
-            <div class="field handicap">${handicap}</div>
-            <div class="field matricula">${matricula}</div>
-
-            <div class="field datosdejuego">${datosJuego}</div>
-          </div>
-        </div>
-      `;
-    }
-
     function nombreParaTarjeta(nombreCompleto) {
       const limpio = String(nombreCompleto || "").trim().replace(/\s+/g, " ");
       if (!limpio) return "";
@@ -2545,93 +2358,363 @@
       return `${apellido}, ${iniciales}`;
     }
 
-    function buildTarjetaPairHTML(reg1, reg2) {
-      const score1 = extraerScorecard(reg1);
-      const score2 = extraerScorecard(reg2);
+    function esc(v) {
+      return String(v ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function fontJugador(txt) {
+      const l = String(txt || "").length;
+      if (l > 38) return 10;
+      if (l > 30) return 11;
+      return 12;
+    }
+
+    function fontTorneo(txt) {
+      const l = String(txt || "").length;
+      if (l > 35) return 12;
+      if (l > 24) return 15;
+      return 24;
+    }
+
+    function nombreTarjeta(nombreCompleto) {
+
+      const limpio = String(nombreCompleto || "")
+        .trim()
+        .replace(/\s+/g, " ");
+
+      if (!limpio) return "";
+
+      // FORMATO: APELLIDO, NOMBRES
+      if (limpio.includes(",")) {
+
+        const [apellidoRaw, nombresRaw = ""] = limpio.split(",");
+
+        const apellido = apellidoRaw.trim();
+
+        const iniciales = nombresRaw
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .map(n => `${n[0].toUpperCase()}.`)
+          .join(" ");
+
+        return iniciales
+          ? `${apellido}, ${iniciales}`
+          : apellido;
+      }
+
+      // FORMATO NORMAL SIN COMA
+      const partes = limpio.split(" ").filter(Boolean);
+
+      if (partes.length <= 1) return limpio;
+
+      const apellido = partes[partes.length - 1];
+
+      const iniciales = partes
+        .slice(0, -1)
+        .map(n => `${n[0].toUpperCase()}.`)
+        .join(" ");
+
+      return `${apellido}, ${iniciales}`;
+    }
+
+    function datosSalidaTexto({ hora, tee, tee2, hoyo }) {
+      let teeTxt = "";
+
+      if (tee && tee2 && tee !== tee2) {
+        teeTxt = `Tee: ${tee} / ${tee2}`;
+      } else {
+        teeTxt = `Tee: ${tee || tee2 || "—"}`;
+      }
+
+      return `${hora ? hora + " hs." : "—"} / ${teeTxt} / Hoyo ${hoyo || "—"}`;
+    }
+
+    function cssTarjetaLaser() {
+      return `
+    <style>
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+
+      @media print {
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 210mm !important;
+          height: 297mm !important;
+          background: white !important;
+          overflow: hidden !important;
+        }
+
+        .page,
+        .home-btn {
+          display: none !important;
+        }
+
+        #print-root {
+          display: block !important;
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 210mm !important;
+          height: 297mm !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+          overflow: hidden !important;
+        }
+      }
+
+      .tarjeta-page {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: white;
+        page-break-after: always;
+        break-after: page;
+      }
+
+      .tarjeta-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      .tarjeta-landscape {
+        position: absolute;
+        width: 297mm;
+        height: 210mm;
+        left: 210mm;
+        top: 0;
+        transform-origin: top left;
+        transform: rotate(90deg);
+        font-family: Arial, sans-serif;
+        color: #000;
+      }
+
+      .tj-field {
+        position: absolute;
+        height: 7mm;
+        line-height: 7mm;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .tj-torneo {
+        left: 34mm;
+        top: 39mm;
+        width: 70mm;
+        text-align: center;
+      }
+
+      .tj-fecha {
+        left: 107mm;
+        top: 39mm;
+        width: 25mm;
+        text-align: center;
+      }
+
+      .tj-jugador-a-pareja {
+        left: 34mm;
+        top: 54mm;
+        width: 50mm;
+        text-align: left;
+      }
+
+      .tj-jugador-a-solo {
+        left: 34mm;
+        top: 54mm;
+        width: 70mm;
+        text-align: left;
+      }
+
+      .tj-jugador-b {
+        left: 85mm;
+        top: 54mm;
+        width: 50mm;
+        text-align: right;
+      }
+
+      .tj-handicap {
+        left: 136mm;
+        top: 54mm;
+        width: 27mm;
+        text-align: center;
+      }
+
+      .tj-matricula {
+        left: 170mm;
+        top: 54mm;
+        width: 27mm;
+        text-align: center;
+      }
+
+      .tj-datos {
+        left: 99mm;
+        top: 67mm;
+        width: 100mm;
+        text-align: center;
+        font-size: 18px;
+      }
+    </style>
+  `;
+    }
+
+    function buildTarjetaNuevaHTML({
+      torneo,
+      fecha,
+      jugadorA,
+      jugadorB = "",
+      handicap = "",
+      matricula = "",
+      datos = ""
+    }) {
+      const esPareja = !!jugadorB;
+
+      return `
+    <div class="tarjeta-page">
+      <div class="tarjeta-landscape">
+
+        <div class="tj-field tj-torneo" style="font-size:${fontTorneo(torneo)}px;">
+          ${esc(torneo)}
+        </div>
+
+        <div class="tj-field tj-fecha" style="font-size:18px;">
+          ${esc(fecha)}
+        </div>
+
+        <div class="tj-field ${esPareja ? "tj-jugador-a-pareja" : "tj-jugador-a-solo"}" style="font-size:${fontJugador(jugadorA)}px;">
+          ${esc(jugadorA)}
+        </div>
+
+        ${esPareja ? `
+          <div class="tj-field tj-jugador-b" style="font-size:${fontJugador(jugadorB)}px;">
+            ${esc(jugadorB)}
+          </div>
+        ` : ""}
+
+        <div class="tj-field tj-handicap" style="font-size:15px;">
+          ${esc(handicap)}
+        </div>
+
+        <div class="tj-field tj-matricula" style="font-size:14px;">
+          ${esc(matricula)}
+        </div>
+
+        <div class="tj-field tj-datos">
+          ${esc(datos)}
+        </div>
+
+      </div>
+    </div>
+  `;
+    }
+
+    function imprimirLaserTarjeta(htmlTarjeta) {
+      printRoot.innerHTML = cssTarjetaLaser() + htmlTarjeta;
+
+      setTimeout(() => {
+        window.print();
+
+        setTimeout(() => {
+          printRoot.innerHTML = "";
+        }, 700);
+      }, 150);
+    }
+
+    function imprimirTarjeta(regId) {
+      const reg = getRegistrationById(regId);
+      if (!reg) return alert("No encontré el jugador.");
+
+      const score = extraerScorecard(reg);
+      const line = extraerLinea(reg);
+
+      const torneo = torneoActual?.name || "";
+      const fecha = fechaTexto(torneoActual?.tournament_date);
+      const jugadorA = nombreTarjeta(reg.display_name || score?.display_name || "");
+      const handicap = score?.playing_handicap ?? document.getElementById(`hcp-${reg.id}`)?.value ?? "";
+      const matricula = reg.aag_member_number || reg.player?.aag_member_number || score?.aag_member_number || "";
+
+      const hora = score?.starting_time ? String(score.starting_time).slice(0, 5) : horaTexto(line?.line_time);
+      const hoyo = score?.starting_hole || line?.starting_hole || "";
+      const tee = obtenerTeeNombreSingle(reg);
+
+      const datos = datosSalidaTexto({ hora, tee, hoyo });
+
+      imprimirLaserTarjeta(buildTarjetaNuevaHTML({
+        torneo,
+        fecha,
+        jugadorA,
+        handicap,
+        matricula,
+        datos
+      }));
+    }
+
+    function imprimirTarjetaPareja(regId1, regId2) {
+      const reg1 = getRegistrationById(regId1);
+      const reg2 = getRegistrationById(regId2);
+      if (!reg1 || !reg2) return;
+
+      const score = pairSharedScorecard(reg1, reg2);
       const line = extraerLinea(reg1) || extraerLinea(reg2);
 
       const torneo = torneoActual?.name || "";
       const fecha = fechaTexto(torneoActual?.tournament_date);
 
-      const jugadorA = nombreParaTarjeta(reg1.display_name || "");
-      const jugadorB = nombreParaTarjeta(reg2.display_name || "");
+      const jugadorA = nombreTarjeta(reg1.display_name || "");
+      const jugadorB = nombreTarjeta(reg2.display_name || "");
 
       const params = torneoActual?.game_modes?.calculation_params || {};
-      const key = `${reg1.id}__PAIR__${reg2.id}`;
+      const datos = obtenerDatosFilaPair(reg1, reg2);
 
       let handicap = "";
 
-      if (params.method === "pair_sum_with_max_gap") {
-        handicap =
-          score1?.playing_handicap ??
-          document.getElementById(`hcp-pair-${key}`)?.textContent.trim() ??
-          "";
+      if (params.method === "individual_percentage") {
+        handicap = `${datos?.playingHandicap1 ?? ""}/${datos?.playingHandicap2 ?? ""}`;
+      } else {
+        handicap = `${datos?.playingHandicap ?? score?.playing_handicap ?? ""}`;
       }
+
+      const matA = reg1.aag_member_number || reg1.player?.aag_member_number || "";
+      const matB = reg2.aag_member_number || reg2.player?.aag_member_number || "";
+      const matricula = `${matA}/${matB}`;
+
+      const hora = score?.starting_time ? String(score.starting_time).slice(0, 5) : horaTexto(line?.line_time);
+      const hoyo = score?.starting_hole || line?.starting_hole || "";
+
+      let tee = "";
+      let tee2 = "";
 
       if (params.method === "individual_percentage") {
-        const h1 =
-          score1?.playing_handicap ??
-          document.getElementById(`hcp-pair-${key}`)?.querySelector(".stack-compact div:nth-child(1)")?.textContent.trim() ??
-          "";
-
-        const h2 =
-          score2?.playing_handicap ??
-          document.getElementById(`hcp-pair-${key}`)?.querySelector(".stack-compact div:nth-child(3)")?.textContent.trim() ??
-          "";
-
-        handicap = `${h1} / ${h2}`;
+        tee = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaAmericana(reg1));
+        tee2 = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaAmericana(reg2));
+      } else {
+        tee = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaPair(reg1, reg2));
       }
 
-      const tee1 =
-        score1?.tee_name ||
-        tees.find((t) => String(t.id) === String(score1?.tee_id))?.name ||
-        tees.find((t) => String(t.id) === String(document.getElementById(`tee-pair-${reg1.id}`)?.value))?.name ||
-        "";
+      const datosSalida = datosSalidaTexto({ hora, tee, tee2, hoyo });
 
-      const tee2 =
-        score2?.tee_name ||
-        tees.find((t) => String(t.id) === String(score2?.tee_id))?.name ||
-        tees.find((t) => String(t.id) === String(document.getElementById(`tee-pair-${reg2.id}`)?.value))?.name ||
-        "";
-
-      let teeTexto = "";
-
-      if (params.method === "pair_sum_with_max_gap") {
-        const categoriaPareja = obtenerCategoriaSeleccionadaPair(reg1, reg2);
-        const tee = obtenerTeeNombreDesdeCategoria(categoriaPareja);
-
-        teeTexto = `Tee: ${tee || "—"}`;
-      }
-
-      if (params.method === "individual_percentage") {
-        const categoria1 = obtenerCategoriaSeleccionadaAmericana(reg1);
-        const categoria2 = obtenerCategoriaSeleccionadaAmericana(reg2);
-
-        const tee1 = obtenerTeeNombreDesdeCategoria(categoria1);
-        const tee2 = obtenerTeeNombreDesdeCategoria(categoria2);
-
-        teeTexto = tee1 === tee2
-          ? `Tee: ${tee1 || "—"}`
-          : `Tee: ${tee1 || "—"} / Tee: ${tee2 || "—"}`;
-      }
-
-      const hora = score1?.starting_time
-        ? String(score1.starting_time).slice(0, 5)
-        : horaTexto(line?.line_time);
-
-      const hoyo = score1?.starting_hole || line?.starting_hole || "";
-
-      const datosJuego = `${hora ? hora + "hs." : ""} / ${teeTexto} / Hoyo ${hoyo || "—"}`;
-
-      return buildTarjetaPreimpresaHTML({
+      imprimirLaserTarjeta(buildTarjetaNuevaHTML({
         torneo,
         fecha,
         jugadorA,
         jugadorB,
         handicap,
-        matricula: "",
-        datosJuego
-      });
+        matricula,
+        datos: datosSalida
+      }));
     }
 
     async function obtenerNumeroCupon() {
@@ -2721,21 +2804,6 @@
       }, 150);
     }
 
-    function imprimirTarjeta(regId) {
-      const reg = getRegistrationById(regId);
-
-      if (!reg) {
-        alert("No encontré el jugador para imprimir.");
-        return;
-      }
-
-      const html = buildTarjetaHTML(reg);
-
-      console.log("HTML TARJETA:", html);
-
-      doPrint(html);
-    }
-
     async function imprimirCuponIndividual(regId) {
       const reg = getRegistrationById(regId);
       if (!reg) return;
@@ -2750,15 +2818,6 @@
         console.error(error);
         alert("Error generando número de cupón: " + (error.message || JSON.stringify(error)));
       }
-    }
-
-    function imprimirTarjetaPareja(regId1, regId2) {
-      const reg1 = getRegistrationById(regId1);
-      const reg2 = getRegistrationById(regId2);
-
-      if (!reg1 || !reg2) return;
-
-      doPrint(buildTarjetaPairHTML(reg1, reg2));
     }
 
     async function imprimirCuponPareja(regId1, regId2) {
