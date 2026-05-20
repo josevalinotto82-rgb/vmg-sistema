@@ -1500,7 +1500,7 @@
     const status = getTournamentStatus();
 
     if (APP.esAdmin) {
-      return status === "open" || status === "closed";
+      return status === "open" || status === "closed" || status === "officialized";
     }
 
     return status === "open";
@@ -1605,7 +1605,9 @@
     const s = String(status || "").toLowerCase();
     if (s === "open") return "Inscripción abierta";
     if (s === "closed") return "Torneo cerrado para cambios";
+    if (s === "officialized") return "Torneo ya guardado · administración habilitada";
     if (s === "archived") return "Torneo archivado / solo lectura";
+   
     return `Estado: ${s || "desconocido"}`;
   }
 
@@ -1761,34 +1763,46 @@
   }
 
   async function fetchTournament() {
-    const { data, error } = await supabase
+    let query = supabase
       .from("tournaments")
       .select(`
-          id,
-          name,
-          tournament_date,
-          status,
-          start_type,
-          game_modes (
-            id,
-            name,
-            participation_type,
-            requires_partner
-          )
-        `)
-      .eq("id", APP.torneoId)
-      .single();
+      id,
+      name,
+      tournament_date,
+      status,
+      start_type,
+      game_modes (
+        id,
+        name,
+        participation_type,
+        requires_partner
+      )
+    `)
+      .eq("id", APP.torneoId);
+
+    if (!APP.esAdmin) {
+      query = query.eq("status", "open");
+    }
+
+    const { data, error } = await query.single();
 
     if (error) throw error;
-    if (!data) throw new Error("No se encontró el torneo.");
+    if (!data) throw new Error("No se encontró el torneo o no tenés permiso para verlo.");
     return data;
   }
 
   async function fetchOldestOpenTournaments(limit = 5) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("tournaments")
-      .select("id, name, tournament_date, status")
-      .eq("status", "open")
+      .select("id, name, tournament_date, status");
+
+    if (APP.esAdmin) {
+      query = query.in("status", ["open", "officialized"]);
+    } else {
+      query = query.eq("status", "open");
+    }
+
+    const { data, error } = await query
       .order("tournament_date", { ascending: true })
       .limit(limit);
 
@@ -1797,10 +1811,17 @@
   }
 
   async function fetchOldestOpenTournament() {
-    const { data, error } = await supabase
+    let query = supabase
       .from("tournaments")
-      .select("id, name, tournament_date, status")
-      .eq("status", "open")
+      .select("id, name, tournament_date, status");
+
+    if (APP.esAdmin) {
+      query = query.in("status", ["open", "officialized"]);
+    } else {
+      query = query.eq("status", "open");
+    }
+
+    const { data, error } = await query
       .order("tournament_date", { ascending: true })
       .limit(1)
       .maybeSingle();

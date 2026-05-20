@@ -496,7 +496,7 @@
   <div class="page">
     <div class="topbar">
       <div class="title-wrap">
-        <h1>Oficialización de torneo</h1>
+        <h1>Admin. Torneos</h1>
         <div class="sub">Categoría, tee, índice ajustado, hándicap de juego e impresión.</div>
       </div>
     </div>
@@ -504,7 +504,7 @@
     <div class="card">
       <div class="toolbar">
         <div class="field">
-          <label for="torneoSelect">Seleccionar torneo abierto</label>
+          <label for="torneoSelect">Seleccionar torneo abierto / guardado</label>
           <select id="torneoSelect"></select>
         </div>
         <div class="field">
@@ -517,7 +517,7 @@
         </div>
         <div class="field">
           <label>Acción general</label>
-          <button id="btnOficializarTorneo" class="btn btn-primary" style="width:100%">Oficializar</button>
+          <button id="btnOficializarTorneo" class="btn btn-primary" style="width:100%">Generar Tarjetas</button>
         </div>
       </div>
 
@@ -549,6 +549,9 @@
       <div id="estado" class="status-text">Conectando...</div>
       <div class="actions-top">
         <button id="btnGuardarTodos" class="btn btn-primary">Guardar todos</button>
+        <button id="btnImprimirTodasTarjetas" class="btn btn-secondary">
+          Imprimir todos
+        </button>
       </div>
     </div>
 
@@ -662,6 +665,7 @@
 
     const btnOficializarTorneo = document.getElementById("btnOficializarTorneo");
     const btnGuardarTodos = document.getElementById("btnGuardarTodos");
+    const btnImprimirTodasTarjetas = document.getElementById("btnImprimirTodasTarjetas");
 
     configurarSucursalPorAdmin(adminActual);
 
@@ -682,6 +686,8 @@
     torneoSelect.addEventListener("change", cargarTodo);
     btnOficializarTorneo.addEventListener("click", oficializarTorneo);
     btnGuardarTodos.addEventListener("click", guardarTodosLosInscriptos);
+    btnImprimirTodasTarjetas.addEventListener("click", imprimirTodasLasTarjetas);
+
     torneoPrecio?.addEventListener("blur", () => {
       torneoPrecio.value = formatearPesosInput(torneoPrecio.value);
     });
@@ -1187,7 +1193,7 @@
         const { data: torneosData, error: errorTorneos } = await supabase
           .from("tournaments")
           .select("id, name, tournament_date, status")
-          .eq("status", "open")
+          .in("status", ["open", "officialized"])
           .order("tournament_date", { ascending: false });
 
         if (errorTorneos) throw errorTorneos;
@@ -1195,8 +1201,8 @@
         if (!torneosData || torneosData.length === 0) {
           torneoSelect.innerHTML = "";
           torneoFecha.value = "";
-          tablaWrap.innerHTML = `<div class="empty">No hay torneos abiertos para oficializar.</div>`;
-          setEstado("No se encontraron torneos abiertos.", "warn");
+          tablaWrap.innerHTML = `<div class="empty">No hay torneos abiertos ni guardados.</div>`;
+          setEstado("No se encontraron torneos abiertos ni guardados.", "warn");
           return;
         }
 
@@ -1235,6 +1241,16 @@
         if (errorTorneo) throw errorTorneo;
 
         torneoActual = torneo;
+        const torneoYaGuardado = String(torneoActual.status || "").toLowerCase() === "officialized";
+
+        if (torneoYaGuardado) {
+          setEstado("Torneo ya guardado · podés guardar jugadores pendientes o imprimir tarjetas.", "warn");
+          btnOficializarTorneo.textContent = "Torneo ya guardado";
+          btnOficializarTorneo.disabled = true;
+        } else {
+          btnOficializarTorneo.textContent = "Generar Tarjetas";
+          btnOficializarTorneo.disabled = false;
+        }
         torneoFecha.value = fechaTexto(torneo.tournament_date);
 
         const [categoriasRes, teesRes, regsRes, aagRes] = await Promise.all([
@@ -1338,7 +1354,11 @@
         renderTabla();
         actualizarResumen();
 
-        setEstado(`Datos cargados · ${torneoActual?.game_modes?.name || "Modalidad sin definir"}`, "ok");
+        if (String(torneoActual.status || "").toLowerCase() === "officialized") {
+          setEstado(`Torneo ya guardado · ${torneoActual?.game_modes?.name || "Modalidad sin definir"}`, "warn");
+        } else {
+          setEstado(`Datos cargados · ${torneoActual?.game_modes?.name || "Modalidad sin definir"}`, "ok");
+        }
       } catch (err) {
         console.error(err);
         tablaWrap.innerHTML = `<div class="empty">Error al cargar datos.</div>`;
@@ -1365,7 +1385,7 @@
       const filaIncompleta = !categoriaSeleccionada || indiceManual == null || hcpJuego == null;
       const horario = line ? `${horaTexto(line.line_time) || ""}${line.starting_hole ? ` · Hoyo ${line.starting_hole}` : ""}` : "—";
       const estadoTag = scorecard?.id
-        ? `<span class="tag done">Oficializado</span>`
+        ? `<span class="tag done">Guardado</span>`
         : reg.needs_admin_review
           ? `<span class="tag review">Revisar</span>`
           : `<span class="tag pending">Pendiente</span>`;
@@ -1467,7 +1487,7 @@
       const horario = line ? `${horaTexto(line.line_time) || ""}${line.starting_hole ? ` · Hoyo ${line.starting_hole}` : ""}` : "—";
 
       let filaIncompleta = false;
-      let estadoTag = pairScore?.id ? `<span class="tag done">Oficializado</span>` : `<span class="tag pending">Pendiente</span>`;
+      let estadoTag = pairScore?.id ? `<span class="tag done">Guardado</span>` : `<span class="tag pending">Pendiente</span>`;
       let categoriaHtml = "";
       let teeHtml = "";
       let indiceManualHtml = "";
@@ -2014,22 +2034,32 @@
 
     async function upsertScorecardPareja(reg1, reg2, payload) {
       const existente = pairSharedScorecard(reg1, reg2);
+
       if (existente?.id) {
-        const { error } = await supabase.from("scorecards").update(payload).eq("id", existente.id);
+        const { error } = await supabase
+          .from("scorecards")
+          .update(payload)
+          .eq("id", existente.id);
+
         if (error) throw error;
         return existente.id;
       }
 
-      const { data: nuevaScorecard, error } = await supabase.from("scorecards").insert({
-        tournament_id: torneoActual.id,
-        registration_id: reg1.id,
-        linked_player_id: reg1.linked_player_id,
-        display_name: payload.display_name,
-        aag_member_number: null,
-        ...payload
-      }).select("id").single();
+      const { data: nuevaScorecard, error } = await supabase
+        .from("scorecards")
+        .insert({
+          tournament_id: torneoActual.id,
+          registration_id: reg1.id,
+          linked_player_id: reg1.linked_player_id,
+          display_name: payload.display_name,
+          aag_member_number: null,
+          ...payload
+        })
+        .select("id")
+        .single();
+
       if (error) throw error;
-      await crearHoyosSiNoExisten(nuevaScorecard.id);
+
       return nuevaScorecard.id;
     }
 
@@ -2195,6 +2225,8 @@
     }
 
     async function guardarTodosLosInscriptos() {
+      const textoOriginal = btnGuardarTodos.textContent || "Guardar todos";
+
       if (!registrations.length) {
         alert("No hay inscriptos para guardar.");
         return;
@@ -2208,6 +2240,7 @@
       }
 
       btnGuardarTodos.disabled = true;
+      btnGuardarTodos.textContent = "Guardando...";
       setEstado("Guardando oficialización general...");
 
       try {
@@ -2218,14 +2251,21 @@
             await guardarOficializacionPair(fila.jugadores[0].id, fila.jugadores[1].id, true);
           }
         }
+
         await cargarTodo();
+
         setEstado("Todos los inscriptos fueron guardados correctamente.", "ok");
+
       } catch (error) {
         console.error(error);
-        setEstado("Ocurrió un error al guardar todos.", "error");
-        alert("Ocurrió un error al guardar todos los inscriptos.");
+
+        setEstado(error.message || "Ocurrió un error al guardar todos.", "error");
+
+        alert("Error al guardar:\n\n" + (error.message || JSON.stringify(error)));
+
       } finally {
         btnGuardarTodos.disabled = false;
+        btnGuardarTodos.textContent = textoOriginal;
       }
     }
 
@@ -2250,7 +2290,7 @@
         return;
       }
 
-      const confirmar = confirm(`¿Querés oficializar el torneo "${torneoActual.name}"?`);
+      const confirmar = confirm(`¿Querés guardar el torneo "${torneoActual.name}"?`);
       if (!confirmar) return;
 
       setEstado("Oficializando torneo...");
@@ -2397,7 +2437,7 @@
       return `${hora ? hora + " hs." : "—"} / ${teeTxt} / Hoyo ${hoyo || "—"}`;
     }
 
-    function cssTarjetaLaser() {
+    function cssTarjetaLaser(multiple = false) {
       return `
     <style>
       @page {
@@ -2406,13 +2446,14 @@
       }
 
       @media print {
-        html, body {
+        html,
+        body {
           margin: 0 !important;
           padding: 0 !important;
           width: 210mm !important;
-          height: 297mm !important;
+          height: ${multiple ? "auto" : "297mm"} !important;
+          overflow: ${multiple ? "visible" : "hidden"} !important;
           background: white !important;
-          overflow: hidden !important;
         }
 
         .page,
@@ -2426,11 +2467,11 @@
           left: 0 !important;
           top: 0 !important;
           width: 210mm !important;
-          height: 297mm !important;
+          height: ${multiple ? "auto" : "297mm"} !important;
           margin: 0 !important;
           padding: 0 !important;
           background: white !important;
-          overflow: hidden !important;
+          overflow: ${multiple ? "visible" : "hidden"} !important;
         }
       }
 
@@ -2455,10 +2496,10 @@
         position: absolute;
         width: 297mm;
         height: 210mm;
-        left: 210mm;
-        top: 0;
+        left: 0;
+        top: 297mm;
         transform-origin: top left;
-        transform: rotate(90deg);
+        transform: rotate(-90deg);
         font-family: Arial, sans-serif;
         color: #000;
       }
@@ -2593,6 +2634,158 @@
           printRoot.innerHTML = "";
         }, 700);
       }, 150);
+    }
+
+    function imprimirTodasLasTarjetas() {
+
+      if (!registrations.length) {
+        alert("No hay jugadores para imprimir.");
+        return;
+      }
+
+      const confirmar = confirm(
+        "Se van a generar todas las tarjetas para impresión láser.\n\n¿Continuar?"
+      );
+
+      if (!confirmar) return;
+
+      const tarjetas = [];
+
+      for (const fila of construirFilasVista()) {
+
+        if (fila.tipo === "single") {
+          const reg = fila.jugadores[0];
+
+          if (!extraerScorecard(reg)?.id) continue;
+
+          const score = extraerScorecard(reg);
+          const line = extraerLinea(reg);
+
+          const torneo = torneoActual?.name || "";
+          const fecha = fechaTexto(torneoActual?.tournament_date);
+
+          const jugadorA = nombreTarjeta(reg.display_name || score?.display_name || "");
+
+          const handicap =
+            score?.playing_handicap ??
+            document.getElementById(`hcp-${reg.id}`)?.value ??
+            "";
+
+          const matricula =
+            reg.aag_member_number ||
+            reg.player?.aag_member_number ||
+            score?.aag_member_number ||
+            "";
+
+          const hora = score?.starting_time
+            ? String(score.starting_time).slice(0, 5)
+            : horaTexto(line?.line_time);
+
+          const hoyo =
+            score?.starting_hole ||
+            line?.starting_hole ||
+            "";
+
+          const tee = obtenerTeeNombreSingle(reg);
+
+          const datos = datosSalidaTexto({
+            hora,
+            tee,
+            hoyo
+          });
+
+          tarjetas.push(buildTarjetaNuevaHTML({
+            torneo,
+            fecha,
+            jugadorA,
+            handicap,
+            matricula,
+            datos
+          }));
+        }
+
+        if (fila.tipo === "pair") {
+          const [reg1, reg2] = fila.jugadores;
+
+          if (!pairSharedScorecard(reg1, reg2)?.id) continue;
+
+          const score = pairSharedScorecard(reg1, reg2);
+          const line = extraerLinea(reg1) || extraerLinea(reg2);
+
+          const torneo = torneoActual?.name || "";
+          const fecha = fechaTexto(torneoActual?.tournament_date);
+
+          const jugadorA = nombreTarjeta(reg1.display_name || "");
+          const jugadorB = nombreTarjeta(reg2.display_name || "");
+
+          const params = torneoActual?.game_modes?.calculation_params || {};
+          const datosPair = obtenerDatosFilaPair(reg1, reg2);
+
+          let handicap = "";
+
+          if (params.method === "individual_percentage") {
+            handicap = `${datosPair?.playingHandicap1 ?? ""}/${datosPair?.playingHandicap2 ?? ""}`;
+          } else {
+            handicap = `${datosPair?.playingHandicap ?? score?.playing_handicap ?? ""}`;
+          }
+
+          const matA = reg1.aag_member_number || reg1.player?.aag_member_number || "";
+          const matB = reg2.aag_member_number || reg2.player?.aag_member_number || "";
+          const matricula = `${matA}/${matB}`;
+
+          const hora = score?.starting_time
+            ? String(score.starting_time).slice(0, 5)
+            : horaTexto(line?.line_time);
+
+          const hoyo =
+            score?.starting_hole ||
+            line?.starting_hole ||
+            "";
+
+          let tee = "";
+          let tee2 = "";
+
+          if (params.method === "individual_percentage") {
+            tee = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaAmericana(reg1));
+            tee2 = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaAmericana(reg2));
+          } else {
+            tee = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaPair(reg1, reg2));
+          }
+
+          const datos = datosSalidaTexto({
+            hora,
+            tee,
+            tee2,
+            hoyo
+          });
+
+          tarjetas.push(buildTarjetaNuevaHTML({
+            torneo,
+            fecha,
+            jugadorA,
+            jugadorB,
+            handicap,
+            matricula,
+            datos
+          }));
+        }
+      }
+
+      if (!tarjetas.length) {
+        alert("No hay tarjetas oficializadas para imprimir.");
+        return;
+      }
+
+      printRoot.innerHTML = cssTarjetaLaser(true) + tarjetas.join("");
+
+      setTimeout(() => {
+        window.print();
+
+        setTimeout(() => {
+          printRoot.innerHTML = "";
+        }, 1000);
+
+      }, 250);
     }
 
     function imprimirTarjeta(regId) {

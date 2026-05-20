@@ -1005,7 +1005,7 @@
 
         <div class="actions">
           <button id="btnGuardarTarjeta" class="btn btn-primary">Guardar tarjeta / Ready export</button>
-          <button id="btnMarcarNpt" class="btn btn-light">Dejar como NPT</button>
+          <button id="btnMarcarNpt" class="btn btn-danger">DESC</button>
           <button id="btnLimpiar" class="btn btn-secondary">Limpiar campos</button>
         </div>
       `;
@@ -1153,8 +1153,8 @@
             total: resultado.total,
             card_status: resultado.card_status,
             hole_scores: holeScores,
-            export_ready: resultado.export_ready,
-            aag_exportable: false
+            export_ready: holes.every(h => h.strokes != null) && !!sc.aag_member_number,
+            aag_exportable: holes.every(h => h.strokes != null) && !!sc.aag_member_number
           })
           .eq("id", sc.id);
 
@@ -1191,47 +1191,90 @@
       const sc = getScorecardActual();
       if (!sc) return;
 
-      if (!confirm(`¿Dejar como NPT a ${sc.display_name}?`)) return;
+      const estabaDesc = String(sc.card_status || "").toLowerCase() === "desc";
+
+      const mensaje = estabaDesc
+        ? `¿Quitar DESC y volver a estado normal a ${sc.display_name}?`
+        : `¿Marcar como DESC a ${sc.display_name}?`;
+
+      if (!confirm(mensaje)) return;
 
       try {
-        const seg = normalizarSegmento(sc.hole_segment || primerSegmentoDeScorecards(scorecards));
-        const holes = hoyosHabilitados(seg).map(hole => ({
-          scorecard_id: sc.id,
-          hole_number: hole,
-          strokes: null,
-          par_value: COURSE_HOLES[hole].par,
-          hole_handicap: COURSE_HOLES[hole].hcp
-        }));
+        const { holes } = leerInputsTarjeta(sc);
+
+        const tarjetaCompleta = holes.every(h => h.strokes != null);
+        const tieneAlgo = holes.some(h => h.strokes != null);
+
+        let nuevoEstado;
+
+        if (estabaDesc) {
+          if (tarjetaCompleta) {
+            nuevoEstado = "valid";
+          } else if (tieneAlgo) {
+            nuevoEstado = "desc";
+          } else {
+            nuevoEstado = "npt";
+          }
+        } else {
+          nuevoEstado = "desc";
+        }
+
+        const gross = holes
+          .filter(h => h.strokes != null)
+          .reduce((sum, h) => sum + Number(h.strokes || 0), 0);
+
+        const net = tieneAlgo
+          ? (esModalidadAmericana()
+            ? gross
+            : gross - Number(sc.playing_handicap || 0))
+          : null;
+
+        const exportaAAG =
+          !!sc.aag_member_number &&
+          (
+            nuevoEstado === "valid" ||
+            (nuevoEstado === "desc" && tarjetaCompleta)
+          );
 
         const { error } = await supabase
           .from("scorecards")
           .update({
-            gross: null,
-            net: null,
-            total: null,
-            card_status: "npt",
-            hole_scores: construirHoleScores(holes.map(h => ({
-              hole_number: h.hole_number,
-              strokes: null,
-              par_value: h.par_value,
-              hole_handicap: h.hole_handicap
-            }))),
-            export_ready: false,
-            aag_exportable: false
+            gross: tieneAlgo ? gross : null,
+            net: net,
+            total: net,
+            card_status: nuevoEstado,
+            hole_scores: construirHoleScores(holes),
+            export_ready: exportaAAG,
+            aag_exportable: exportaAAG
           })
           .eq("id", sc.id);
 
         if (error) throw error;
 
         await cargarScorecardsDelTorneo();
+
         scorecardActualId = sc.id;
+
         renderLista();
         renderTarjeta();
-        setEstado(`${sc.display_name} quedó como NPT.`, "ok");
+
+        if (nuevoEstado === "desc") {
+          setEstado(
+            `${sc.display_name} quedó como DESC${exportaAAG ? " · Ready export AAG" : " · sin export AAG"}.`,
+            "warn"
+          );
+        } else if (nuevoEstado === "valid") {
+          setEstado(`${sc.display_name} volvió a Cargada / Ready export.`, "ok");
+        } else {
+          setEstado(`${sc.display_name} volvió a NPT.`, "warn");
+        }
+
       } catch (err) {
         console.error(err);
-        setEstado(err.message || "Error marcando NPT.", "error");
-        alert("Error marcando NPT: " + (err.message || err));
+
+        setEstado(err.message || "Error cambiando estado DESC.", "error");
+
+        alert("Error cambiando estado DESC: " + (err.message || err));
       }
     }
 
@@ -1239,6 +1282,7 @@
       if (!torneoActual) return;
 
       const pendientes = scorecards.filter(sc => getStatus(sc) === "npt" || getStatus(sc) === "desc").length;
+
       const msg = pendientes > 0
         ? `Todavía hay ${pendientes} tarjeta(s) NPT/DESC. ¿Archivar igual el torneo?`
         : "¿Archivar el torneo?";
@@ -1247,6 +1291,33 @@
 
       try {
         setEstado("Archivando torneo...");
+
+        const esFourball = normalizarTexto(torneoActual?.game_modes?.name || "").includes("FOURBALL");
+
+        if (!esFourball) {
+          const scorecardsIncompletas = scorecards
+            .filter(sc => {
+              const seg = normalizarSegmento(sc.hole_segment || primerSegmentoDeScorecards(scorecards));
+              const hoyos = hoyosHabilitados(seg);
+              const strokes = mapaStrokes(sc);
+
+              return hoyos.some(hole => strokes[hole] == null || strokes[hole] === "");
+            })
+            .map(sc => sc.id);
+
+          if (scorecardsIncompletas.length > 0) {
+            const { error: errorScorecards } = await supabase
+              .from("scorecards")
+              .update({
+                export_ready: false,
+                aag_exportable: false
+              })
+              .in("id", scorecardsIncompletas);
+
+            if (errorScorecards) throw errorScorecards;
+          }
+        }
+
         const { error } = await supabase
           .from("tournaments")
           .update({ status: "archived" })
@@ -1256,6 +1327,7 @@
 
         setEstado("Torneo archivado correctamente.", "ok");
         await cargarTorneos();
+
       } catch (err) {
         console.error(err);
         setEstado(err.message || "Error archivando torneo.", "error");

@@ -565,7 +565,7 @@
                     .from("scorecards")
                     .select("*")
                     .eq("tournament_id", tournamentId)
-                    .eq("card_status", "valid");
+                    .eq("export_ready", true);
 
             if (scError) throw scError;
 
@@ -706,7 +706,7 @@
                 .from("scorecards")
                 .select("*")
                 .eq("tournament_id", tournamentId)
-                .eq("card_status", "valid");
+                .eq("export_ready", true);
 
             console.log("SCORECARDS VALIDAS:", scorecards);
 
