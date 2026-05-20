@@ -2381,46 +2381,8 @@
       return 24;
     }
 
-    function nombreTarjeta(nombreCompleto) {
-
-      const limpio = String(nombreCompleto || "")
-        .trim()
-        .replace(/\s+/g, " ");
-
-      if (!limpio) return "";
-
-      // FORMATO: APELLIDO, NOMBRES
-      if (limpio.includes(",")) {
-
-        const [apellidoRaw, nombresRaw = ""] = limpio.split(",");
-
-        const apellido = apellidoRaw.trim();
-
-        const iniciales = nombresRaw
-          .trim()
-          .split(/\s+/)
-          .filter(Boolean)
-          .map(n => `${n[0].toUpperCase()}.`)
-          .join(" ");
-
-        return iniciales
-          ? `${apellido}, ${iniciales}`
-          : apellido;
-      }
-
-      // FORMATO NORMAL SIN COMA
-      const partes = limpio.split(" ").filter(Boolean);
-
-      if (partes.length <= 1) return limpio;
-
-      const apellido = partes[partes.length - 1];
-
-      const iniciales = partes
-        .slice(0, -1)
-        .map(n => `${n[0].toUpperCase()}.`)
-        .join(" ");
-
-      return `${apellido}, ${iniciales}`;
+    function nombreTarjeta(nombre) {
+      return String(nombre || "").trim().replace(/\s+/g, " ");
     }
 
     function datosSalidaTexto({ hora, tee, tee2, hoyo }) {
