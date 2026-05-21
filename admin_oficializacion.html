@@ -1194,7 +1194,7 @@
           .from("tournaments")
           .select("id, name, tournament_date, status")
           .in("status", ["open", "officialized"])
-          .order("tournament_date", { ascending: false });
+          .order("tournament_date", { ascending: true });
 
         if (errorTorneos) throw errorTorneos;
 
