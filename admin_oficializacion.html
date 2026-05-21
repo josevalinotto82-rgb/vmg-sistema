@@ -566,6 +566,30 @@
 
     const CLUB_NOMBRE = "Villa María Golf Club";
 
+    const PAYMENT_METHODS = {
+      pending: "Pendiente",
+      cash: "Efectivo",
+      credit_card: "Tarjeta crédito",
+      debit_card: "Tarjeta débito",
+      transfer: "Transferencia",
+      current_account: "Cuenta corriente",
+      no_pay: "No paga"
+    };
+
+    function paymentOptions(selected = "pending") {
+      return Object.entries(PAYMENT_METHODS)
+        .map(([value, label]) => `<option value="${value}" ${value === selected ? "selected" : ""}>${label}</option>`)
+        .join("");
+    }
+
+    function hoyInputLocal() {
+      const d = new Date();
+      const anio = d.getFullYear();
+      const mes = String(d.getMonth() + 1).padStart(2, "0");
+      const dia = String(d.getDate()).padStart(2, "0");
+      return `${anio}-${mes}-${dia}`;
+    }
+
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
     const supabase = createClient(
@@ -679,6 +703,7 @@
     let teeMap = new Map();
 
     let aagEnrolledsMap = new Map();
+    let pagosMap = new Map();
 
     let filasVistaCache = null;
     let autoCategoriaDesdeIndexManual = false;
@@ -1253,7 +1278,7 @@
         }
         torneoFecha.value = fechaTexto(torneo.tournament_date);
 
-        const [categoriasRes, teesRes, regsRes, aagRes] = await Promise.all([
+        const [categoriasRes, teesRes, regsRes, aagRes, pagosRes] = await Promise.all([
           supabase
             .from("tournament_categories")
             .select("id, name, index_min, index_max, tee_id, display_order, gender, slope, course_rating, par, hole_segment")
@@ -1326,13 +1351,19 @@
 
           supabase
             .from("aag_enrolleds")
-            .select("enrollment_number, current_index, gender, club_name")
+            .select("enrollment_number, current_index, gender, club_name"),
+
+          supabase
+            .from("tournament_payments")
+            .select("*")
+            .eq("tournament_id", torneo.id)
         ]);
 
         if (categoriasRes.error) throw categoriasRes.error;
         if (teesRes.error) throw teesRes.error;
         if (regsRes.error) throw regsRes.error;
         if (aagRes.error) throw aagRes.error;
+        if (pagosRes.error) throw pagosRes.error;
 
         aagEnrolledsMap = new Map(
           (aagRes.data || [])
@@ -1348,6 +1379,7 @@
         categorias = categoriasRes.data || [];
         tees = teesRes.data || [];
         registrations = regsRes.data || [];
+        pagosMap = new Map((pagosRes.data || []).map(p => [String(p.registration_id), p]));
 
         rebuildIndexes();
 
@@ -1389,6 +1421,7 @@
         : reg.needs_admin_review
           ? `<span class="tag review">Revisar</span>`
           : `<span class="tag pending">Pendiente</span>`;
+      const pago = pagosMap.get(String(reg.id)) || {};
 
       return `
         <tr class="
@@ -1420,6 +1453,12 @@
           </td>
           
           <td class="col-center"><input id="hcp-${reg.id}" value="${hcpJuego ?? ""}" readonly /></td>
+          <td class="col-center">
+            <select id="pay-${reg.id}">${paymentOptions(pago.payment_method || "pending")}</select>
+          </td>
+          <td class="col-center">
+            <input id="pay-date-${reg.id}" type="date" value="${pago.payment_date || hoyInputLocal()}" />
+          </td>
           <td class="col-center">${estadoTag}</td>
           <td class="col-center">
             <div class="row-actions">
@@ -1576,6 +1615,9 @@
         estadoTag = `<span class="tag review">Revisar</span>`;
       }
 
+      const pago1 = pagosMap.get(String(reg1.id)) || {};
+      const pago2 = pagosMap.get(String(reg2.id)) || {};
+
       return `
         <tr class="
           fila-pareja
@@ -1614,6 +1656,18 @@
           <td class="col-center">${teeHtml}</td>
           <td class="col-center">${indiceManualHtml}</td>
           <td class="col-center" id="hcp-pair-${key}">${hcpHtml}</td>
+          <td class="col-center">
+            <div class="stack">
+              <select id="pay-${reg1.id}">${paymentOptions(pago1.payment_method || "pending")}</select>
+              <select id="pay-${reg2.id}">${paymentOptions(pago2.payment_method || "pending")}</select>
+            </div>
+          </td>
+          <td class="col-center">
+            <div class="stack">
+              <input id="pay-date-${reg1.id}" type="date" value="${pago1.payment_date || hoyInputLocal()}" />
+              <input id="pay-date-${reg2.id}" type="date" value="${pago2.payment_date || hoyInputLocal()}" />
+            </div>
+          </td>
           <td class="col-center">${estadoTag}</td>
           <td class="col-center">
             <div class="row-actions">
@@ -1644,8 +1698,10 @@
             <col style="width:7%">   <!-- Tee -->
             <col style="width:6%">   <!-- Index -->
             <col style="width:5%">   <!-- HCP -->
+            <col style="width:9%">   <!-- Pago -->
+            <col style="width:8%">   <!-- Día pago -->
             <col style="width:7%">   <!-- Estado -->
-            <col style="width:22%">  <!-- Acciones -->
+            <col style="width:18%">  <!-- Acciones -->
           </colgroup>
           <thead>
             <tr>
@@ -1657,6 +1713,8 @@
               <th class="col-center">Tee</th>
               <th class="col-center">Index</th>
               <th class="col-center">HCP</th>
+              <th class="col-center">Pago</th>
+              <th class="col-center">Día pago</th>
               <th class="col-center">Estado</th>
               <th class="col-center">Acciones</th>
             </tr>
@@ -1963,6 +2021,33 @@
         playingHandicap1,
         playingHandicap2
       };
+    }
+
+    async function guardarPagoJugador(reg) {
+      const metodo = document.getElementById(`pay-${reg.id}`)?.value || "pending";
+      const fechaPago = document.getElementById(`pay-date-${reg.id}`)?.value || hoyInputLocal();
+
+      const payload = {
+        tournament_id: torneoActual.id,
+        registration_id: reg.id,
+        linked_player_id: reg.linked_player_id || null,
+        display_name: reg.display_name || "Sin nombre",
+        aag_member_number: getAagMemberNumber(reg),
+        payment_method: metodo,
+        payment_date: fechaPago,
+        amount: obtenerPrecioTorneo(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from("tournament_payments")
+        .upsert(payload, { onConflict: "registration_id" })
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      pagosMap.set(String(reg.id), data || payload);
+      return data || payload;
     }
 
     function getAagMemberNumber(reg) {
@@ -2968,6 +3053,15 @@
 
         const html = buildCuponHTMLIndividual(reg, numeroCupon);
         await window.imprimirTicketQZ(html);
+
+        try {
+          await guardarPagoJugador(reg);
+          setEstado(`Cupón impreso y pago guardado: ${reg.display_name}`, "ok");
+        } catch (errorPago) {
+          console.error(errorPago);
+          setEstado(`Cupón impreso, pero no se pudo guardar el pago de ${reg.display_name}.`, "warn");
+          alert("El cupón se imprimió, pero no se pudo guardar el pago:\n\n" + (errorPago.message || JSON.stringify(errorPago)));
+        }
 
       } catch (error) {
         console.error(error);
