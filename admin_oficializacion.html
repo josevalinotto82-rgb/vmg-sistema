@@ -555,6 +555,15 @@
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:10px;">
+      <input id="buscadorJugadores" type="text" placeholder="Buscar jugador, matrícula o club..." style="
+      width:100%;
+      height:40px;
+      font-size:14px;
+      padding:0 14px;
+    " />
+    </div>
+
     <div class="card table-card">
       <div class="table-scroll" id="tablaWrap"></div>
     </div>
@@ -721,6 +730,10 @@
     });
     tablaWrap.addEventListener("click", manejarClickTabla);
     tablaWrap.addEventListener("change", manejarCambioTabla);
+
+    document
+      .getElementById("buscadorJugadores")
+      ?.addEventListener("input", filtrarTablaJugadores);
 
     torneoPrecio.addEventListener("input", () => {
       const limpio = torneoPrecio.value.replace(/[^\d]/g, "");
@@ -1415,7 +1428,17 @@
         : calcularIndiceManualMedal(indiceAAG, categoriaSeleccionada);
       const hcpJuego = calcularHcpDesdeCategoria(indiceManual, categoriaSeleccionada);
       const filaIncompleta = !categoriaSeleccionada || indiceManual == null || hcpJuego == null;
-      const horario = line ? `${horaTexto(line.line_time) || ""}${line.starting_hole ? ` · Hoyo ${line.starting_hole}` : ""}` : "—";
+      const horario = line
+        ? `
+    <div class="stack-compact">
+      <div>${horaTexto(line.line_time) || ""}</div>
+      ${line.starting_hole
+          ? `<div class="player-extra">Hoyo ${line.starting_hole}</div>`
+          : ""
+        }
+    </div>
+  `
+        : "—";
       const estadoTag = scorecard?.id
         ? `<span class="tag done">Guardado</span>`
         : reg.needs_admin_review
@@ -1434,7 +1457,6 @@
             <div class="player-extra">Club: ${reg.club_name || "—"}</div>
           </td>
           <td class="col-center">${horario}</td>
-          <td class="col-center">${formatIndexAAG(indiceAAG) || "—"}</td>
           <td class="col-center">
             <select id="cat-${reg.id}">
               <option value="">Seleccionar</option>
@@ -1523,7 +1545,17 @@
       const line = extraerLinea(reg1) || extraerLinea(reg2);
       const idxBase1 = obtenerIndexBaseParaCalculo(reg1);
       const idxBase2 = obtenerIndexBaseParaCalculo(reg2);
-      const horario = line ? `${horaTexto(line.line_time) || ""}${line.starting_hole ? ` · Hoyo ${line.starting_hole}` : ""}` : "—";
+      const horario = line
+        ? `
+    <div class="stack-compact">
+      <div>${horaTexto(line.line_time) || ""}</div>
+      ${line.starting_hole
+          ? `<div class="player-extra">Hoyo ${line.starting_hole}</div>`
+          : ""
+        }
+    </div>
+  `
+        : "—";
 
       let filaIncompleta = false;
       let estadoTag = pairScore?.id ? `<span class="tag done">Guardado</span>` : `<span class="tag pending">Pendiente</span>`;
@@ -1619,65 +1651,136 @@
       const pago2 = pagosMap.get(String(reg2.id)) || {};
 
       return `
-        <tr class="
-          fila-pareja
-          ${filaIncompleta ? "fila-revisar" : ""}
-          ${(esInvitado(reg1) || esInvitado(reg2)) ? "fila-invitado" : ""}
-        ">
-          <td class="col-center">
-            <div class="stack-compact">
-              <div>${reg1.aag_member_number || reg1.player?.aag_member_number || "—"}</div>
-              <div class="pair-divider"></div>
-              <div>${reg2.aag_member_number || reg2.player?.aag_member_number || "—"}</div>
-            </div>
-          </td>
-          <td class="col-left">
-            <div class="stack">
-              <div>
-                <div class="player-name">${reg1.display_name || "Sin nombre"}</div>
-                <div class="player-extra">Club: ${reg1.club_name || "—"}</div>
+          <tr class="
+            fila-pareja
+            ${filaIncompleta ? "fila-revisar" : ""}
+            ${(esInvitado(reg1) || esInvitado(reg2)) ? "fila-invitado" : ""}
+          ">
+            <td class="col-center">
+              <div class="stack-compact">
+                <div>${reg1.aag_member_number || reg1.player?.aag_member_number || "—"}</div>
+                <div class="pair-divider"></div>
+                <div>${reg2.aag_member_number || reg2.player?.aag_member_number || "—"}</div>
               </div>
-              <div class="pair-divider"></div>
-              <div>
-                <div class="player-name">${reg2.display_name || "Sin nombre"}</div>
-                <div class="player-extra">Club: ${reg2.club_name || "—"}</div>
+            </td>
+
+            <td class="col-left">
+              <div class="stack">
+                <div>
+                  <div class="player-name">${reg1.display_name || "Sin nombre"}</div>
+                  <div class="player-extra">Club: ${reg1.club_name || "—"}</div>
+                </div>
+
+                <div class="pair-divider"></div>
+
+                <div>
+                  <div class="player-name">${reg2.display_name || "Sin nombre"}</div>
+                  <div class="player-extra">Club: ${reg2.club_name || "—"}</div>
+                </div>
               </div>
-            </div>
-          </td>
-          <td class="col-center">${horario}</td>
-          <td class="col-center">
-            <div class="stack-compact">
-              <div>${formatIndexAAG(obtenerIndiceAAG(reg1)) || (jugadorSinIndexAAG(reg1) ? "Manual" : "—")}</div>
-              <div class="pair-divider"></div>
-              <div>${formatIndexAAG(obtenerIndiceAAG(reg2)) || (jugadorSinIndexAAG(reg2) ? "Manual" : "—")}</div>
-            </div>
-          </td>
-          <td class="col-center">${categoriaHtml}</td>
-          <td class="col-center">${teeHtml}</td>
-          <td class="col-center">${indiceManualHtml}</td>
-          <td class="col-center" id="hcp-pair-${key}">${hcpHtml}</td>
-          <td class="col-center">
-            <div class="stack">
-              <select id="pay-${reg1.id}">${paymentOptions(pago1.payment_method || "pending")}</select>
-              <select id="pay-${reg2.id}">${paymentOptions(pago2.payment_method || "pending")}</select>
-            </div>
-          </td>
-          <td class="col-center">
-            <div class="stack">
-              <input id="pay-date-${reg1.id}" type="date" value="${pago1.payment_date || hoyInputLocal()}" />
-              <input id="pay-date-${reg2.id}" type="date" value="${pago2.payment_date || hoyInputLocal()}" />
-            </div>
-          </td>
-          <td class="col-center">${estadoTag}</td>
-          <td class="col-center">
-            <div class="row-actions">
-              <button class="btn btn-primary" data-save-pair="${key}">Guardar</button>
-              <button class="btn btn-secondary" data-print-pair-card="${key}">Imp. Tarjeta</button>
-              <button class="btn btn-light" data-print-pair-coupon="${key}">Imp. Cupón</button>
-            </div>
-          </td>
-        </tr>
-      `;
+            </td>
+
+            <td class="col-center">${horario}</td>
+
+            <td class="col-center">${categoriaHtml}</td>
+
+            <td class="col-center">${teeHtml}</td>
+
+            <td class="col-center">${indiceManualHtml}</td>
+
+            <td class="col-center" id="hcp-pair-${key}">
+              ${hcpHtml}
+            </td>
+
+            <td class="col-center">
+              <div class="stack">
+                <select id="pay-${reg1.id}">
+                  ${paymentOptions(pago1.payment_method || "pending")}
+                </select>
+
+                <select id="pay-${reg2.id}">
+                  ${paymentOptions(pago2.payment_method || "pending")}
+                </select>
+              </div>
+            </td>
+
+            <td class="col-center">
+              <div class="stack">
+                <input
+                  id="pay-date-${reg1.id}"
+                  type="date"
+                  value="${pago1.payment_date || hoyInputLocal()}"
+                />
+
+                <input
+                  id="pay-date-${reg2.id}"
+                  type="date"
+                  value="${pago2.payment_date || hoyInputLocal()}"
+                />
+              </div>
+            </td>
+
+            <td class="col-center">
+              ${estadoTag}
+            </td>
+
+            <td class="col-center">
+
+  <div style="
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:10px;
+    align-items:start;
+  ">
+
+    <!-- COLUMNA IZQUIERDA -->
+    <div class="stack" style="gap:8px;">
+
+      <button
+        class="btn btn-primary"
+        data-save-pair="${key}"
+      >
+        Guardar
+      </button>
+
+      <div class="pair-divider"></div>
+
+      <button
+        class="btn btn-secondary"
+        data-print-pair-card="${key}"
+      >
+        Imp. Tarjeta
+      </button>
+
+    </div>
+
+    <!-- COLUMNA DERECHA -->
+    <div class="stack" style="gap:8px;">
+
+      <button
+        class="btn btn-light"
+        data-print-coupon="${reg1.id}"
+      >
+        Imp. Cupón
+      </button>
+
+      <div class="pair-divider"></div>
+
+      <button
+        class="btn btn-light"
+        data-print-coupon="${reg2.id}"
+      >
+        Imp. Cupón
+      </button>
+
+    </div>
+
+  </div>
+
+</td>
+
+          </tr>
+        `;
     }
 
     function renderTabla() {
@@ -1691,24 +1794,22 @@
         <table>
           <colgroup>
             <col style="width:6%">   <!-- Matrícula -->
-            <col style="width:19%">  <!-- Jugador -->
+            <col style="width:17%">  <!-- Jugador -->
             <col style="width:8%">   <!-- Horario -->
-            <col style="width:7%">   <!-- Index AAG -->
             <col style="width:13%">  <!-- Categoría -->
             <col style="width:7%">   <!-- Tee -->
             <col style="width:6%">   <!-- Index -->
             <col style="width:5%">   <!-- HCP -->
             <col style="width:9%">   <!-- Pago -->
-            <col style="width:8%">   <!-- Día pago -->
-            <col style="width:7%">   <!-- Estado -->
-            <col style="width:18%">  <!-- Acciones -->
+            <col style="width:10%">   <!-- Día pago -->
+            <col style="width:10%">   <!-- Estado -->
+            <col style="width:24%">  <!-- Acciones -->
           </colgroup>
           <thead>
             <tr>
               <th class="col-center">Matrícula</th>
               <th class="col-left">Jugador</th>
               <th class="col-center">Horario</th>
-              <th class="col-center">Index AAG</th>
               <th class="col-center">Categoría</th>
               <th class="col-center">Tee</th>
               <th class="col-center">Index</th>
@@ -1730,6 +1831,27 @@
       html += `</tbody></table>`;
       tablaWrap.innerHTML = html;
       activarCalculoAutomatico();
+    }
+
+    function filtrarTablaJugadores() {
+
+      const texto = String(
+        document.getElementById("buscadorJugadores")?.value || ""
+      )
+        .toLowerCase()
+        .trim();
+
+      const filas = tablaWrap.querySelectorAll("tbody tr");
+
+      filas.forEach((fila) => {
+
+        const contenido = fila.innerText.toLowerCase();
+
+        fila.style.display =
+          contenido.includes(texto)
+            ? ""
+            : "none";
+      });
     }
 
     function refrescarFilaSingle(reg) {
@@ -1951,10 +2073,6 @@
         return;
       }
 
-      if (btn.dataset.printPairCoupon) {
-        const [id1, id2] = btn.dataset.printPairCoupon.split("__PAIR__");
-        imprimirCuponPareja(id1, id2);
-      }
     }
 
     function obtenerDatosFilaSingle(regId) {
@@ -2988,14 +3106,16 @@
           <div style="text-align:center; font-size:12px; margin-top:2px;">Cupón de pago NO FISCAL</div>
           <div style="border-top:1px dashed #000; margin:6px 0;"></div>
           <div style="font-size:12px; line-height:1.5;">
-            <div><b>Torneo:</b> ${torneoActual?.name || ""}</div>
-            <div><b>Fecha:</b> ${fechaTexto(torneoActual?.tournament_date)}</div>
             <div><b>Cupón:</b> ${numeroCupon}</div>
+            <div><b>Fecha:</b> ${fechaTexto(hoyInputLocal())}</div>
+            <div><b>Torneo:</b> ${torneoActual?.name || ""}</div>
+            <div><b>Fecha Torneo:</b> ${fechaTexto(torneoActual?.tournament_date)}</div>
             <div><b>Jugador:</b> ${reg.display_name || ""}</div>
             <div><b>Matrícula:</b> ${reg.aag_member_number || reg.player?.aag_member_number || "—"}</div>
             <div><b>Hora:</b> ${horaTexto(line?.line_time) || "—"}</div>
             <div><b>Concepto:</b> Green fee / derecho de torneo</div>
             <div><b>Importe:</b> ${money(importe)}</div>
+            ${PAYMENT_METHODS[document.getElementById(`pay-${reg.id}`)?.value || "pending"] || "Pendiente"}
           </div>
           <div style="border-top:1px dashed #000; margin:6px 0;"></div>
           <div style="font-size:11px; text-align:center;">NO VÁLIDO COMO FACTURA</div>
@@ -3013,8 +3133,10 @@
           <div style="text-align:center; font-size:12px; margin-top:2px;">Cupón de pago NO FISCAL</div>
           <div style="border-top:1px dashed #000; margin:6px 0;"></div>
           <div style="font-size:12px; line-height:1.5;">
+            <div><b>Cupón:</b> ${numeroCupon}</div>
+            <div><b>Fecha:</b> ${fechaTexto(hoyInputLocal())}</div>
             <div><b>Torneo:</b> ${torneoActual?.name || ""}</div>
-            <div><b>Fecha:</b> ${fechaTexto(torneoActual?.tournament_date)}</div>
+            <div><b>Fecha Torneo:</b> ${fechaTexto(torneoActual?.tournament_date)}</div>
             <div><b>Cupón:</b> ${numeroCupon}</div>
             <div><b>Jugador:</b> ${regParaCobrar?.display_name || ""}</div>
             <div><b>Pareja:</b> ${nombrePareja}</div>
@@ -3022,6 +3144,8 @@
             <div><b>Hora:</b> ${horaTexto(line?.line_time) || "—"}</div>
             <div><b>Concepto:</b> Green fee / derecho de torneo</div>
             <div><b>Importe:</b> ${money(importe)}</div>
+            ${PAYMENT_METHODS[document.getElementById(`pay-pair-${regParaCobrar.id}`)?.value || "pending"] || "Pendiente"}
+            ${fechaTexto(document.getElementById(`pay-date-pair-${regParaCobrar.id}`)?.value || "")}
           </div>
           <div style="border-top:1px dashed #000; margin:6px 0;"></div>
           <div style="font-size:11px; text-align:center;">NO VÁLIDO COMO FACTURA</div>
@@ -3067,13 +3191,6 @@
         console.error(error);
         alert("Error generando número de cupón: " + (error.message || JSON.stringify(error)));
       }
-    }
-
-    async function imprimirCuponPareja(regId1, regId2) {
-      await imprimirCuponIndividual(regId1);
-      setTimeout(() => {
-        imprimirCuponIndividual(regId2);
-      }, 700);
     }
 
     mostrarSucursal();
