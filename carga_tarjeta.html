@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carga de tarjetas - Villa María Golf</title>
+  <style>
+    :root {
+      --bg: #f5f8f3;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --green: #166534;
+      --green2: #166534;
+      --blue: #0841bb;
+      --gold: #e7b067;
+      --red: #b91c1c;
+      --amber: #f54545;
+      --soft-green: #dcfce7;
+      --soft-red: #fff1f2;
+      --soft-amber: #fef3c7;
+      --soft-gray: #f3f4f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 28px;
+      color: var(--green2);
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+      margin-bottom: 16px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) 150px 160px 160px 180px;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+
+    select,
+    input {
+      width: 100%;
+      height: 38px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 7px 9px;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    input[readonly] {
+      background: #f9fafb;
+      color: #374151;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      height: 38px;
+      padding: 0 14px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--green2);
+    }
+
+    .btn-secondary {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .btn-light {
+      background: var(--gold);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .status-text {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .status-text.ok {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .status-text.error {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .status-text.warn {
+      color: var(--amber);
+      font-weight: 700;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(130px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fafafa;
+    }
+
+    .stat .k {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 5px;
+    }
+
+    .stat .v {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .list-panel {
+      max-height: 70vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .player-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 11px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      background: #fff;
+      transition: .12s ease;
+    }
+
+    .player-card:hover {
+      border-color: #9ca3af;
+      transform: translateY(-1px);
+    }
+
+    .player-card.active {
+      border-color: var(--green);
+      box-shadow: 0 0 0 2px rgba(22, 101, 52, .12);
+    }
+
+    .player-card.done {
+      background: var(--soft-green);
+    }
+
+    .player-card.desc {
+      background: var(--soft-amber);
+    }
+
+    .player-card.npt {
+      background: #fff;
+    }
+
+    .player-card.no-export {
+      border-style: dashed;
+    }
+
+    .player-name {
+      font-weight: 800;
+      font-size: 14px;
+      line-height: 1.25;
+      margin-bottom: 5px;
+    }
+
+    .player-extra {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      margin-top: 7px;
+    }
+
+    .tag.npt {
+      background: var(--soft-gray);
+      color: #374151;
+    }
+
+    .tag.valid {
+      background: var(--soft-green);
+      color: var(--green);
+    }
+
+    .tag.desc {
+      background: var(--soft-amber);
+      color: var(--amber);
+    }
+
+    .tag.export {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .tag.noexport {
+      background: var(--soft-red);
+      color: var(--red);
+    }
+
+    .score-header {
+      display: grid;
+      grid-template-columns: 1.3fr repeat(4, minmax(90px, .4fr));
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .selected-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--green2);
+      margin-bottom: 3px;
+    }
+
+    .selected-sub {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .score-grid-wrap {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .score-grid {
+      min-width: 900px;
+      display: grid;
+      grid-template-columns: repeat(18, 1fr);
+      gap: 6px;
+    }
+
+    .hole {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 7px 5px;
+      background: #fff;
+      text-align: center;
+    }
+
+    .hole.disabled {
+      opacity: .35;
+      background: #f3f4f6;
+    }
+
+    .hole-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--green2);
+    }
+
+    .hole-meta {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.25;
+      margin: 3px 0 6px;
+    }
+
+    .hole input {
+      height: 36px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 800;
+      padding: 4px;
+    }
+
+    .hole input:disabled {
+      background: #e5e7eb;
+      color: #6b7280;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .sumas-control {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 10px;
+      margin: 10px 0 14px;
+    }
+
+    .suma-box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: #fafafa;
+      text-align: center;
+    }
+
+    .suma-box .label {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 4px;
+    }
+
+    .suma-box .valor {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--green2);
+    }
+
+    .modo-aviso {
+      margin: 8px 0 12px;
+      padding: 9px 11px;
+      border-radius: 12px;
+      background: var(--soft-amber);
+      color: var(--amber);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    @media(max-width:700px) {
+      .sumas-control {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .empty {
+      padding: 18px;
+      color: var(--muted);
+      background: #fff;
+      border-radius: 12px;
+      border: 1px dashed #d1d5db;
+    }
+
+    @media(max-width:1100px) {
+      .toolbar {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .list-panel {
+        max-height: none;
+      }
+
+      .score-header {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(130px, 1fr));
+      }
+    }
+
+    @media(max-width:700px) {
+      .page {
+        padding: 12px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .score-header {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .home-btn {
+      position: fixed;
+      top: 30px;
+      right: 27px;
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      background: #166534;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      z-index: 9999;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .home-btn:hover {
+      background: #166534;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="home-btn" id="btnHome" title="Volver al panel">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+        stroke-width="2" />
+    </svg>
+  </div>
+
+  <div class="page">
+    <div class="topbar">
+      <div>
+        <h1>Carga de tarjetas</h1>
+        <div class="sub">Carga hoyo por hoyo, calcula gross/net, deja la tarjeta lista para
+          exportar si corresponde.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="field">
+          <label for="torneoSelect">Torneo oficializado</label>
+          <select id="torneoSelect"></select>
+        </div>
+        <div class="field">
+          <label>Fecha</label>
+          <input id="torneoFecha" readonly />
+        </div>
+        <div class="field">
+          <label>Modalidad</label>
+          <input id="torneoModalidad" readonly />
+        </div>
+        <div class="field">
+          <label>Segmento</label>
+          <input id="torneoSegmento" readonly />
+        </div>
+        <div class="field">
+          <label>Acción final</label>
+          <button id="btnArchivar" class="btn btn-danger" style="width:100%">Archivar torneo</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="k">Total tarjetas</div>
+          <div class="v" id="statTotal">0</div>
+        </div>
+        <div class="stat">
+          <div class="k">NPT</div>
+          <div class="v" id="statNpt">0</div>
+        </div>
+        <div class="stat">
+          <div class="k">DESC</div>
+          <div class="v" id="statDesc">0</div>
+        </div>
+        <div class="stat">
+          <div class="k">Cargadas</div>
+          <div class="v" id="statValid">0</div>
+        </div>
+        <div class="stat">
+          <div class="k">aag exp.</div>
+          <div class="v" id="statReady">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card status-bar">
+      <div id="estado" class="status-text">Conectando...</div>
+      <button id="btnRecargar" class="btn btn-secondary">Recargar</button>
+    </div>
+
+    <div class="layout">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+          <div style="font-weight:800; color:var(--green2);">Jugadores / tarjetas</div>
+          <input id="buscador" placeholder="Buscar..." style="max-width:155px;" />
+        </div>
+        <div id="listaJugadores" class="list-panel"></div>
+      </div>
+
+      <div class="card">
+        <div id="panelTarjeta">
+          <div class="empty">Seleccioná un torneo y una tarjeta para cargar.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://bnnfolhrqxgxjmobclrm.supabase.co",
+      "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+    );
+
+    async function exigirAdmin() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        window.location.href = "login.html";
+        throw new Error("Sin sesión");
+      }
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("role, active")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (error || !profile || profile.active !== true || profile.role !== "admin") {
+        alert("No tenés permiso para entrar a esta página.");
+        window.location.href = "panel.html";
+        throw new Error("Sin permiso admin");
+      }
+
+      return session.user;
+    }
+
+    await exigirAdmin();
+
+    const COURSE_HOLES = {
+      1: { par: 4, hcp: 15 }, 2: { par: 4, hcp: 3 }, 3: { par: 3, hcp: 5 }, 4: { par: 4, hcp: 11 }, 5: { par: 3, hcp: 9 }, 6: { par: 4, hcp: 1 },
+      7: { par: 4, hcp: 13 }, 8: { par: 4, hcp: 7 }, 9: { par: 5, hcp: 17 }, 10: { par: 4, hcp: 8 }, 11: { par: 3, hcp: 14 }, 12: { par: 5, hcp: 10 },
+      13: { par: 3, hcp: 2 }, 14: { par: 4, hcp: 16 }, 15: { par: 4, hcp: 18 }, 16: { par: 4, hcp: 6 }, 17: { par: 5, hcp: 12 }, 18: { par: 4, hcp: 4 }
+    };
+
+    const torneoSelect = document.getElementById("torneoSelect");
+    const torneoFecha = document.getElementById("torneoFecha");
+    const torneoModalidad = document.getElementById("torneoModalidad");
+    const torneoSegmento = document.getElementById("torneoSegmento");
+    const estado = document.getElementById("estado");
+    const listaJugadores = document.getElementById("listaJugadores");
+    const panelTarjeta = document.getElementById("panelTarjeta");
+    const buscador = document.getElementById("buscador");
+    const btnRecargar = document.getElementById("btnRecargar");
+    const btnArchivar = document.getElementById("btnArchivar");
+
+    const statTotal = document.getElementById("statTotal");
+    const statNpt = document.getElementById("statNpt");
+    const statDesc = document.getElementById("statDesc");
+    const statValid = document.getElementById("statValid");
+    const statReady = document.getElementById("statReady");
+
+    let torneos = [];
+    let torneoActual = null;
+    let scorecards = [];
+    let scorecardActualId = null;
+
+    torneoSelect.addEventListener("change", cargarScorecardsDelTorneo);
+    buscador.addEventListener("input", renderLista);
+    btnRecargar.addEventListener("click", cargarScorecardsDelTorneo);
+    btnArchivar.addEventListener("click", archivarTorneo);
+
+    function setEstado(texto, tipo = "") {
+      estado.textContent = texto;
+      estado.className = `status-text ${tipo}`.trim();
+    }
+
+    function fechaTexto(valor) {
+      if (!valor) return "";
+      const d = new Date(valor + "T00:00:00");
+      return d.toLocaleDateString("es-AR");
+    }
+
+    function normalizarTexto(txt) {
+      return String(txt || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+        .trim();
+    }
+
+    function normalizarSegmento(segment) {
+      const s = String(segment || "").toLowerCase().trim();
+      if (["front9", "front 9", "primeros 9", "ida"].includes(s)) return "front9";
+      if (["back9", "back 9", "segundos 9", "vuelta"].includes(s)) return "back9";
+      if (["9", "9h", "9 hoyos"].includes(s)) return "front9";
+      return "18";
+    }
+
+    function hoyosHabilitados(segment) {
+      const seg = normalizarSegmento(segment);
+      if (seg === "front9") return [1, 2, 3, 4, 5, 6, 7, 8, 9];
+      if (seg === "back9") return [10, 11, 12, 13, 14, 15, 16, 17, 18];
+      return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+    }
+
+    function primerSegmentoDeScorecards(items) {
+      const seg = items.find(s => s.hole_segment)?.hole_segment || "18";
+      return normalizarSegmento(seg);
+    }
+
+    function etiquetaSegmento(seg) {
+      const s = normalizarSegmento(seg);
+      if (s === "front9") return "Front 9 · hoyos 1 al 9";
+      if (s === "back9") return "Back 9 · hoyos 10 al 18";
+      return "18 hoyos";
+    }
+
+    function esModalidadAmericana() {
+      const nombre = normalizarTexto(torneoActual?.game_modes?.name || "");
+      return nombre.includes("AMERICANA");
+    }
+
+    function sumarHoyos(holes, desde, hasta) {
+      return holes
+        .filter(h => h.hole_number >= desde && h.hole_number <= hasta && h.strokes != null)
+        .reduce((sum, h) => sum + Number(h.strokes || 0), 0);
+    }
+
+    function contarHoyosCargados(holes, desde, hasta) {
+      return holes.filter(h => h.hole_number >= desde && h.hole_number <= hasta && h.strokes != null).length;
+    }
+
+    function textoSuma(sum, cargados) {
+      return cargados > 0 ? String(sum) : "—";
+    }
+
+    function getStatus(sc) {
+      const st = String(sc?.card_status || "npt").toLowerCase();
+      if (st === "valid" || st === "cargada" || st === "loaded") return "valid";
+      if (st === "desc" || st === "incomplete") return "desc";
+      return "npt";
+    }
+
+    function statusLabel(sc) {
+      const st = getStatus(sc);
+      if (st === "valid") return "Cargada";
+      if (st === "desc") return "DESC";
+      return "NPT";
+    }
+
+    function ordenarPorEstadoYNombre(a, b) {
+      const peso = { npt: 0, desc: 1, valid: 2 };
+      const ea = peso[getStatus(a)] ?? 0;
+      const eb = peso[getStatus(b)] ?? 0;
+      if (ea !== eb) return ea - eb;
+      return normalizarTexto(a.display_name).localeCompare(normalizarTexto(b.display_name), "es");
+    }
+
+    async function cargarTorneos() {
+      try {
+        setEstado("Cargando torneos oficializados...");
+        const { data, error } = await supabase
+          .from("tournaments")
+          .select(`
+            id,
+            name,
+            tournament_date,
+            status,
+            game_modes (
+              id,
+              name
+            )
+          `)
+          .eq("status", "officialized")
+          .order("tournament_date", { ascending: false });
+
+        if (error) throw error;
+
+        torneos = data || [];
+        torneoSelect.innerHTML = torneos.length
+          ? torneos.map(t => `<option value="${t.id}">${t.name} (${fechaTexto(t.tournament_date)})</option>`).join("")
+          : `<option value="">No hay torneos oficializados</option>`;
+
+        if (!torneos.length) {
+          torneoActual = null;
+          limpiarPantalla("No hay torneos Oficializados.");
+          setEstado("No se encontraron torneos oficializados.", "warn");
+          return;
+        }
+
+        await cargarScorecardsDelTorneo();
+      } catch (err) {
+        console.error(err);
+        limpiarPantalla("Error cargando torneos.");
+        setEstado(err.message || "Error cargando torneos.", "error");
+      }
+    }
+
+    async function cargarScorecardsDelTorneo() {
+      try {
+        const torneoId = torneoSelect.value;
+        if (!torneoId) return;
+
+        setEstado("Cargando scorecards...");
+        torneoActual = torneos.find(t => String(t.id) === String(torneoId)) || null;
+
+        torneoFecha.value = fechaTexto(torneoActual?.tournament_date);
+        torneoModalidad.value = torneoActual?.game_modes?.name || "";
+        torneoSegmento.value = "";
+
+        const { data, error } = await supabase
+          .from("scorecards")
+          .select(`
+            id,
+            tournament_id,
+            registration_id,
+            linked_player_id,
+            display_name,
+            aag_member_number,
+            playing_handicap,
+            category_name,
+            tee_name,
+            hole_segment,
+            gross,
+            net,
+            total,
+            card_status,
+            hole_scores,
+            export_ready,
+            aag_exportable
+            )
+          `)
+          .eq("tournament_id", torneoId);
+
+        if (error) throw error;
+
+        scorecards = (data || []).sort(ordenarPorEstadoYNombre);
+        torneoSegmento.value = etiquetaSegmento(primerSegmentoDeScorecards(scorecards));
+
+        if (!scorecards.length) {
+          scorecardActualId = null;
+          listaJugadores.innerHTML = `<div class="empty">Este torneo no tiene scorecards. Primero oficializá los jugadores.</div>`;
+          panelTarjeta.innerHTML = `<div class="empty">No hay tarjetas para cargar.</div>`;
+          actualizarStats();
+          setEstado("Sin scorecards para este torneo.", "warn");
+          return;
+        }
+
+        if (!scorecardActualId || !scorecards.some(s => String(s.id) === String(scorecardActualId))) {
+          scorecardActualId = scorecards[0].id;
+        }
+
+        renderLista();
+        renderTarjeta();
+        actualizarStats();
+        setEstado(`Cargadas ${scorecards.length} tarjetas del torneo.`, "ok");
+      } catch (err) {
+        console.error(err);
+        limpiarPantalla("Error cargando scorecards.");
+        setEstado(err.message || "Error cargando scorecards.", "error");
+      }
+    }
+
+    function limpiarPantalla(msg) {
+      listaJugadores.innerHTML = `<div class="empty">${msg}</div>`;
+      panelTarjeta.innerHTML = `<div class="empty">${msg}</div>`;
+      torneoFecha.value = "";
+      torneoModalidad.value = "";
+      torneoSegmento.value = "";
+      actualizarStats();
+    }
+
+    function actualizarStats() {
+      const total = scorecards.length;
+      const npt = scorecards.filter(s => getStatus(s) === "npt").length;
+      const desc = scorecards.filter(s => getStatus(s) === "desc").length;
+      const valid = scorecards.filter(s => getStatus(s) === "valid").length;
+      const ready = scorecards.filter(s => !!s.export_ready).length;
+
+      statTotal.textContent = total;
+      statNpt.textContent = npt;
+      statDesc.textContent = desc;
+      statValid.textContent = valid;
+      statReady.textContent = ready;
+    }
+
+    function renderLista() {
+      const q = normalizarTexto(buscador.value);
+      const filtradas = scorecards
+        .filter(s => !q || normalizarTexto(s.display_name).includes(q) || normalizarTexto(s.aag_member_number).includes(q))
+        .sort(ordenarPorEstadoYNombre);
+
+      if (!filtradas.length) {
+        listaJugadores.innerHTML = `<div class="empty">No hay jugadores para ese filtro.</div>`;
+        return;
+      }
+
+      listaJugadores.innerHTML = filtradas.map(sc => {
+        const st = getStatus(sc);
+        const active = String(sc.id) === String(scorecardActualId);
+        const exportReady = !!sc.export_ready;
+        const sinAag = !sc.aag_member_number;
+        return `
+          <div class="player-card ${active ? "active" : ""} ${st} ${sinAag ? "no-export" : ""}" data-select-scorecard="${sc.id}">
+            <div class="player-name">${sc.display_name || "Sin nombre"}</div>
+            <div class="player-extra">
+              Matrícula: ${sc.aag_member_number || "Sin matrícula AAG"}<br>
+              Cat.: ${sc.category_name || "—"} · Tee: ${sc.tee_name || "—"}<br>
+              ${esModalidadAmericana()
+            ? `Gross: ${sc.gross ?? "—"}`
+            : `HCP: ${sc.playing_handicap ?? "—"} · Gross: ${sc.gross ?? "—"} · Neto: ${sc.net ?? "—"}`}
+            </div>
+            <span class="tag ${st}">${statusLabel(sc)}</span>
+            ${exportReady ? `<span class="tag export">AAG Exp.</span>` : `<span class="tag noexport">No Exp.</span>`}
+          </div>
+        `;
+      }).join("");
+
+      document.querySelectorAll("[data-select-scorecard]").forEach(el => {
+        el.addEventListener("click", () => {
+          scorecardActualId = el.dataset.selectScorecard;
+          renderLista();
+          renderTarjeta();
+        });
+      });
+    }
+
+    function getScorecardActual() {
+      return scorecards.find(s => String(s.id) === String(scorecardActualId)) || null;
+    }
+
+    function mapaStrokes(sc) {
+      const mapa = {};
+      const holeScores = sc?.hole_scores || {};
+
+      if (holeScores && typeof holeScores === "object") {
+        for (const [hole, val] of Object.entries(holeScores)) {
+          if (val && typeof val === "object") {
+            if (val.strokes != null) mapa[Number(hole)] = val.strokes;
+          } else if (val != null && val !== "") {
+            mapa[Number(hole)] = val;
+          }
+        }
+      }
+
+      return mapa;
+    }
+
+    function renderTarjeta() {
+      const sc = getScorecardActual();
+      if (!sc) {
+        panelTarjeta.innerHTML = `<div class="empty">Seleccioná una tarjeta.</div>`;
+        return;
+      }
+
+      const seg = normalizarSegmento(sc.hole_segment || primerSegmentoDeScorecards(scorecards));
+      const habilitados = hoyosHabilitados(seg);
+      const habilitadosSet = new Set(habilitados);
+      const strokes = mapaStrokes(sc);
+      const americana = esModalidadAmericana();
+
+      panelTarjeta.innerHTML = `
+        <div class="score-header">
+          <div>
+            <div class="selected-title">${sc.display_name || "Sin nombre"}</div>
+            <div class="selected-sub">
+              Matrícula: ${sc.aag_member_number || "Sin matrícula AAG"} · Categoría: ${sc.category_name || "—"} · Tee: ${sc.tee_name || "—"}<br>
+              Segmento: ${etiquetaSegmento(seg)}${americana ? " · Modalidad Americana: cargar golpes ya neteados por hoyo" : ` · HCP juego: ${sc.playing_handicap ?? "—"}`}
+            </div>
+          </div>
+          <div class="field"><label>Gross</label><input id="grossPreview" readonly value="${sc.gross ?? ""}" /></div>
+          <div class="field"><label>${americana ? "Resultado" : "Neto"}</label><input id="netPreview" readonly value="${americana ? (sc.gross ?? "") : (sc.net ?? "")}" /></div>
+          <div class="field"><label>Estado</label><input id="estadoPreview" readonly value="${statusLabel(sc)}" /></div>
+          <div class="field"><label>Exp.</label><input id="exportPreview" readonly value="${sc.export_ready ? "Ready" : "No"}" /></div>
+        </div>
+
+        ${americana ? `<div class="modo-aviso">Americana: se cargan los golpes finales por hoyo. No se descuenta HCP ni se calcula neto aparte.</div>` : ""}
+
+        <div class="sumas-control">
+          <div class="suma-box">
+            <div class="label">Suma hoyos 1 al 9</div>
+            <div class="valor" id="sumaIdaPreview">—</div>
+          </div>
+          <div class="suma-box">
+            <div class="label">Suma hoyos 10 al 18</div>
+            <div class="valor" id="sumaVueltaPreview">—</div>
+          </div>
+          <div class="suma-box">
+            <div class="label">Total cargado</div>
+            <div class="valor" id="sumaTotalPreview">—</div>
+          </div>
+        </div>
+
+        <div class="score-grid-wrap">
+          <div class="score-grid">
+            ${Array.from({ length: 18 }, (_, idx) => {
+        const hole = idx + 1;
+        const enabled = habilitadosSet.has(hole);
+        const meta = COURSE_HOLES[hole];
+        return `
+                <div class="hole ${enabled ? "" : "disabled"}">
+                  <div class="hole-label">H${hole}</div>
+                  <div class="hole-meta">Par ${meta.par}<br>HCP ${meta.hcp}</div>
+                  <input
+                    id="h${hole}"
+                    data-hole-input="${hole}"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    min="1"
+                    max="15"
+                    maxlength="2"
+                    placeholder="-"
+                    value="${enabled && strokes[hole] != null ? strokes[hole] : ""}"
+                    ${enabled ? "" : "disabled"}
+                  />
+                </div>
+              `;
+      }).join("")}
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="btnGuardarTarjeta" class="btn btn-primary">Guardar tarjeta / Ready export</button>
+          <button id="btnMarcarNpt" class="btn btn-danger">DESC</button>
+          <button id="btnLimpiar" class="btn btn-secondary">Limpiar campos</button>
+        </div>
+      `;
+
+      document.querySelectorAll("[data-hole-input]").forEach(inp => {
+        inp.addEventListener("input", () => {
+          inp.value = inp.value.replace(/[^\d]/g, "").slice(0, 2);
+          actualizarPreviewLocal();
+        });
+
+        inp.addEventListener("keydown", async (e) => {
+          if (e.key !== "Enter") return;
+
+          e.preventDefault();
+          const inputs = Array.from(document.querySelectorAll("[data-hole-input]:not(:disabled)"));
+          const pos = inputs.indexOf(inp);
+
+          if (pos >= 0 && pos < inputs.length - 1) {
+            inputs[pos + 1].focus();
+            inputs[pos + 1].select?.();
+            return;
+          }
+
+          await guardarTarjetaActual({ limpiarLuego: true });
+        });
+      });
+
+      document.getElementById("btnGuardarTarjeta").addEventListener("click", () => guardarTarjetaActual());
+      document.getElementById("btnMarcarNpt").addEventListener("click", marcarActualNpt);
+      document.getElementById("btnLimpiar").addEventListener("click", () => {
+        document.querySelectorAll("[data-hole-input]:not(:disabled)").forEach(i => i.value = "");
+        actualizarPreviewLocal();
+      });
+
+      const primero = document.querySelector("[data-hole-input]:not(:disabled)");
+      if (primero) primero.focus();
+      actualizarPreviewLocal();
+    }
+
+    function leerInputsTarjeta(sc) {
+      const seg = normalizarSegmento(sc.hole_segment || primerSegmentoDeScorecards(scorecards));
+      const habilitados = hoyosHabilitados(seg);
+      const holes = [];
+
+      for (const hole of habilitados) {
+        const input = document.getElementById(`h${hole}`);
+        const raw = String(input?.value || "").trim();
+        const strokes = raw === "" ? null : Number(raw);
+        const meta = COURSE_HOLES[hole];
+        holes.push({
+          hole_number: hole,
+          strokes: Number.isFinite(strokes) ? strokes : null,
+          par_value: meta.par,
+          hole_handicap: meta.hcp
+        });
+      }
+
+      return { seg, habilitados, holes };
+    }
+
+    function calcularResultado(sc, holes) {
+      const cargados = holes.filter(h => h.strokes != null);
+      const gross = cargados.reduce((sum, h) => sum + Number(h.strokes || 0), 0);
+      const totalNecesarios = holes.length;
+      const hcp = Number(sc.playing_handicap || 0);
+      const americana = esModalidadAmericana();
+
+      let card_status = "npt";
+      if (cargados.length === 0) card_status = "npt";
+      else if (cargados.length < totalNecesarios) card_status = "desc";
+      else card_status = "valid";
+
+      // En Four Ball Americana la tarjeta ya viene con los golpes netos aplicados por hoyo.
+      // Por eso NO se descuenta HCP y el resultado que se guarda/muestra es el gross cargado.
+      const net = cargados.length > 0
+        ? (americana ? gross : gross - hcp)
+        : null;
+      const export_ready = card_status === "valid" && !!sc.aag_member_number;
+
+      return {
+        gross: cargados.length > 0 ? gross : null,
+        net,
+        total: net,
+        card_status,
+        export_ready
+      };
+    }
+
+    function construirHoleScores(holes) {
+      const obj = {};
+      for (const h of holes) {
+        obj[String(h.hole_number)] = {
+          strokes: h.strokes,
+          par_value: h.par_value,
+          hole_handicap: h.hole_handicap
+        };
+      }
+      return obj;
+    }
+
+    function actualizarPreviewLocal() {
+      const sc = getScorecardActual();
+      if (!sc) return;
+      const { holes } = leerInputsTarjeta(sc);
+      const r = calcularResultado(sc, holes);
+      const grossEl = document.getElementById("grossPreview");
+      const netEl = document.getElementById("netPreview");
+      const estadoEl = document.getElementById("estadoPreview");
+      const exportEl = document.getElementById("exportPreview");
+      const sumaIdaEl = document.getElementById("sumaIdaPreview");
+      const sumaVueltaEl = document.getElementById("sumaVueltaPreview");
+      const sumaTotalEl = document.getElementById("sumaTotalPreview");
+
+      const sumaIda = sumarHoyos(holes, 1, 9);
+      const sumaVuelta = sumarHoyos(holes, 10, 18);
+      const cargadosIda = contarHoyosCargados(holes, 1, 9);
+      const cargadosVuelta = contarHoyosCargados(holes, 10, 18);
+      const cargadosTotal = holes.filter(h => h.strokes != null).length;
+
+      if (grossEl) grossEl.value = r.gross ?? "";
+      if (netEl) netEl.value = r.net ?? "";
+      if (estadoEl) estadoEl.value = r.card_status === "valid" ? "Cargada" : r.card_status.toUpperCase();
+      if (exportEl) exportEl.value = r.export_ready ? "Lista" : "No";
+      if (sumaIdaEl) sumaIdaEl.textContent = textoSuma(sumaIda, cargadosIda);
+      if (sumaVueltaEl) sumaVueltaEl.textContent = textoSuma(sumaVuelta, cargadosVuelta);
+      if (sumaTotalEl) sumaTotalEl.textContent = textoSuma(sumaIda + sumaVuelta, cargadosTotal);
+    }
+
+    async function guardarTarjetaActual(opciones = {}) {
+      const sc = getScorecardActual();
+      if (!sc) return;
+
+      try {
+        setEstado(`Guardando tarjeta de ${sc.display_name}...`);
+
+        const { holes } = leerInputsTarjeta(sc);
+        const resultado = calcularResultado(sc, holes);
+        const holeScores = construirHoleScores(holes);
+
+        const { error: scError } = await supabase
+          .from("scorecards")
+          .update({
+            gross: resultado.gross,
+            net: resultado.net,
+            total: resultado.total,
+            card_status: resultado.card_status,
+            hole_scores: holeScores,
+            export_ready: holes.every(h => h.strokes != null) && !!sc.aag_member_number,
+            aag_exportable: holes.every(h => h.strokes != null) && !!sc.aag_member_number
+          })
+          .eq("id", sc.id);
+
+        if (scError) throw scError;
+
+        await cargarScorecardsDelTorneo();
+
+        if (opciones.limpiarLuego) {
+          scorecardActualId = null;
+          renderLista();
+          panelTarjeta.innerHTML = `<div class="empty">Tarjeta guardada. Seleccioná otra tarjeta para cargar.</div>`;
+          buscador.focus();
+        } else {
+          scorecardActualId = sc.id;
+          renderLista();
+          renderTarjeta();
+        }
+
+        if (resultado.card_status === "valid") {
+          setEstado(`Tarjeta cargada: ${sc.display_name}${resultado.export_ready ? " · Ready export" : " · sin matrícula AAG, no exporta"}.`, "ok");
+        } else if (resultado.card_status === "desc") {
+          setEstado(`Tarjeta incompleta: ${sc.display_name} quedó como DESC.`, "warn");
+        } else {
+          setEstado(`Tarjeta sin datos: ${sc.display_name} quedó como NPT.`, "warn");
+        }
+      } catch (err) {
+        console.error(err);
+        setEstado(err.message || "Error guardando tarjeta.", "error");
+        alert("Error guardando tarjeta: " + (err.message || err));
+      }
+    }
+
+    async function marcarActualNpt() {
+      const sc = getScorecardActual();
+      if (!sc) return;
+
+      const estabaDesc = String(sc.card_status || "").toLowerCase() === "desc";
+
+      const mensaje = estabaDesc
+        ? `¿Quitar DESC y volver a estado normal a ${sc.display_name}?`
+        : `¿Marcar como DESC a ${sc.display_name}?`;
+
+      if (!confirm(mensaje)) return;
+
+      try {
+        const { holes } = leerInputsTarjeta(sc);
+
+        const tarjetaCompleta = holes.every(h => h.strokes != null);
+        const tieneAlgo = holes.some(h => h.strokes != null);
+
+        let nuevoEstado;
+
+        if (estabaDesc) {
+          if (tarjetaCompleta) {
+            nuevoEstado = "valid";
+          } else if (tieneAlgo) {
+            nuevoEstado = "desc";
+          } else {
+            nuevoEstado = "npt";
+          }
+        } else {
+          nuevoEstado = "desc";
+        }
+
+        const gross = holes
+          .filter(h => h.strokes != null)
+          .reduce((sum, h) => sum + Number(h.strokes || 0), 0);
+
+        const net = tieneAlgo
+          ? (esModalidadAmericana()
+            ? gross
+            : gross - Number(sc.playing_handicap || 0))
+          : null;
+
+        const exportaAAG =
+          !!sc.aag_member_number &&
+          (
+            nuevoEstado === "valid" ||
+            (nuevoEstado === "desc" && tarjetaCompleta)
+          );
+
+        const { error } = await supabase
+          .from("scorecards")
+          .update({
+            gross: tieneAlgo ? gross : null,
+            net: net,
+            total: net,
+            card_status: nuevoEstado,
+            hole_scores: construirHoleScores(holes),
+            export_ready: exportaAAG,
+            aag_exportable: exportaAAG
+          })
+          .eq("id", sc.id);
+
+        if (error) throw error;
+
+        await cargarScorecardsDelTorneo();
+
+        scorecardActualId = sc.id;
+
+        renderLista();
+        renderTarjeta();
+
+        if (nuevoEstado === "desc") {
+          setEstado(
+            `${sc.display_name} quedó como DESC${exportaAAG ? " · Ready export AAG" : " · sin export AAG"}.`,
+            "warn"
+          );
+        } else if (nuevoEstado === "valid") {
+          setEstado(`${sc.display_name} volvió a Cargada / Ready export.`, "ok");
+        } else {
+          setEstado(`${sc.display_name} volvió a NPT.`, "warn");
+        }
+
+      } catch (err) {
+        console.error(err);
+
+        setEstado(err.message || "Error cambiando estado DESC.", "error");
+
+        alert("Error cambiando estado DESC: " + (err.message || err));
+      }
+    }
+
+    async function archivarTorneo() {
+      if (!torneoActual) return;
+
+      const pendientes = scorecards.filter(sc => getStatus(sc) === "npt" || getStatus(sc) === "desc").length;
+
+      const msg = pendientes > 0
+        ? `Todavía hay ${pendientes} tarjeta(s) NPT/DESC. ¿Archivar igual el torneo?`
+        : "¿Archivar el torneo?";
+
+      if (!confirm(msg)) return;
+
+      try {
+        setEstado("Archivando torneo...");
+
+        const esFourball = normalizarTexto(torneoActual?.game_modes?.name || "").includes("FOURBALL");
+
+        if (!esFourball) {
+          const scorecardsIncompletas = scorecards
+            .filter(sc => {
+              const seg = normalizarSegmento(sc.hole_segment || primerSegmentoDeScorecards(scorecards));
+              const hoyos = hoyosHabilitados(seg);
+              const strokes = mapaStrokes(sc);
+
+              return hoyos.some(hole => strokes[hole] == null || strokes[hole] === "");
+            })
+            .map(sc => sc.id);
+
+          if (scorecardsIncompletas.length > 0) {
+            const { error: errorScorecards } = await supabase
+              .from("scorecards")
+              .update({
+                export_ready: false,
+                aag_exportable: false
+              })
+              .in("id", scorecardsIncompletas);
+
+            if (errorScorecards) throw errorScorecards;
+          }
+        }
+
+        const { error } = await supabase
+          .from("tournaments")
+          .update({ status: "archived" })
+          .eq("id", torneoActual.id);
+
+        if (error) throw error;
+
+        setEstado("Torneo archivado correctamente.", "ok");
+        await cargarTorneos();
+
+      } catch (err) {
+        console.error(err);
+        setEstado(err.message || "Error archivando torneo.", "error");
+        alert("Error archivando torneo: " + (err.message || err));
+      }
+    }
+
+    cargarTorneos();
+
+    document.getElementById("btnHome").addEventListener("click", () => {
+      window.location.href = "panel.html";
+    });
+  </script>
+</body>
+
+</html>
