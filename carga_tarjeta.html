@@ -520,7 +520,7 @@
     <div class="card">
       <div class="toolbar">
         <div class="field">
-          <label for="torneoSelect">Torneo oficializado</label>
+          <label for="torneoSelect">Torneo</label>
           <select id="torneoSelect"></select>
         </div>
         <div class="field">
@@ -742,7 +742,7 @@
 
     async function cargarTorneos() {
       try {
-        setEstado("Cargando torneos oficializados...");
+        setEstado("Cargando torneos...");
         const { data, error } = await supabase
           .from("tournaments")
           .select(`
@@ -755,15 +755,15 @@
               name
             )
           `)
-          .eq("status", "officialized")
-          .order("tournament_date", { ascending: false });
+          .in("status", ["officialized", "open"])
+          .order("tournament_date", { ascending: true });
 
         if (error) throw error;
 
         torneos = data || [];
         torneoSelect.innerHTML = torneos.length
           ? torneos.map(t => `<option value="${t.id}">${t.name} (${fechaTexto(t.tournament_date)})</option>`).join("")
-          : `<option value="">No hay torneos oficializados</option>`;
+          : `<option value="">No hay torneos</option>`;
 
         if (!torneos.length) {
           torneoActual = null;

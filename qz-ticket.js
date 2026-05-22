@@ -19,17 +19,12 @@ async function leerTexto(url, nombre) {
 async function configurarSeguridadQZ() {
   if (qzSecurityReady) return;
 
-  const perfilQZ = localStorage.getItem("vmgc_qz_profile") || "pc1";
-
-  const archivoCertificado = `./qz-certificate-${perfilQZ}.txt`;
-  const archivoClave = `./qz-private-key-${perfilQZ}.pem`;
-
   if (typeof KEYUTIL === "undefined" || typeof KJUR === "undefined") {
     throw new Error("No está cargado jsrsasign. Revisá el script en el HEAD.");
   }
 
   qz.security.setCertificatePromise(function (resolve, reject) {
-    leerTexto(archivoCertificado, archivoCertificado)
+    leerTexto("./qz-certificate.txt", "qz-certificate.txt")
       .then(function (cert) {
         if (!cert.includes("BEGIN CERTIFICATE")) {
           reject("El certificado no es válido");
@@ -45,7 +40,7 @@ async function configurarSeguridadQZ() {
 
   qz.security.setSignaturePromise(function (toSign) {
     return function (resolve, reject) {
-      leerTexto(archivoClave, archivoClave)
+      leerTexto("./qz-private-key.pem", "qz-private-key.pem")
         .then(function (privateKey) {
           if (!privateKey.includes("BEGIN PRIVATE KEY")) {
             reject("La private key no es válida");
@@ -84,37 +79,27 @@ window.imprimirTicketQZ = async function (html) {
 
     const printers = await qz.printers.find();
 
-    let printerName = localStorage.getItem("vmgc_ticket_printer");
+    let printerName = null;
 
-    if (printerName && !printers.includes(printerName)) {
-      localStorage.removeItem("vmgc_ticket_printer");
-      printerName = null;
+    // 1) Prioridad: Epson TM
+    printerName = printers.find(p =>
+      String(p).toUpperCase().includes("EPSON") &&
+      String(p).toUpperCase().includes("TM")
+    );
+
+    // 2) Si no encuentra Epson, busca POS-80C
+    if (!printerName) {
+      printerName = printers.find(p =>
+        String(p).toUpperCase().includes("POS-80C")
+      );
     }
 
     if (!printerName) {
-      const opciones = printers.filter(p =>
-        String(p).toUpperCase().includes("EPSON") ||
-        String(p).toUpperCase().includes("POS") ||
-        String(p).toUpperCase().includes("RECEIPT")
+      alert(
+        "No encontré impresora térmica.\n\n" +
+        printers.join("\n")
       );
-
-      const listado = opciones
-        .map((p, i) => `${i + 1}) ${p}`)
-        .join("\n");
-
-      const elegida = prompt(
-        "Elegí la impresora térmica para ESTA PC:\n\n" + listado
-      );
-
-      const index = Number(elegida) - 1;
-      printerName = opciones[index];
-
-      if (!printerName) {
-        alert("No elegiste una impresora válida.");
-        return;
-      }
-
-      localStorage.setItem("vmgc_ticket_printer", printerName);
+      return;
     }
 
     console.log("IMPRESORA USADA:", printerName);

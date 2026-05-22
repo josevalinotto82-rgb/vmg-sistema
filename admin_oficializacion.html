@@ -512,12 +512,16 @@
           <input id="torneoFecha" value="" readonly />
         </div>
         <div class="field">
-          <label>Precio torneo</label>
-          <input id="torneoPrecio" type="text" value="" placeholder="$ 0,00" />
-        </div>
-        <div class="field">
           <label>Acción general</label>
-          <button id="btnOficializarTorneo" class="btn btn-primary" style="width:100%">Generar Tarjetas</button>
+          <div style="display:flex; gap:8px;">
+            <button id="btnOficializarTorneo" class="btn btn-primary" style="flex:1">
+              Generar Tarjetas
+            </button>
+
+            <button id="btnResumenPagos" class="btn btn-secondary" style="flex:1">
+              Ver pagos
+            </button>
+          </div>
         </div>
       </div>
 
@@ -556,12 +560,30 @@
     </div>
 
     <div class="card" style="margin-bottom:10px;">
-      <input id="buscadorJugadores" type="text" placeholder="Buscar jugador, matrícula o club..." style="
-      width:100%;
-      height:40px;
-      font-size:14px;
-      padding:0 14px;
-    " />
+
+      <div style="
+    display:grid;
+    grid-template-columns: 1fr 180px;
+    gap:12px;
+    align-items:center;
+  ">
+
+        <input id="buscadorJugadores" type="text" placeholder="Buscar jugador, matrícula o club..." style="
+        width:100%;
+        height:40px;
+        font-size:14px;
+        padding:0 14px;
+      " />
+
+        <input id="torneoPrecio" type="text" value="" placeholder="$ 0,00" style="
+        height:40px;
+        text-align:center;
+        font-weight:700;
+        font-size:14px;
+      " />
+
+      </div>
+
     </div>
 
     <div class="card table-card">
@@ -697,6 +719,7 @@
     const statInvitados = document.getElementById("statInvitados");
 
     const btnOficializarTorneo = document.getElementById("btnOficializarTorneo");
+    const btnResumenPagos = document.getElementById("btnResumenPagos");
     const btnGuardarTodos = document.getElementById("btnGuardarTodos");
     const btnImprimirTodasTarjetas = document.getElementById("btnImprimirTodasTarjetas");
 
@@ -719,15 +742,10 @@
 
     torneoSelect.addEventListener("change", cargarTodo);
     btnOficializarTorneo.addEventListener("click", oficializarTorneo);
+    btnResumenPagos.addEventListener("click", imprimirResumenPagos);
     btnGuardarTodos.addEventListener("click", guardarTodosLosInscriptos);
     btnImprimirTodasTarjetas.addEventListener("click", imprimirTodasLasTarjetas);
 
-    torneoPrecio?.addEventListener("blur", () => {
-      torneoPrecio.value = formatearPesosInput(torneoPrecio.value);
-    });
-    torneoPrecio?.addEventListener("focus", () => {
-      torneoPrecio.select();
-    });
     tablaWrap.addEventListener("click", manejarClickTabla);
     tablaWrap.addEventListener("change", manejarCambioTabla);
 
@@ -735,15 +753,24 @@
       .getElementById("buscadorJugadores")
       ?.addEventListener("input", filtrarTablaJugadores);
 
-    torneoPrecio.addEventListener("input", () => {
-      const limpio = torneoPrecio.value.replace(/[^\d]/g, "");
+    torneoPrecio.addEventListener("focus", () => {
 
-      if (!limpio) {
+      const numero = obtenerPrecioTorneo();
+
+      torneoPrecio.value =
+        numero > 0
+          ? String(Math.round(numero))
+          : "";
+
+    });
+
+    torneoPrecio.addEventListener("blur", () => {
+      const numero = obtenerPrecioTorneo();
+
+      if (!numero) {
         torneoPrecio.value = "";
         return;
       }
-
-      const numero = Number(limpio) / 100;
 
       torneoPrecio.value = numero.toLocaleString("es-AR", {
         style: "currency",
@@ -822,10 +849,45 @@
       });
     }
 
+    function precioStorageKey() {
+      return `precio_torneo_${torneoActual?.id || "sin_torneo"}`;
+    }
+
+    function guardarPrecioTorneoLocal() {
+      const precio = obtenerPrecioTorneo();
+      if (precio > 0 && torneoActual?.id) {
+        localStorage.setItem(precioStorageKey(), String(precio));
+      }
+    }
+
+    function cargarPrecioTorneoLocal() {
+      if (!torneoActual?.id) return;
+
+      const precioGuardado = localStorage.getItem(precioStorageKey());
+
+      if (!precioGuardado) {
+        torneoPrecio.value = "";
+        return;
+      }
+
+      torneoPrecio.value = Number(precioGuardado).toLocaleString("es-AR", {
+        style: "currency",
+        currency: "ARS",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
     function obtenerPrecioTorneo() {
-      const limpio = torneoPrecio.value.replace(/[^\d]/g, "");
-      if (!limpio) return 0;
-      return Number(limpio) / 100;
+      const valor = String(torneoPrecio.value || "")
+        .replace(/\$/g, "")
+        .replace(/\s/g, "")
+        .replace(/\./g, "")
+        .replace(",", ".");
+
+      const numero = Number(valor);
+
+      return Number.isNaN(numero) ? 0 : numero;
     }
 
     function normalizarGenero(gender) {
@@ -1279,6 +1341,8 @@
         if (errorTorneo) throw errorTorneo;
 
         torneoActual = torneo;
+        cargarPrecioTorneoLocal();
+
         const torneoYaGuardado = String(torneoActual.status || "").toLowerCase() === "officialized";
 
         if (torneoYaGuardado) {
@@ -1376,7 +1440,9 @@
         if (teesRes.error) throw teesRes.error;
         if (regsRes.error) throw regsRes.error;
         if (aagRes.error) throw aagRes.error;
-        if (pagosRes.error) throw pagosRes.error;
+        if (pagosRes.error) {
+          console.warn("No se pudieron cargar pagos. Se muestra la tabla igual.", pagosRes.error);
+        }
 
         aagEnrolledsMap = new Map(
           (aagRes.data || [])
@@ -1392,7 +1458,7 @@
         categorias = categoriasRes.data || [];
         tees = teesRes.data || [];
         registrations = regsRes.data || [];
-        pagosMap = new Map((pagosRes.data || []).map(p => [String(p.registration_id), p]));
+        pagosMap = new Map(((pagosRes.error ? [] : pagosRes.data) || []).map(p => [String(p.registration_id), p]));
 
         rebuildIndexes();
 
@@ -1726,61 +1792,288 @@
 
             <td class="col-center">
 
-  <div style="
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:10px;
-    align-items:start;
-  ">
+              <div style="
+                display:grid;
+                grid-template-columns: 1fr 1fr;
+                gap:10px;
+                align-items:start;
+              ">
 
-    <!-- COLUMNA IZQUIERDA -->
-    <div class="stack" style="gap:8px;">
+                <!-- COLUMNA IZQUIERDA -->
+                <div class="stack" style="gap:8px;">
 
-      <button
-        class="btn btn-primary"
-        data-save-pair="${key}"
-      >
-        Guardar
-      </button>
+                  <button
+                    class="btn btn-primary"
+                    data-save-pair="${key}"
+                  >
+                    Guardar
+                  </button>
 
-      <div class="pair-divider"></div>
+                  <div class="pair-divider"></div>
 
-      <button
-        class="btn btn-secondary"
-        data-print-pair-card="${key}"
-      >
-        Imp. Tarjeta
-      </button>
+                  <button
+                    class="btn btn-secondary"
+                    data-print-pair-card="${key}"
+                  >
+                    Imp. Tarjeta
+                  </button>
 
-    </div>
+                </div>
 
-    <!-- COLUMNA DERECHA -->
-    <div class="stack" style="gap:8px;">
+                <!-- COLUMNA DERECHA -->
+                <div class="stack" style="gap:8px;">
 
-      <button
-        class="btn btn-light"
-        data-print-coupon="${reg1.id}"
-      >
-        Imp. Cupón
-      </button>
+                  <button
+                    class="btn btn-light"
+                    data-print-coupon="${reg1.id}"
+                  >
+                    Imp. Cupón
+                  </button>
 
-      <div class="pair-divider"></div>
+                  <div class="pair-divider"></div>
 
-      <button
-        class="btn btn-light"
-        data-print-coupon="${reg2.id}"
-      >
-        Imp. Cupón
-      </button>
+                  <button
+                    class="btn btn-light"
+                    data-print-coupon="${reg2.id}"
+                  >
+                    Imp. Cupón
+                  </button>
 
-    </div>
+                </div>
 
-  </div>
+              </div>
 
-</td>
+            </td>
 
           </tr>
         `;
+    }
+
+    function obtenerPagoActualReg(reg) {
+      const metodo =
+        document.getElementById(`pay-${reg.id}`)?.value ||
+        pagosMap.get(String(reg.id))?.payment_method ||
+        "pending";
+
+      const fecha =
+        document.getElementById(`pay-date-${reg.id}`)?.value ||
+        pagosMap.get(String(reg.id))?.payment_date ||
+        "";
+
+      return { metodo, fecha };
+    }
+
+    function imprimirResumenPagos() {
+      const precio = obtenerPrecioTorneo();
+      let total = 0;
+
+      let totalMovimientos = 0;
+
+      const resumen = {
+        cash: { label: "Efectivo", cantidad: 0, total: 0 },
+        credit_card: { label: "Tarjeta crédito", cantidad: 0, total: 0 },
+        debit_card: { label: "Tarjeta débito", cantidad: 0, total: 0 },
+        transfer: { label: "Transferencia", cantidad: 0, total: 0 },
+        current_account: { label: "Cuenta corriente", cantidad: 0, total: 0 },
+        no_pay: { label: "No paga", cantidad: 0, total: 0 },
+        pending: { label: "Pendiente", cantidad: 0, total: 0 }
+      };
+
+      const w = window.open("", "_blank");
+      if (!w) {
+        alert("Permití ventanas emergentes para ver el resumen.");
+        return;
+      }
+
+      w.document.title = "Resumen de pagos";
+
+      const style = w.document.createElement("style");
+      style.textContent = `
+    @page { size: A4 portrait; margin: 12mm; }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #111827;
+      margin: 20px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      color: #166534;
+    }
+
+    .sub {
+      margin-bottom: 14px;
+      color: #374151;
+      line-height: 1.5;
+    }
+
+    .total {
+      margin: 12px 0;
+      padding: 10px;
+      border: 1px solid #166534;
+      border-radius: 8px;
+      color: #166534;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th {
+      background: #166534;
+      color: white;
+      padding: 7px;
+      text-align: left;
+      font-size: 11px;
+    }
+
+    td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 6px;
+      font-size: 11px;
+    }
+
+    .num {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .acciones {
+      margin-bottom: 12px;
+    }
+
+    .acciones button {
+      background: #166534;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    @media print {
+      .acciones { display: none; }
+      body { margin: 0; }
+    }
+  `;
+      w.document.head.appendChild(style);
+
+      const cont = w.document.createElement("div");
+
+      const detalle = registrations.map((reg) => {
+        const metodoKey =
+          document.getElementById(`pay-${reg.id}`)?.value ||
+          pagosMap.get(String(reg.id))?.payment_method ||
+          "pending";
+
+        const fecha =
+          document.getElementById(`pay-date-${reg.id}`)?.value ||
+          pagosMap.get(String(reg.id))?.payment_date ||
+          "";
+
+        const importe =
+          metodoKey === "pending" || metodoKey === "no_pay"
+            ? 0
+            : precio;
+
+        total += importe;
+
+        totalMovimientos++;
+
+        resumen[metodoKey].cantidad++;
+        resumen[metodoKey].total += importe;
+
+        return {
+          jugador: reg.display_name || "Sin nombre",
+          matricula: reg.aag_member_number || reg.player?.aag_member_number || "—",
+          fecha: fecha ? fechaTexto(fecha) : "—",
+          metodo: PAYMENT_METHODS[metodoKey] || "Pendiente",
+          importe
+        };
+      }).sort((a, b) => a.jugador.localeCompare(b.jugador, "es"));
+
+      cont.innerHTML = `
+    <div class="acciones">
+      <button id="btnPrintResumen">Imprimir A4</button>
+    </div>
+
+    <h1>Resumen de pagos</h1>
+
+    <div class="sub">
+      <b>Torneo:</b> ${torneoActual?.name || "—"}<br>
+      <b>Fecha torneo:</b> ${fechaTexto(torneoActual?.tournament_date)}<br>
+      <b>Precio torneo:</b> ${money(precio)}
+    </div>
+
+    <div class="total">
+      Total recaudado: ${money(total)}<br>
+      Movimientos totales: ${totalMovimientos}
+    </div>
+
+    <h2>Resumen por forma de pago</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Forma de pago</th>
+          <th class="center">Movimientos</th>
+          <th class="num">Recaudado</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Object.values(resumen).map(r => `
+          <tr>
+            <td>${r.label}</td>
+            <td class="center">${r.cantidad}</td>
+            <td class="num">${money(r.total)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+
+    <h2>Detalle jugador por jugador</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Jugador</th>
+          <th>Matrícula</th>
+          <th>Fecha pago</th>
+          <th>Forma de pago</th>
+          <th class="num">Importe</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${detalle.map(d => `
+          <tr>
+            <td>${d.jugador}</td>
+            <td>${d.matricula}</td>
+            <td>${d.fecha}</td>
+            <td>${d.metodo}</td>
+            <td class="num">${money(d.importe)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+
+      w.document.body.appendChild(cont);
+
+      w.document
+        .getElementById("btnPrintResumen")
+        .addEventListener("click", () => w.print());
     }
 
     function renderTabla() {
@@ -1833,24 +2126,42 @@
       activarCalculoAutomatico();
     }
 
+    function limpiarTextoBusqueda(valor) {
+      return String(valor || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
     function filtrarTablaJugadores() {
 
-      const texto = String(
+      const busqueda = limpiarTextoBusqueda(
         document.getElementById("buscadorJugadores")?.value || ""
-      )
-        .toLowerCase()
-        .trim();
+      );
+
+      const palabras = busqueda
+        .split(" ")
+        .filter(Boolean);
 
       const filas = tablaWrap.querySelectorAll("tbody tr");
 
       filas.forEach((fila) => {
 
-        const contenido = fila.innerText.toLowerCase();
+        const contenido = limpiarTextoBusqueda(fila.innerText);
 
-        fila.style.display =
-          contenido.includes(texto)
-            ? ""
-            : "none";
+        const coincide =
+          palabras.length === 0
+            ? true
+            : palabras.every((palabra) =>
+              contenido.includes(palabra)
+            );
+
+        fila.style.display = coincide
+          ? ""
+          : "none";
+
       });
     }
 
@@ -1913,7 +2224,7 @@
         const teeEl = document.getElementById(`tee-pair-${key}`);
         const indiceManual = calcularIndiceManualClasico(idxBase1, idxBase2, categoria);
         const hcpJuego = calcularHcpDesdeCategoria(indiceManual, categoria);
-        const manualCell = document.querySelector(`#cat-pair-${key}`)?.closest("tr")?.children[6];
+        const manualCell = document.querySelector(`#cat-pair-${key}`)?.closest("tr")?.children[5];
 
         if (teeEl) teeEl.value = categoria ? getTeeName(categoria.tee_id) : "";
         if (manualCell) {
@@ -1942,7 +2253,7 @@
       const hcpJuego2 = calcularHcpDesdeCategoria(indiceManual2, categoria2);
       const teeEl1 = document.getElementById(`tee-pair-${reg1.id}`);
       const teeEl2 = document.getElementById(`tee-pair-${reg2.id}`);
-      const manualCell = document.querySelector(`#cat-pair-${reg1.id}`)?.closest("tr")?.children[6];
+      const manualCell = document.querySelector(`#cat-pair-${reg1.id}`)?.closest("tr")?.children[5];
 
       if (teeEl1) teeEl1.value = categoria1 ? getTeeName(categoria1.tee_id) : "";
       if (teeEl2) teeEl2.value = categoria2 ? getTeeName(categoria2.tee_id) : "";
@@ -3115,7 +3426,8 @@
             <div><b>Hora:</b> ${horaTexto(line?.line_time) || "—"}</div>
             <div><b>Concepto:</b> Green fee / derecho de torneo</div>
             <div><b>Importe:</b> ${money(importe)}</div>
-            ${PAYMENT_METHODS[document.getElementById(`pay-${reg.id}`)?.value || "pending"] || "Pendiente"}
+            <div><b>Forma de pago:</b> ${PAYMENT_METHODS[document.getElementById(`pay-${reg.id}`)?.value || "pending"] || "Pendiente"}</div>
+            <div><b>Fecha pago:</b> ${fechaTexto(document.getElementById(`pay-date-${reg.id}`)?.value || hoyInputLocal())}</div>
           </div>
           <div style="border-top:1px dashed #000; margin:6px 0;"></div>
           <div style="font-size:11px; text-align:center;">NO VÁLIDO COMO FACTURA</div>
@@ -3144,8 +3456,8 @@
             <div><b>Hora:</b> ${horaTexto(line?.line_time) || "—"}</div>
             <div><b>Concepto:</b> Green fee / derecho de torneo</div>
             <div><b>Importe:</b> ${money(importe)}</div>
-            ${PAYMENT_METHODS[document.getElementById(`pay-pair-${regParaCobrar.id}`)?.value || "pending"] || "Pendiente"}
-            ${fechaTexto(document.getElementById(`pay-date-pair-${regParaCobrar.id}`)?.value || "")}
+            <div><b>Forma de pago:</b> ${PAYMENT_METHODS[document.getElementById(`pay-${regParaCobrar.id}`)?.value || "pending"] || "Pendiente"}</div>
+            <div><b>Fecha pago:</b> ${fechaTexto(document.getElementById(`pay-date-${regParaCobrar.id}`)?.value || hoyInputLocal())}</div>
           </div>
           <div style="border-top:1px dashed #000; margin:6px 0;"></div>
           <div style="font-size:11px; text-align:center;">NO VÁLIDO COMO FACTURA</div>
@@ -3176,7 +3488,15 @@
         const numeroCupon = await obtenerNumeroCupon();
 
         const html = buildCuponHTMLIndividual(reg, numeroCupon);
+
+        guardarPrecioTorneoLocal();
         await window.imprimirTicketQZ(html);
+
+        // printRoot.innerHTML = html;
+
+        // printRoot.style.display = "block";
+        // printRoot.style.background = "white";
+        // printRoot.style.padding = "20px";
 
         try {
           await guardarPagoJugador(reg);
