@@ -3077,6 +3077,16 @@
         text-align: center;
       }
 
+      .tj-index {
+        left: 120mm;
+        top: 39mm;
+        width: 60mm;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.05;
+      }
+
       .tj-datos {
         left: 99mm;
         top: 67mm;
@@ -3095,6 +3105,7 @@
       jugadorB = "",
       handicap = "",
       matricula = "",
+      index = "",
       datos = ""
     }) {
       const esPareja = !!jugadorB;
@@ -3127,6 +3138,10 @@
 
         <div class="tj-field tj-matricula" style="font-size:14px;">
           ${esc(matricula)}
+        </div>
+
+        <div class="tj-field tj-index">
+          ${index ? `(${esc(index)})<br>INDEX` : ""}
         </div>
 
         <div class="tj-field tj-datos">
@@ -3191,6 +3206,13 @@
             score?.aag_member_number ||
             "";
 
+          const index = formatIndexAAG(
+            score?.official_index ??
+            obtenerIndiceAAG(reg) ??
+            score?.manual_index ??
+            reg.reported_index
+          );
+
           const hora = score?.starting_time
             ? String(score.starting_time).slice(0, 5)
             : horaTexto(line?.line_time);
@@ -3214,6 +3236,7 @@
             jugadorA,
             handicap,
             matricula,
+            index,
             datos
           }));
         }
@@ -3246,6 +3269,22 @@
           const matA = reg1.aag_member_number || reg1.player?.aag_member_number || "";
           const matB = reg2.aag_member_number || reg2.player?.aag_member_number || "";
           const matricula = `${matA}/${matB}`;
+
+          const index1 = formatIndexAAG(
+            obtenerIndiceAAG(reg1) ??
+            extraerScorecard(reg1)?.official_index ??
+            extraerScorecard(reg1)?.manual_index ??
+            reg1.reported_index
+          );
+
+          const index2 = formatIndexAAG(
+            obtenerIndiceAAG(reg2) ??
+            extraerScorecard(reg2)?.official_index ??
+            extraerScorecard(reg2)?.manual_index ??
+            reg2.reported_index
+          );
+
+          const index = `${index1}/${index2}`;
 
           const hora = score?.starting_time
             ? String(score.starting_time).slice(0, 5)
@@ -3280,6 +3319,7 @@
             jugadorB,
             handicap,
             matricula,
+            index,
             datos
           }));
         }
@@ -3315,6 +3355,14 @@
       const handicap = score?.playing_handicap ?? document.getElementById(`hcp-${reg.id}`)?.value ?? "";
       const matricula = reg.aag_member_number || reg.player?.aag_member_number || score?.aag_member_number || "";
 
+      const index =
+        formatIndexAAG(
+          score?.official_index ??
+          obtenerIndiceAAG(reg) ??
+          score?.manual_index ??
+          reg.reported_index
+        );
+
       const hora = score?.starting_time ? String(score.starting_time).slice(0, 5) : horaTexto(line?.line_time);
       const hoyo = score?.starting_hole || line?.starting_hole || "";
       const tee = obtenerTeeNombreSingle(reg);
@@ -3327,6 +3375,7 @@
         jugadorA,
         handicap,
         matricula,
+        index,
         datos
       }));
     }
@@ -3360,6 +3409,22 @@
       const matB = reg2.aag_member_number || reg2.player?.aag_member_number || "";
       const matricula = `${matA}/${matB}`;
 
+      const index1 = formatIndexAAG(
+        obtenerIndiceAAG(reg1) ??
+        extraerScorecard(reg1)?.official_index ??
+        extraerScorecard(reg1)?.manual_index ??
+        reg1.reported_index
+      );
+
+      const index2 = formatIndexAAG(
+        obtenerIndiceAAG(reg2) ??
+        extraerScorecard(reg2)?.official_index ??
+        extraerScorecard(reg2)?.manual_index ??
+        reg2.reported_index
+      );
+
+      const index = `${index1}/${index2}`;
+
       const hora = score?.starting_time ? String(score.starting_time).slice(0, 5) : horaTexto(line?.line_time);
       const hoyo = score?.starting_hole || line?.starting_hole || "";
 
@@ -3382,6 +3447,7 @@
         jugadorB,
         handicap,
         matricula,
+        index,
         datos: datosSalida
       }));
     }
