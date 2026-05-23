@@ -3636,13 +3636,13 @@
         const html = buildCuponHTMLIndividual(reg, numeroCupon);
 
         guardarPrecioTorneoLocal();
-        // await window.imprimirTicketQZ(html);
+        await window.imprimirTicketQZ(html);
 
-        printRoot.innerHTML = html;
+        //printRoot.innerHTML = html;
 
-        printRoot.style.display = "block";
-        printRoot.style.background = "white";
-        printRoot.style.padding = "20px";
+        //printRoot.style.display = "block";
+        //printRoot.style.background = "white";
+        //printRoot.style.padding = "20px";
 
         try {
           await guardarPagoJugador(reg);
