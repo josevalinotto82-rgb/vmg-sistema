@@ -562,11 +562,11 @@
     <div class="card" style="margin-bottom:10px;">
 
       <div style="
-    display:grid;
-    grid-template-columns: 1fr 180px;
-    gap:12px;
-    align-items:center;
-  ">
+          display:grid;
+          grid-template-columns: 1fr 160px 150px 160px 160px;
+          gap:12px;
+          align-items:center;
+        ">
 
         <input id="buscadorJugadores" type="text" placeholder="Buscar jugador, matrícula o club..." style="
         width:100%;
@@ -575,12 +575,36 @@
         padding:0 14px;
       " />
 
-        <input id="torneoPrecio" type="text" value="" placeholder="$ 0,00" style="
-        height:40px;
-        text-align:center;
-        font-weight:700;
-        font-size:14px;
-      " />
+        <select id="pagoGeneral" style="height:40px; font-size:14px;">
+          <option value="pending">Pendiente</option>
+          <option value="cash">Efectivo</option>
+          <option value="credit_card">Tarjeta crédito</option>
+          <option value="debit_card">Tarjeta débito</option>
+          <option value="transfer">Transferencia</option>
+          <option value="current_account">Cuenta corriente</option>
+          <option value="no_pay">No paga</option>
+        </select>
+
+        <input id="fechaPagoGeneral" type="date" style="
+          height:40px;
+          text-align:center;
+          font-weight:700;
+          font-size:14px;
+        " />
+
+        <input id="torneoPrecio" type="text" value="" placeholder="Precio socio" style="
+          height:40px;
+          text-align:center;
+          font-weight:700;
+          font-size:14px;
+        " />
+
+        <input id="torneoPrecioInvitado" type="text" value="" placeholder="Precio invitado" style="
+          height:40px;
+          text-align:center;
+          font-weight:700;
+          font-size:14px;
+        " />
 
       </div>
 
@@ -704,6 +728,12 @@
     const torneoSelect = $("torneoSelect");
     const torneoFecha = $("torneoFecha");
     const torneoPrecio = $("torneoPrecio");
+    const torneoPrecioInvitado = $("torneoPrecioInvitado");
+
+    const pagoGeneral = $("pagoGeneral");
+    const fechaPagoGeneral = $("fechaPagoGeneral");
+
+    fechaPagoGeneral.value = hoyInputLocal();
 
     const ARS_FORMATTER = new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -764,11 +794,13 @@
 
     });
 
+
     torneoPrecio.addEventListener("blur", () => {
       const numero = obtenerPrecioTorneo();
 
       if (!numero) {
         torneoPrecio.value = "";
+        guardarPrecioTorneoLocal();
         return;
       }
 
@@ -778,6 +810,40 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       });
+
+      guardarPrecioTorneoLocal();
+    });
+
+    torneoPrecioInvitado.addEventListener("focus", () => {
+
+      const numero = obtenerPrecioInvitado();
+
+      torneoPrecioInvitado.value =
+        numero > 0
+          ? String(Math.round(numero))
+          : "";
+
+    });
+
+    torneoPrecioInvitado.addEventListener("blur", () => {
+
+      const numero = obtenerPrecioInvitado();
+
+      if (!numero) {
+        torneoPrecioInvitado.value = "";
+        guardarPrecioTorneoLocal();
+        return;
+      }
+
+      torneoPrecioInvitado.value = numero.toLocaleString("es-AR", {
+        style: "currency",
+        currency: "ARS",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+
+      guardarPrecioTorneoLocal();
+
     });
 
     function setEstado(texto, tipo = "") {
@@ -854,28 +920,52 @@
     }
 
     function guardarPrecioTorneoLocal() {
-      const precio = obtenerPrecioTorneo();
-      if (precio > 0 && torneoActual?.id) {
-        localStorage.setItem(precioStorageKey(), String(precio));
-      }
+
+      if (!torneoActual?.id) return;
+
+      const precioSocio = obtenerPrecioTorneo();
+      const precioInvitado = obtenerPrecioInvitado();
+
+      localStorage.setItem(
+        `precio_torneo_${torneoActual.id}`,
+        String(precioSocio)
+      );
+
+      localStorage.setItem(
+        `precio_torneo_invitado_${torneoActual.id}`,
+        String(precioInvitado)
+      );
     }
 
     function cargarPrecioTorneoLocal() {
+
       if (!torneoActual?.id) return;
 
-      const precioGuardado = localStorage.getItem(precioStorageKey());
+      const precioSocio = localStorage.getItem(
+        `precio_torneo_${torneoActual.id}`
+      );
 
-      if (!precioGuardado) {
-        torneoPrecio.value = "";
-        return;
-      }
+      const precioInvitado = localStorage.getItem(
+        `precio_torneo_invitado_${torneoActual.id}`
+      );
 
-      torneoPrecio.value = Number(precioGuardado).toLocaleString("es-AR", {
-        style: "currency",
-        currency: "ARS",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
+      torneoPrecio.value = precioSocio
+        ? Number(precioSocio).toLocaleString("es-AR", {
+          style: "currency",
+          currency: "ARS",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })
+        : "";
+
+      torneoPrecioInvitado.value = precioInvitado
+        ? Number(precioInvitado).toLocaleString("es-AR", {
+          style: "currency",
+          currency: "ARS",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })
+        : "";
     }
 
     function obtenerPrecioTorneo() {
@@ -888,6 +978,44 @@
       const numero = Number(valor);
 
       return Number.isNaN(numero) ? 0 : numero;
+    }
+
+    function obtenerPrecioInvitado() {
+      const valor = String(torneoPrecioInvitado.value || "")
+        .replace(/\$/g, "")
+        .replace(/\s/g, "")
+        .replace(/\./g, "")
+        .replace(",", ".");
+
+      const numero = Number(valor);
+
+      return Number.isNaN(numero) ? 0 : numero;
+    }
+
+    function obtenerImporteSegunPago(reg = null) {
+      const metodo = pagoGeneral?.value || "pending";
+
+      if (metodo === "pending" || metodo === "no_pay") {
+        return 0;
+      }
+
+      if (reg && esInvitado(reg)) {
+        return obtenerPrecioInvitado();
+      }
+
+      return obtenerPrecioTorneo();
+    }
+
+    function obtenerImportePorMetodoYJugador(metodo, reg) {
+      if (metodo === "pending" || metodo === "no_pay") {
+        return 0;
+      }
+
+      if (esInvitado(reg)) {
+        return obtenerPrecioInvitado();
+      }
+
+      return obtenerPrecioTorneo();
     }
 
     function normalizarGenero(gender) {
@@ -1541,12 +1669,6 @@
           </td>
           
           <td class="col-center"><input id="hcp-${reg.id}" value="${hcpJuego ?? ""}" readonly /></td>
-          <td class="col-center">
-            <select id="pay-${reg.id}">${paymentOptions(pago.payment_method || "pending")}</select>
-          </td>
-          <td class="col-center">
-            <input id="pay-date-${reg.id}" type="date" value="${pago.payment_date || hoyInputLocal()}" />
-          </td>
           <td class="col-center">${estadoTag}</td>
           <td class="col-center">
             <div class="row-actions">
@@ -1759,34 +1881,6 @@
             </td>
 
             <td class="col-center">
-              <div class="stack">
-                <select id="pay-${reg1.id}">
-                  ${paymentOptions(pago1.payment_method || "pending")}
-                </select>
-
-                <select id="pay-${reg2.id}">
-                  ${paymentOptions(pago2.payment_method || "pending")}
-                </select>
-              </div>
-            </td>
-
-            <td class="col-center">
-              <div class="stack">
-                <input
-                  id="pay-date-${reg1.id}"
-                  type="date"
-                  value="${pago1.payment_date || hoyInputLocal()}"
-                />
-
-                <input
-                  id="pay-date-${reg2.id}"
-                  type="date"
-                  value="${pago2.payment_date || hoyInputLocal()}"
-                />
-              </div>
-            </td>
-
-            <td class="col-center">
               ${estadoTag}
             </td>
 
@@ -1850,15 +1944,8 @@
     }
 
     function obtenerPagoActualReg(reg) {
-      const metodo =
-        document.getElementById(`pay-${reg.id}`)?.value ||
-        pagosMap.get(String(reg.id))?.payment_method ||
-        "pending";
-
-      const fecha =
-        document.getElementById(`pay-date-${reg.id}`)?.value ||
-        pagosMap.get(String(reg.id))?.payment_date ||
-        "";
+      const metodo = pagoGeneral?.value || "pending";
+      const fecha = fechaPagoGeneral?.value || hoyInputLocal();
 
       return { metodo, fecha };
     }
@@ -1983,10 +2070,7 @@
           pagosMap.get(String(reg.id))?.payment_date ||
           "";
 
-        const importe =
-          metodoKey === "pending" || metodoKey === "no_pay"
-            ? 0
-            : precio;
+        const importe = obtenerImportePorMetodoYJugador(metodoKey, reg);
 
         total += importe;
 
@@ -2093,8 +2177,6 @@
             <col style="width:7%">   <!-- Tee -->
             <col style="width:6%">   <!-- Index -->
             <col style="width:5%">   <!-- HCP -->
-            <col style="width:9%">   <!-- Pago -->
-            <col style="width:10%">   <!-- Día pago -->
             <col style="width:10%">   <!-- Estado -->
             <col style="width:24%">  <!-- Acciones -->
           </colgroup>
@@ -2107,8 +2189,6 @@
               <th class="col-center">Tee</th>
               <th class="col-center">Index</th>
               <th class="col-center">HCP</th>
-              <th class="col-center">Pago</th>
-              <th class="col-center">Día pago</th>
               <th class="col-center">Estado</th>
               <th class="col-center">Acciones</th>
             </tr>
@@ -2453,8 +2533,7 @@
     }
 
     async function guardarPagoJugador(reg) {
-      const metodo = document.getElementById(`pay-${reg.id}`)?.value || "pending";
-      const fechaPago = document.getElementById(`pay-date-${reg.id}`)?.value || hoyInputLocal();
+      const pagoActual = obtenerPagoActualReg(reg);
 
       const payload = {
         tournament_id: torneoActual.id,
@@ -2462,9 +2541,9 @@
         linked_player_id: reg.linked_player_id || null,
         display_name: reg.display_name || "Sin nombre",
         aag_member_number: getAagMemberNumber(reg),
-        payment_method: metodo,
-        payment_date: fechaPago,
-        amount: obtenerPrecioTorneo(),
+        payment_method: pagoActual.metodo,
+        payment_date: pagoActual.fecha,
+        amount: obtenerImporteSegunPago(reg),
         updated_at: new Date().toISOString()
       };
 
@@ -2475,6 +2554,7 @@
         .single();
 
       if (error) throw error;
+
       pagosMap.set(String(reg.id), data || payload);
       return data || payload;
     }
@@ -3491,9 +3571,9 @@
             <div><b>Matrícula:</b> ${reg.aag_member_number || reg.player?.aag_member_number || "—"}</div>
             <div><b>Hora:</b> ${horaTexto(line?.line_time) || "—"}</div>
             <div><b>Concepto:</b> Green fee / derecho de torneo</div>
-            <div><b>Importe:</b> ${money(importe)}</div>
-            <div><b>Forma de pago:</b> ${PAYMENT_METHODS[document.getElementById(`pay-${reg.id}`)?.value || "pending"] || "Pendiente"}</div>
-            <div><b>Fecha pago:</b> ${fechaTexto(document.getElementById(`pay-date-${reg.id}`)?.value || hoyInputLocal())}</div>
+            <div><b>Importe:</b> ${money(obtenerImporteSegunPago(reg))}
+            <div><b>Forma de pago:</b> ${PAYMENT_METHODS[pagoGeneral?.value || "pending"] || "Pendiente"}</div>
+            <div><b>Fecha pago:</b> ${fechaTexto(fechaPagoGeneral?.value || hoyInputLocal())}</div>
           </div>
           <div style="border-top:1px dashed #000; margin:6px 0;"></div>
           <div style="font-size:11px; text-align:center;">NO VÁLIDO COMO FACTURA</div>
@@ -3521,9 +3601,9 @@
             <div><b>Matrícula:</b> ${regParaCobrar?.aag_member_number || regParaCobrar?.player?.aag_member_number || "—"}</div>
             <div><b>Hora:</b> ${horaTexto(line?.line_time) || "—"}</div>
             <div><b>Concepto:</b> Green fee / derecho de torneo</div>
-            <div><b>Importe:</b> ${money(importe)}</div>
-            <div><b>Forma de pago:</b> ${PAYMENT_METHODS[document.getElementById(`pay-${regParaCobrar.id}`)?.value || "pending"] || "Pendiente"}</div>
-            <div><b>Fecha pago:</b> ${fechaTexto(document.getElementById(`pay-date-${regParaCobrar.id}`)?.value || hoyInputLocal())}</div>
+            <div><b>Importe:</b> ${money(obtenerImporteSegunPago())}
+            <div><b>Forma de pago:</b> ${PAYMENT_METHODS[pagoGeneral?.value || "pending"] || "Pendiente"}</div>
+            <div><b>Fecha pago:</b> ${fechaTexto(fechaPagoGeneral?.value || hoyInputLocal())}</div>
           </div>
           <div style="border-top:1px dashed #000; margin:6px 0;"></div>
           <div style="font-size:11px; text-align:center;">NO VÁLIDO COMO FACTURA</div>
@@ -3556,13 +3636,13 @@
         const html = buildCuponHTMLIndividual(reg, numeroCupon);
 
         guardarPrecioTorneoLocal();
-        await window.imprimirTicketQZ(html);
+        // await window.imprimirTicketQZ(html);
 
-        // printRoot.innerHTML = html;
+        printRoot.innerHTML = html;
 
-        // printRoot.style.display = "block";
-        // printRoot.style.background = "white";
-        // printRoot.style.padding = "20px";
+        printRoot.style.display = "block";
+        printRoot.style.background = "white";
+        printRoot.style.padding = "20px";
 
         try {
           await guardarPagoJugador(reg);
