@@ -318,15 +318,53 @@
     }
 
     .score-grid-wrap {
-      overflow-x: auto;
+      overflow-x: visible;
       padding-bottom: 4px;
     }
 
     .score-grid {
-      min-width: 900px;
+      width: 100%;
       display: grid;
-      grid-template-columns: repeat(18, 1fr);
+      grid-template-columns: repeat(9, minmax(0, 1fr));
       gap: 6px;
+    }
+
+    .hole {
+      min-width: 0;
+      height: 104px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .hole input {
+      width: 100%;
+      min-width: 0;
+    }
+
+    @media(max-width:700px) {
+      .score-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .hole {
+        height: 108px;
+        padding: 7px 5px;
+      }
+
+      .hole-label {
+        font-size: 12px;
+      }
+
+      .hole-meta {
+        font-size: 10px;
+      }
+
+      .hole input {
+        height: 34px;
+        font-size: 16px;
+      }
     }
 
     .hole {
@@ -650,6 +688,35 @@
 
     torneoSelect.addEventListener("change", cargarScorecardsDelTorneo);
     buscador.addEventListener("input", renderLista);
+    buscador.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== "Tab") return;
+
+      const q = normalizarTexto(buscador.value);
+      if (!q) return;
+
+      const filtradas = scorecards
+        .filter(s =>
+          normalizarTexto(s.display_name).includes(q) ||
+          normalizarTexto(s.aag_member_number).includes(q)
+        )
+        .sort(ordenarPorEstadoYNombre);
+
+      if (filtradas.length !== 1) return;
+
+      e.preventDefault();
+
+      scorecardActualId = filtradas[0].id;
+      renderLista();
+      renderTarjeta();
+
+      setTimeout(() => {
+        const primerInput = document.querySelector("[data-hole-input]:not(:disabled)");
+        if (primerInput) {
+          primerInput.focus();
+          primerInput.select?.();
+        }
+      }, 50);
+    });
     btnRecargar.addEventListener("click", cargarScorecardsDelTorneo);
     btnArchivar.addEventListener("click", archivarTorneo);
 

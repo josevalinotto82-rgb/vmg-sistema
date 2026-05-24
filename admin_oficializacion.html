@@ -755,6 +755,11 @@
 
     configurarSucursalPorAdmin(adminActual);
 
+    let realtimeChannel = null;
+    let realtimeReloadTimer = null;
+    let autoRefreshTimer = null;
+    let realtimeTournamentId = null;
+
     let torneoActual = null;
     let registrations = [];
     let categorias = [];
@@ -763,6 +768,7 @@
     let regMap = new Map();
     let categoriaMap = new Map();
     let teeMap = new Map();
+    let startingLinesMap = new Map();
 
     let aagEnrolledsMap = new Map();
     let pagosMap = new Map();
@@ -968,6 +974,58 @@
         : "";
     }
 
+    function programarRecargaOficializacion() {
+      clearTimeout(realtimeReloadTimer);
+
+      realtimeReloadTimer = setTimeout(() => {
+        cargarTodo();
+      }, 500);
+    }
+
+    function suscribirRealtimeOficializacion() {
+      if (!torneoActual?.id) return;
+
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+      }
+
+      realtimeChannel = supabase
+        .channel(`oficializacion-${torneoActual.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "registrations",
+            filter: `tournament_id=eq.${torneoActual.id}`
+          },
+          () => programarRecargaOficializacion()
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "line_slots"
+          },
+          () => programarRecargaOficializacion()
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "scorecards"
+          },
+          () => programarRecargaOficializacion()
+        )
+
+        .subscribe((status) => {
+          console.log("Realtime oficialización:", status);
+        });
+    }
+
     function obtenerPrecioTorneo() {
       const valor = String(torneoPrecio.value || "")
         .replace(/\$/g, "")
@@ -1072,7 +1130,16 @@
     }
 
     function extraerLinea(reg) {
-      return Array.isArray(reg.starting_lines) ? reg.starting_lines[0] : reg.starting_lines;
+      if (
+        reg?.starting_line_id &&
+        startingLinesMap.has(String(reg.starting_line_id))
+      ) {
+        return startingLinesMap.get(String(reg.starting_line_id));
+      }
+
+      return Array.isArray(reg.starting_lines)
+        ? reg.starting_lines[0]
+        : reg.starting_lines;
     }
 
     function extraerLineSlot(reg) {
@@ -1313,20 +1380,52 @@
       }) || null;
     }
 
+    function minutosLinea(reg) {
+      const line = extraerLinea(reg);
+      const hora = String(line?.line_time || "").slice(0, 5);
+      const [hh, mm] = hora.split(":").map(Number);
+
+      if (Number.isNaN(hh) || Number.isNaN(mm)) return 99999;
+
+      return hh * 60 + mm;
+    }
+
+    function hoyoLinea(reg) {
+      const line = extraerLinea(reg);
+      const hoyo = Number(line?.starting_hole || 999);
+
+      return Number.isNaN(hoyo) ? 999 : hoyo;
+    }
+
+    function ordenarFilasPorSalida(a, b) {
+      const regA = a.jugadores[0];
+      const regB = b.jugadores[0];
+
+      const horaA = minutosLinea(regA);
+      const horaB = minutosLinea(regB);
+
+      if (horaA !== horaB) return horaA - horaB;
+
+      const hoyoA = hoyoLinea(regA);
+      const hoyoB = hoyoLinea(regB);
+
+      if (hoyoA !== hoyoB) return hoyoA - hoyoB;
+
+      const nombreA = regA?.display_name || "";
+      const nombreB = regB?.display_name || "";
+
+      return nombreA.localeCompare(nombreB, "es", {
+        sensitivity: "base"
+      });
+    }
+
     function construirFilasVista() {
       if (filasVistaCache) return filasVistaCache;
 
       if (!esTorneoDeParejas()) {
         filasVistaCache = registrations
           .map((reg) => ({ tipo: "single", jugadores: [reg] }))
-          .sort((a, b) => {
-            const nombreA = a.jugadores[0]?.display_name || "";
-            const nombreB = b.jugadores[0]?.display_name || "";
-
-            return nombreA.localeCompare(nombreB, "es", {
-              sensitivity: "base"
-            });
-          });
+          .sort(ordenarFilasPorSalida)
 
         return filasVistaCache;
       }
@@ -1358,14 +1457,7 @@
       }
 
       filasVistaCache = filas;
-      return filas.sort((a, b) => {
-        const nombreA = a.jugadores[0]?.display_name || "";
-        const nombreB = b.jugadores[0]?.display_name || "";
-
-        return nombreA.localeCompare(nombreB, "es", {
-          sensitivity: "base"
-        });
-      });
+      return filas.sort(ordenarFilasPorSalida);
     }
 
     function esSocioVMGC(reg) {
@@ -1414,14 +1506,16 @@
       return !esSocioVMGC(reg);
     }
 
-    async function cargarTodo() {
+    async function cargarTodo(esAutoRefresh = false) {
       try {
-        setEstado("Cargando torneo...");
+        if (!esAutoRefresh) {
+          setEstado("Cargando torneo...");
+        }
 
         const { data: torneosData, error: errorTorneos } = await supabase
           .from("tournaments")
           .select("id, name, tournament_date, status")
-          .in("status", ["open", "officialized"])
+          .eq("status", "open")
           .order("tournament_date", { ascending: true });
 
         if (errorTorneos) throw errorTorneos;
@@ -1478,7 +1572,7 @@
           btnOficializarTorneo.textContent = "Torneo ya guardado";
           btnOficializarTorneo.disabled = true;
         } else {
-          btnOficializarTorneo.textContent = "Generar Tarjetas";
+          btnOficializarTorneo.textContent = "Guardar Torneo";
           btnOficializarTorneo.disabled = false;
         }
         torneoFecha.value = fechaTexto(torneo.tournament_date);
@@ -1524,7 +1618,7 @@
             manual_index,
             aag_member_number
           ),
-          starting_lines (
+          salida_actual:starting_lines!registrations_starting_line_id_fkey (
             id,
             line_time,
             starting_hole,
@@ -1586,12 +1680,47 @@
         categorias = categoriasRes.data || [];
         tees = teesRes.data || [];
         registrations = regsRes.data || [];
+
+        const salidaIds = [
+          ...new Set(
+            registrations
+              .map(r => r.starting_line_id)
+              .filter(Boolean)
+              .map(String)
+          )
+        ];
+
+        if (salidaIds.length) {
+          const { data: salidasData, error: salidasError } = await supabase
+            .from("starting_lines")
+            .select("id, line_time, starting_hole, label")
+            .in("id", salidaIds);
+
+          if (salidasError) throw salidasError;
+
+          startingLinesMap = new Map(
+            (salidasData || []).map(l => [String(l.id), l])
+          );
+        } else {
+          startingLinesMap = new Map();
+        }
+
         pagosMap = new Map(((pagosRes.error ? [] : pagosRes.data) || []).map(p => [String(p.registration_id), p]));
 
         rebuildIndexes();
 
         renderTabla();
         actualizarResumen();
+
+        suscribirRealtimeOficializacion();
+
+        if (!autoRefreshTimer) {
+          autoRefreshTimer = setInterval(() => {
+            if (torneoActual?.id) {
+              cargarTodo(true);
+            }
+          }, 5000);
+        }
 
         if (String(torneoActual.status || "").toLowerCase() === "officialized") {
           setEstado(`Torneo ya guardado · ${torneoActual?.game_modes?.name || "Modalidad sin definir"}`, "warn");
@@ -3265,8 +3394,6 @@
         if (fila.tipo === "single") {
           const reg = fila.jugadores[0];
 
-          if (!extraerScorecard(reg)?.id) continue;
-
           const score = extraerScorecard(reg);
           const line = extraerLinea(reg);
 
@@ -3293,14 +3420,9 @@
             reg.reported_index
           );
 
-          const hora = score?.starting_time
-            ? String(score.starting_time).slice(0, 5)
-            : horaTexto(line?.line_time);
+          const hora = horaTexto(line?.line_time);
 
-          const hoyo =
-            score?.starting_hole ||
-            line?.starting_hole ||
-            "";
+          const hoyo = line?.starting_hole || "";
 
           const tee = obtenerTeeNombreSingle(reg);
 
@@ -3323,8 +3445,6 @@
 
         if (fila.tipo === "pair") {
           const [reg1, reg2] = fila.jugadores;
-
-          if (!pairSharedScorecard(reg1, reg2)?.id) continue;
 
           const score = pairSharedScorecard(reg1, reg2);
           const line = extraerLinea(reg1) || extraerLinea(reg2);
@@ -3366,14 +3486,9 @@
 
           const index = `${index1}/${index2}`;
 
-          const hora = score?.starting_time
-            ? String(score.starting_time).slice(0, 5)
-            : horaTexto(line?.line_time);
+          const hora = horaTexto(line?.line_time);
 
-          const hoyo =
-            score?.starting_hole ||
-            line?.starting_hole ||
-            "";
+          const hoyo = line?.starting_hole || "";
 
           let tee = "";
           let tee2 = "";
@@ -3406,7 +3521,7 @@
       }
 
       if (!tarjetas.length) {
-        alert("No hay tarjetas oficializadas para imprimir.");
+        alert("No hay tarjetas para imprimir.");
         return;
       }
 
@@ -3443,8 +3558,8 @@
           reg.reported_index
         );
 
-      const hora = score?.starting_time ? String(score.starting_time).slice(0, 5) : horaTexto(line?.line_time);
-      const hoyo = score?.starting_hole || line?.starting_hole || "";
+      const hora = horaTexto(line?.line_time);
+      const hoyo = line?.starting_hole || "";
       const tee = obtenerTeeNombreSingle(reg);
 
       const datos = datosSalidaTexto({ hora, tee, hoyo });
@@ -3505,8 +3620,8 @@
 
       const index = `${index1}/${index2}`;
 
-      const hora = score?.starting_time ? String(score.starting_time).slice(0, 5) : horaTexto(line?.line_time);
-      const hoyo = score?.starting_hole || line?.starting_hole || "";
+      const hora = horaTexto(line?.line_time);
+      const hoyo = line?.starting_hole || "";
 
       let tee = "";
       let tee2 = "";

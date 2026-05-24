@@ -1607,7 +1607,7 @@
     if (s === "closed") return "Torneo cerrado para cambios";
     if (s === "officialized") return "Torneo ya guardado · administración habilitada";
     if (s === "archived") return "Torneo archivado / solo lectura";
-   
+
     return `Estado: ${s || "desconocido"}`;
   }
 
@@ -1797,7 +1797,7 @@
       .select("id, name, tournament_date, status");
 
     if (APP.esAdmin) {
-      query = query.in("status", ["open", "officialized"]);
+      query = query.eq("status", "open");
     } else {
       query = query.eq("status", "open");
     }
@@ -1816,7 +1816,7 @@
       .select("id, name, tournament_date, status");
 
     if (APP.esAdmin) {
-      query = query.in("status", ["open", "officialized"]);
+      query = query.eq("status", "open");
     } else {
       query = query.eq("status", "open");
     }
@@ -3714,7 +3714,16 @@
     }
 
     for (const item of updateRegistrationDestinations) {
-      const { error } = await supabase.from("registrations").update({ line_slot_id: item.destinoId }).eq("line_slot_id", item.origenId);
+      const destinoSlot = getSlotById(item.destinoId) || await fetchSlotById(item.destinoId);
+
+      const { error } = await supabase
+        .from("registrations")
+        .update({
+          line_slot_id: item.destinoId,
+          starting_line_id: destinoSlot.starting_line_id
+        })
+        .eq("line_slot_id", item.origenId);
+
       if (error) throw error;
     }
 
