@@ -828,9 +828,23 @@
         if (error) throw error;
 
         torneos = data || [];
+
         torneoSelect.innerHTML = torneos.length
           ? torneos.map(t => `<option value="${t.id}">${t.name} (${fechaTexto(t.tournament_date)})</option>`).join("")
           : `<option value="">No hay torneos</option>`;
+
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+
+        const torneoInicial =
+          torneos.find(t => {
+            const fecha = new Date(t.tournament_date + "T00:00:00");
+            return fecha >= hoy;
+          }) || torneos[torneos.length - 1];
+
+        if (torneoInicial) {
+          torneoSelect.value = torneoInicial.id;
+        }
 
         if (!torneos.length) {
           torneoActual = null;
