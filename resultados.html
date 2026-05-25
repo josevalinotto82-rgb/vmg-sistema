@@ -545,6 +545,7 @@
               )
           `)
           .in("status", ["officialized", "archived"])
+          .eq("published", true)
           .order("tournament_date", { ascending: false });
 
         if (errorTorneos) throw errorTorneos;

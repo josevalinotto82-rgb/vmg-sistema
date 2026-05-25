@@ -88,6 +88,28 @@
       margin-top: 10px;
     }
 
+    #configSecuencial {
+      grid-template-columns: 150px repeat(4, minmax(130px, 1fr));
+      align-items: end;
+    }
+
+    @media (max-width: 900px) {
+      #configSecuencial {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    #datosTorneoGrid {
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      align-items: end;
+    }
+
+    @media (max-width: 900px) {
+      #datosTorneoGrid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .field {
       display: flex;
       flex-direction: column;
@@ -314,6 +336,48 @@
       background: #166534;
       transform: scale(1.05);
     }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 25px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      cursor: pointer;
+      background-color: #e00000;
+      border-radius: 999px;
+      transition: 0.25s;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      height: 17px;
+      width: 17px;
+      left: 4px;
+      top: 4px;
+      background: rgb(255, 255, 255);
+      border-radius: 50%;
+      transition: 0.25s;
+    }
+
+    .switch input:checked+.slider {
+      background-color: #0aac45;
+    }
+
+    .switch input:checked+.slider::before {
+      transform: translateX(16px);
+    }
   </style>
 </head>
 
@@ -332,7 +396,17 @@
   <div class="card">
     <h2 class="section-title">Datos del torneo</h2>
 
-    <div class="form-grid">
+    <div class="field">
+      <label for="published">Publicado</label>
+
+      <label class="switch">
+        <input type="checkbox" id="published" checked>
+        <span class="slider"></span>
+      </label>
+
+    </div>
+
+    <div id="datosTorneoGrid" class="form-grid">
       <div class="field">
         <label for="nombre">Nombre</label>
         <input id="nombre" />
@@ -369,35 +443,36 @@
           <option value="back9">9 Vta.</option>
         </select>
       </div>
-      <div class="field">
-        <label for="usaSerie">Serie</label>
-        <select id="usaSerie">
-          <option value="no">Torneo individual</option>
-          <option value="nueva">Crear nueva serie</option>
-          <option value="existente">Vincular a serie existente</option>
-        </select>
-      </div>
 
-      <div class="field" id="campoSerieExistente" style="display:none;">
-        <label for="serieSelect">Seleccionar serie</label>
-        <select id="serieSelect"></select>
-      </div>
-
-      <div class="field" id="campoSerieNueva" style="display:none;">
-        <label for="serieNombre">Nombre nueva serie</label>
-        <input id="serieNombre" placeholder="Ej: Campeonato 54 hoyos" />
-      </div>
-
-      <div class="field" id="campoSerieCantidadFechas" style="display:none;">
-        <label for="serieRequiredRounds">Cantidad total de fechas</label>
-        <input id="serieRequiredRounds" type="number" min="1" value="3" />
-      </div>
-
-      <div class="field" id="campoRonda" style="display:none;">
-        <label for="serieRonda">Esta es la fecha Nº</label>
-        <input id="serieRonda" type="number" min="1" />
-      </div>
+    <div class="field">
+      <label for="usaSerie">Serie</label>
+      <select id="usaSerie">
+        <option value="no">Torneo individual</option>
+        <option value="nueva">Crear nueva serie</option>
+        <option value="existente">Vincular a serie existente</option>
+      </select>
     </div>
+
+    <div class="field" id="campoSerieExistente" style="display:none;">
+      <label for="serieSelect">Seleccionar serie</label>
+      <select id="serieSelect"></select>
+    </div>
+
+    <div class="field" id="campoSerieNueva" style="display:none;">
+      <label for="serieNombre">Nombre nueva serie</label>
+      <input id="serieNombre" placeholder="Ej: Campeonato 54 hoyos" />
+    </div>
+
+    <div class="field" id="campoSerieCantidadFechas" style="display:none;">
+      <label for="serieRequiredRounds">Cantidad total de fechas</label>
+      <input id="serieRequiredRounds" type="number" min="1" value="3" />
+    </div>
+
+    <div class="field" id="campoRonda" style="display:none;">
+      <label for="serieRonda">Esta es la fecha Nº</label>
+      <input id="serieRonda" type="number" min="1" />
+    </div>
+  </div>
   </div>
 
   <div class="card">
@@ -405,60 +480,62 @@
 
     <!-- SECUENCIAL -->
     <div id="configSecuencial" class="form-grid">
+
       <div class="field">
-        <label>Bloque 1 - Hoyo 1</label>
+        <label>Salida por Hoyo 1</label>
         <input value="Hoyo 1" disabled />
       </div>
 
       <div class="field">
-        <label for="horaInicioB1A">Bloque 1 - Inicio tanda 1</label>
+        <label for="horaInicioB1A">Inicio mañana</label>
         <input id="horaInicioB1A" type="time" />
       </div>
 
       <div class="field">
-        <label for="lineasB1A">Bloque 1 - Líneas tanda 1</label>
-        <input id="lineasB1A" type="number" min="0" value="0" />
+        <label for="horaFinB1A">Fin mañana</label>
+        <input id="horaFinB1A" type="time" />
       </div>
 
       <div class="field">
-        <label for="horaInicioB1B">Bloque 1 - Inicio tanda 2</label>
+        <label for="horaInicioB1B">Inicio tarde</label>
         <input id="horaInicioB1B" type="time" />
       </div>
 
       <div class="field">
-        <label for="lineasB1B">Bloque 1 - Líneas tanda 2</label>
-        <input id="lineasB1B" type="number" min="0" value="0" />
+        <label for="horaFinB1B">Fin tarde</label>
+        <input id="horaFinB1B" type="time" />
       </div>
 
       <div class="field">
-        <label>Bloque 2 - Hoyo 10</label>
+        <label>Salida por Hoyo 10</label>
         <input value="Hoyo 10" disabled />
       </div>
 
       <div class="field">
-        <label for="horaInicioB2A">Bloque 2 - Inicio tanda 1</label>
+        <label for="horaInicioB2A">Inicio mañana</label>
         <input id="horaInicioB2A" type="time" />
       </div>
 
       <div class="field">
-        <label for="lineasB2A">Bloque 2 - Líneas tanda 1</label>
-        <input id="lineasB2A" type="number" min="0" value="0" />
+        <label for="horaFinB2A">Fin mañana</label>
+        <input id="horaFinB2A" type="time" />
       </div>
 
       <div class="field">
-        <label for="horaInicioB2B">Bloque 2 - Inicio tanda 2</label>
+        <label for="horaInicioB2B">Inicio tarde</label>
         <input id="horaInicioB2B" type="time" />
       </div>
 
       <div class="field">
-        <label for="lineasB2B">Bloque 2 - Líneas tanda 2</label>
-        <input id="lineasB2B" type="number" min="0" value="0" />
+        <label for="horaFinB2B">Fin tarde</label>
+        <input id="horaFinB2B" type="time" />
       </div>
 
       <div class="field">
-        <label for="intervalo">Intervalo (minutos)</label>
+        <label for="intervalo">Intervalo entre salidas</label>
         <input id="intervalo" type="number" min="1" value="10" />
       </div>
+
     </div>
 
     <!-- SIMULTÁNEA -->
@@ -674,25 +751,26 @@
     }
 
     function separarTandasPorIntervalo(lineas, intervalo) {
+
       const horas = (lineas || [])
         .map(l => String(l.line_time || "").slice(0, 5))
         .filter(Boolean);
 
       if (horas.length === 0) {
         return {
-          tanda1: [],
-          tanda2: []
+          manana: [],
+          tarde: []
         };
       }
 
       let indiceCorte = -1;
 
       for (let i = 1; i < horas.length; i++) {
+
         const anterior = minutosDesdeHora(horas[i - 1]);
         const actual = minutosDesdeHora(horas[i]);
-        const diferencia = actual - anterior;
 
-        if (diferencia > intervalo) {
+        if ((actual - anterior) > intervalo) {
           indiceCorte = i;
           break;
         }
@@ -700,14 +778,14 @@
 
       if (indiceCorte === -1) {
         return {
-          tanda1: horas,
-          tanda2: []
+          manana: horas,
+          tarde: []
         };
       }
 
       return {
-        tanda1: horas.slice(0, indiceCorte),
-        tanda2: horas.slice(indiceCorte)
+        manana: horas.slice(0, indiceCorte),
+        tarde: horas.slice(indiceCorte)
       };
     }
 
@@ -723,6 +801,7 @@
         game_mode_id,
         start_type,
         hole_count,
+        published,
         series_id,
         series_round_number,
         tournament_categories (
@@ -758,6 +837,9 @@
 
       document.getElementById("nombre").value = torneo.name || "";
       document.getElementById("fecha").value = torneo.tournament_date || "";
+
+      document.getElementById("published").checked = torneo.published === true;
+
       modalidadEl.value = torneo.game_mode_id || "";
       tipoSalidaEl.value = torneo.start_type || "secuencial";
       actualizarVisibilidadTipoSalida();
@@ -875,15 +957,16 @@
       // TORNEO SECUENCIAL
       // =========================
       if ((torneo.start_type || "secuencial") === "secuencial") {
+        // Si es simultánea, limpiar campos secuenciales para no confundir
         document.getElementById("horaInicioB1A").value = "";
-        document.getElementById("lineasB1A").value = "0";
+        document.getElementById("horaFinB1A").value = "";
         document.getElementById("horaInicioB1B").value = "";
-        document.getElementById("lineasB1B").value = "0";
+        document.getElementById("horaFinB1B").value = "";
 
         document.getElementById("horaInicioB2A").value = "";
-        document.getElementById("lineasB2A").value = "0";
+        document.getElementById("horaFinB2A").value = "";
         document.getElementById("horaInicioB2B").value = "";
-        document.getElementById("lineasB2B").value = "0";
+        document.getElementById("horaFinB2B").value = "";
 
         // Bloque 1
         if (blocksSafe[0]) {
@@ -896,14 +979,22 @@
           if (!errorLineas1 && lineasBlock1 && lineasBlock1.length > 0) {
             const separadas1 = separarTandasPorIntervalo(lineasBlock1, Number(document.getElementById("intervalo").value || 10));
 
-            if (separadas1.tanda1.length > 0) {
-              document.getElementById("horaInicioB1A").value = separadas1.tanda1[0] || "";
-              document.getElementById("lineasB1A").value = String(separadas1.tanda1.length);
+            if (separadas1.manana.length > 0) {
+
+              document.getElementById("horaInicioB1A").value =
+                separadas1.manana[0] || "";
+
+              document.getElementById("horaFinB1A").value =
+                separadas1.manana[separadas1.manana.length - 1] || "";
             }
 
-            if (separadas1.tanda2.length > 0) {
-              document.getElementById("horaInicioB1B").value = separadas1.tanda2[0] || "";
-              document.getElementById("lineasB1B").value = String(separadas1.tanda2.length);
+            if (separadas1.tarde.length > 0) {
+
+              document.getElementById("horaInicioB1B").value =
+                separadas1.tarde[0] || "";
+
+              document.getElementById("horaFinB1B").value =
+                separadas1.tarde[separadas1.tarde.length - 1] || "";
             }
           }
         }
@@ -919,28 +1010,37 @@
           if (!errorLineas2 && lineasBlock2 && lineasBlock2.length > 0) {
             const separadas2 = separarTandasPorIntervalo(lineasBlock2, Number(document.getElementById("intervalo").value || 10));
 
-            if (separadas2.tanda1.length > 0) {
-              document.getElementById("horaInicioB2A").value = separadas2.tanda1[0] || "";
-              document.getElementById("lineasB2A").value = String(separadas2.tanda1.length);
+            if (separadas2.manana.length > 0) {
+
+              document.getElementById("horaInicioB2A").value =
+                separadas2.manana[0] || "";
+
+              document.getElementById("horaFinB2A").value =
+                separadas2.manana[separadas2.manana.length - 1] || "";
             }
 
-            if (separadas2.tanda2.length > 0) {
-              document.getElementById("horaInicioB2B").value = separadas2.tanda2[0] || "";
-              document.getElementById("lineasB2B").value = String(separadas2.tanda2.length);
+            if (separadas2.tarde.length > 0) {
+
+              document.getElementById("horaInicioB2B").value =
+                separadas2.tarde[0] || "";
+
+              document.getElementById("horaFinB2B").value =
+                separadas2.tarde[separadas2.tarde.length - 1] || "";
             }
           }
         }
       } else {
         // Si es simultánea, limpiar campos secuenciales para no confundir
+        // Si es simultánea, limpiar campos secuenciales para no confundir
         document.getElementById("horaInicioB1A").value = "";
-        document.getElementById("lineasB1A").value = "0";
+        document.getElementById("horaFinB1A").value = "";
         document.getElementById("horaInicioB1B").value = "";
-        document.getElementById("lineasB1B").value = "0";
+        document.getElementById("horaFinB1B").value = "";
 
         document.getElementById("horaInicioB2A").value = "";
-        document.getElementById("lineasB2A").value = "0";
+        document.getElementById("horaFinB2A").value = "";
         document.getElementById("horaInicioB2B").value = "";
-        document.getElementById("lineasB2B").value = "0";
+        document.getElementById("horaFinB2B").value = "";
       }
 
       // Guardar cantidad de líneas por bloque para futuras actualizaciones
@@ -1195,21 +1295,23 @@
       const modalidad = modalidadEl.value;
 
       const horaInicioB1A = document.getElementById("horaInicioB1A").value;
-      const lineasB1A = Number(document.getElementById("lineasB1A").value || 0);
+      const horaFinB1A = document.getElementById("horaFinB1A").value;
 
       const horaInicioB1B = document.getElementById("horaInicioB1B").value;
-      const lineasB1B = Number(document.getElementById("lineasB1B").value || 0);
+      const horaFinB1B = document.getElementById("horaFinB1B").value;
 
       const horaInicioB2A = document.getElementById("horaInicioB2A").value;
-      const lineasB2A = Number(document.getElementById("lineasB2A").value || 0);
+      const horaFinB2A = document.getElementById("horaFinB2A").value;
 
       const horaInicioB2B = document.getElementById("horaInicioB2B").value;
-      const lineasB2B = Number(document.getElementById("lineasB2B").value || 0);
+      const horaFinB2B = document.getElementById("horaFinB2B").value;
 
       const intervalo = Number(document.getElementById("intervalo").value);
 
       const tipoSalida = tipoSalidaEl.value;
       const segmentoJuego = document.getElementById("segmentoJuego").value || "18";
+
+      const published = document.getElementById("published").checked;
 
       const horaSimultanea1 = document.getElementById("horaSimultanea1").value;
       const horaSimultanea2 = document.getElementById("horaSimultanea2").value;
@@ -1255,39 +1357,43 @@
         return fecha.toTimeString().slice(0, 5);
       }
 
+      function generarHorariosEntre(inicio, fin, intervalo) {
+        const horarios = [];
+
+        if (!inicio || !fin) return horarios;
+
+        let actual = minutosDesdeHora(inicio);
+        const final = minutosDesdeHora(fin);
+
+        if (final < actual) return horarios;
+
+        while (actual <= final) {
+          const hh = String(Math.floor(actual / 60)).padStart(2, "0");
+          const mm = String(actual % 60).padStart(2, "0");
+          horarios.push(`${hh}:${mm}`);
+          actual += intervalo;
+        }
+
+        return horarios;
+      }
+
       function construirLineasDeseadasPorTandas({
         startingHole,
-        horaA,
-        cantidadA,
-        horaB,
-        cantidadB,
+        inicioManana,
+        finManana,
+        inicioTarde,
+        finTarde,
         intervalo
       }) {
-        const lineas = [];
+        const horariosManana = generarHorariosEntre(inicioManana, finManana, intervalo);
+        const horariosTarde = generarHorariosEntre(inicioTarde, finTarde, intervalo);
 
-        if (horaA && cantidadA > 0) {
-          for (let i = 0; i < cantidadA; i++) {
-            lineas.push({
-              line_time: sumarMinutos(horaA, i * intervalo),
-              starting_hole: startingHole,
-              label: `Hoyo ${startingHole}`,
-              capacity: 4
-            });
-          }
-        }
-
-        if (horaB && cantidadB > 0) {
-          for (let i = 0; i < cantidadB; i++) {
-            lineas.push({
-              line_time: sumarMinutos(horaB, i * intervalo),
-              starting_hole: startingHole,
-              label: `Hoyo ${startingHole}`,
-              capacity: 4
-            });
-          }
-        }
-
-        return lineas;
+        return [...horariosManana, ...horariosTarde].map(hora => ({
+          line_time: hora,
+          starting_hole: startingHole,
+          label: `Hoyo ${startingHole}`,
+          capacity: 4
+        }));
       }
 
       async function crearSlotsParaLinea(startingLineId) {
@@ -1526,17 +1632,17 @@
         ordenBloque,
         torneoId,
         startingHole,
-        horaA,
-        cantidadA,
-        horaB,
-        cantidadB
+        inicioManana,
+        finManana,
+        inicioTarde,
+        finTarde
       ) {
         const deseadas = construirLineasDeseadasPorTandas({
           startingHole,
-          horaA,
-          cantidadA,
-          horaB,
-          cantidadB,
+          inicioManana,
+          finManana,
+          inicioTarde,
+          finTarde,
           intervalo
         });
 
@@ -1654,11 +1760,11 @@
           "Bloque 1",
           1,
           torneoId,
-          1,              // hoyo fijo
+          1,
           horaInicioB1A,
-          lineasB1A,
+          horaFinB1A,
           horaInicioB1B,
-          lineasB1B
+          horaFinB1B
         );
 
         await upsertBloqueSecuencial(
@@ -1666,11 +1772,11 @@
           "Bloque 2",
           2,
           torneoId,
-          10,             // hoyo fijo
+          10,
           horaInicioB2A,
-          lineasB2A,
+          horaFinB2A,
           horaInicioB2B,
-          lineasB2B
+          horaFinB2B
         );
 
         const bloquesFinales = await cargarBloquesDelTorneo(torneoId);
@@ -1912,35 +2018,35 @@
           }
 
           const bloque1TieneAlgo =
-            (horaInicioB1A && lineasB1A > 0) ||
-            (horaInicioB1B && lineasB1B > 0);
+            (horaInicioB1A && horaFinB1A) ||
+            (horaInicioB1B && horaFinB1B);
 
           const bloque2TieneAlgo =
-            (horaInicioB2A && lineasB2A > 0) ||
-            (horaInicioB2B && lineasB2B > 0);
+            (horaInicioB2A && horaFinB2A) ||
+            (horaInicioB2B && horaFinB2B);
 
           if (!bloque1TieneAlgo && !bloque2TieneAlgo) {
             setError("Ingresá al menos una tanda en bloque 1 o bloque 2.");
             return;
           }
 
-          if ((horaInicioB1A && lineasB1A <= 0) || (!horaInicioB1A && lineasB1A > 0)) {
-            setError("Completá correctamente la tanda 1 del bloque 1.");
+          if ((horaInicioB1A && !horaFinB1A) || (!horaInicioB1A && horaFinB1A)) {
+            setError("Completá correctamente la mañana del Hoyo 1.");
             return;
           }
 
-          if ((horaInicioB1B && lineasB1B <= 0) || (!horaInicioB1B && lineasB1B > 0)) {
-            setError("Completá correctamente la tanda 2 del bloque 1.");
+          if ((horaInicioB1B && !horaFinB1B) || (!horaInicioB1B && horaFinB1B)) {
+            setError("Completá correctamente la tarde del Hoyo 1.");
             return;
           }
 
-          if ((horaInicioB2A && lineasB2A <= 0) || (!horaInicioB2A && lineasB2A > 0)) {
-            setError("Completá correctamente la tanda 1 del bloque 2.");
+          if ((horaInicioB2A && !horaFinB2A) || (!horaInicioB2A && horaFinB2A)) {
+            setError("Completá correctamente la mañana del Hoyo 10.");
             return;
           }
 
-          if ((horaInicioB2B && lineasB2B <= 0) || (!horaInicioB2B && lineasB2B > 0)) {
-            setError("Completá correctamente la tanda 2 del bloque 2.");
+          if ((horaInicioB2B && !horaFinB2B) || (!horaInicioB2B && horaFinB2B)) {
+            setError("Completá correctamente la tarde del Hoyo 10.");
             return;
           }
         }
@@ -2021,6 +2127,7 @@
               game_mode_id: modalidad,
               start_type: tipoSalida,
               hole_count: holeCount,
+              published,
               series_id,
               series_round_number
             })
@@ -2046,6 +2153,7 @@
               start_type_template_id: "642952e9-c289-48a8-9df6-788d1378b0e7",
               hole_count: holeCount,
               status: "closed",
+              published,
               series_id,
               series_round_number
             })
@@ -2081,15 +2189,18 @@
 
         document.getElementById("nombre").value = "";
         document.getElementById("fecha").value = "";
+
+        document.getElementById("published").checked = true;
+
         document.getElementById("horaInicioB1A").value = "";
-        document.getElementById("lineasB1A").value = "0";
+        document.getElementById("horaFinB1A").value = "";
         document.getElementById("horaInicioB1B").value = "";
-        document.getElementById("lineasB1B").value = "0";
+        document.getElementById("horaFinB1B").value = "";
 
         document.getElementById("horaInicioB2A").value = "";
-        document.getElementById("lineasB2A").value = "0";
+        document.getElementById("horaFinB2A").value = "";
         document.getElementById("horaInicioB2B").value = "";
-        document.getElementById("lineasB2B").value = "0";
+        document.getElementById("horaFinB2B").value = "";
 
         document.getElementById("intervalo").value = "10";
 
