@@ -1770,6 +1770,7 @@
       name,
       tournament_date,
       status,
+      published,
       start_type,
       game_modes (
         id,
@@ -1781,7 +1782,9 @@
       .eq("id", APP.torneoId);
 
     if (!APP.esAdmin) {
-      query = query.eq("status", "open");
+      query = query
+        .eq("status", "open")
+        .eq("published", true);
     }
 
     const { data, error } = await query.single();
@@ -1794,12 +1797,11 @@
   async function fetchOldestOpenTournaments(limit = 5) {
     let query = supabase
       .from("tournaments")
-      .select("id, name, tournament_date, status");
+      .select("id, name, tournament_date, status, published")
+      .eq("status", "open");
 
-    if (APP.esAdmin) {
-      query = query.eq("status", "open");
-    } else {
-      query = query.eq("status", "open");
+    if (!APP.esAdmin) {
+      query = query.eq("published", true);
     }
 
     const { data, error } = await query
@@ -1813,12 +1815,11 @@
   async function fetchOldestOpenTournament() {
     let query = supabase
       .from("tournaments")
-      .select("id, name, tournament_date, status");
+      .select("id, name, tournament_date, status, published")
+      .eq("status", "open");
 
-    if (APP.esAdmin) {
-      query = query.eq("status", "open");
-    } else {
-      query = query.eq("status", "open");
+    if (!APP.esAdmin) {
+      query = query.eq("published", true);
     }
 
     const { data, error } = await query
