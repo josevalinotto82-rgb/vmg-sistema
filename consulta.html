@@ -653,11 +653,9 @@
                 line-height: 1.05;
             }
 
-            .print-winner.scratch-print {
-                grid-template-columns: minmax(0, 1fr) 180px;
-                font-size: 15px;
-                font-weight: 800;
-                padding: 6px 0;
+            .print-winner.approach-print {
+                grid-template-columns: 70px minmax(0, 1fr);
+                gap: 8px;
             }
 
             .print-approach-title {
@@ -733,9 +731,31 @@
             }
 
             .print-meta {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 4px 30px;
+
                 font-size: 13px;
-                line-height: 1.6;
-                margin: 8px 0 14px
+                line-height: 1.35;
+
+                margin: 10px 0 16px;
+            }
+
+            .print-meta-item {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+
+                border-bottom: 1px dotted #ccc;
+                padding-bottom: 2px;
+            }
+
+            .print-meta-label {
+                font-weight: 800;
+            }
+
+            .print-meta-value {
+                font-weight: 600;
             }
 
             .print-section-title {
@@ -754,12 +774,18 @@
 
             .print-winner {
                 display: grid;
-                grid-template-columns: minmax(0, 1.8fr) 110px 90px 100px;
-                gap: 12px;
-                font-size: 14px;
-                padding: 5px 0;
+
+                grid-template-columns:
+                    minmax(0, 2.8fr) 70px 55px 70px;
+
+                gap: 6px;
+
+                font-size: 13px;
+
+                padding: 4px 0;
+
                 border-bottom: 1px solid #ddd;
-                align-items: center
+                align-items: center;
             }
 
             .print-winner>div {
@@ -2279,11 +2305,11 @@
 
             items.forEach(x => {
                 html += `
-            <div class="print-winner scratch-print print-approach-row">
-                <div>Hoyo ${x.hoyo}</div>
-                <div>${esc(x.ganador)}</div>
-            </div>
-        `;
+                    <div class="print-winner approach-print print-approach-row">
+                        <div>Hoyo ${x.hoyo}</div>
+                        <div>${esc(x.ganador)}</div>
+                    </div>
+                `;
             });
 
             return html;
@@ -2309,7 +2335,51 @@
 
             let html = `<div class="print-page">`;
             html += `<div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">${fechaTexto(torneoActual.tournament_date)}</div>`;
-            html += `<div class="print-meta">Modalidad: <b>${esc(torneoActual.game_modes?.name || "—")}</b><br>Tipo de Salida: <b>${esc(torneoActual.start_type || "—")}</b><br>Anotados: <b>${scorecards.length}</b><br>Tarjetas presentadas: <b>${validas.length}</b><br>NPT: <b>${npt.length}</b><br>DSC.: <b>${desc.length}</b><br>Gross Promedio: <b>${fmt(grossAvg, 1)}</b><br>Neto Promedio: <b>${fmt(netAvg, 1)}</b></div>`;
+            html += `
+            <div class="print-meta">
+
+                <div class="print-meta-item">
+                    <span class="print-meta-label">Modalidad</span>
+                    <span class="print-meta-value">${esc(torneoActual.game_modes?.name || "—")}</span>
+                </div>
+
+                <div class="print-meta-item">
+                    <span class="print-meta-label">Tipo de Salida</span>
+                    <span class="print-meta-value">${esc(torneoActual.start_type || "—")}</span>
+                </div>
+
+                <div class="print-meta-item">
+                    <span class="print-meta-label">Anotados</span>
+                    <span class="print-meta-value">${scorecards.length}</span>
+                </div>
+
+                <div class="print-meta-item">
+                    <span class="print-meta-label">Tarjetas presentadas</span>
+                    <span class="print-meta-value">${validas.length}</span>
+                </div>
+
+                <div class="print-meta-item">
+                    <span class="print-meta-label">NPT</span>
+                    <span class="print-meta-value">${npt.length}</span>
+                </div>
+
+                <div class="print-meta-item">
+                    <span class="print-meta-label">DSC.</span>
+                    <span class="print-meta-value">${desc.length}</span>
+                </div>
+
+                <div class="print-meta-item">
+                    <span class="print-meta-label">Gross Promedio</span>
+                    <span class="print-meta-value">${fmt(grossAvg, 1)}</span>
+                </div>
+
+                <div class="print-meta-item">
+                    <span class="print-meta-label">Neto Promedio</span>
+                    <span class="print-meta-value">${fmt(netAvg, 1)}</span>
+                </div>
+
+            </div>
+            `;
             html += renderPrintApproach();
             html += `<div class="print-section-title">Ganadores por Categoría</div>`;
 
