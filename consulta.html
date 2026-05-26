@@ -90,6 +90,47 @@
             align-items: end
         }
 
+        .approach-toolbar {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        @media(max-width:900px) {
+            .approach-toolbar {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .approach-field {
+            position: relative;
+        }
+
+        .approach-suggestions {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 64px;
+            background: white;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, .16);
+            z-index: 30;
+            overflow: hidden;
+            display: none;
+        }
+
+        .approach-suggestion {
+            padding: 9px 10px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .approach-suggestion:hover {
+            background: #eef5ef;
+        }
+
         label {
             display: block;
             margin-bottom: 6px;
@@ -944,6 +985,32 @@
                 </div>
             </div>
 
+            <div class="approach-toolbar">
+                <div class="approach-field">
+                    <label>Approach Hoyo 3</label>
+                    <input id="approach3" placeholder="Buscar jugador...">
+                    <div class="approach-suggestions" data-for="approach3"></div>
+                </div>
+
+                <div class="approach-field">
+                    <label>Approach Hoyo 5</label>
+                    <input id="approach5" placeholder="Buscar jugador...">
+                    <div class="approach-suggestions" data-for="approach5"></div>
+                </div>
+
+                <div class="approach-field">
+                    <label>Approach Hoyo 11</label>
+                    <input id="approach11" placeholder="Buscar jugador...">
+                    <div class="approach-suggestions" data-for="approach11"></div>
+                </div>
+
+                <div class="approach-field">
+                    <label>Approach Hoyo 13</label>
+                    <input id="approach13" placeholder="Buscar jugador...">
+                    <div class="approach-suggestions" data-for="approach13"></div>
+                </div>
+            </div>
+
             <div style="margin-top:12px" id="estado" class="status">Conectando...</div>
         </div>
 
@@ -1035,7 +1102,10 @@
         let serieTabActiva = "acumulado";
 
         el("btnCargar").addEventListener("click", cargarInforme);
-        el("btnImprimir").addEventListener("click", () => window.print());
+        el("btnImprimir").addEventListener("click", () => {
+            renderPrintReport();
+            window.print();
+        });
         torneoSelect.addEventListener("change", cargarInforme);
         el("topCategoria").addEventListener("change", renderTodo);
         el("topScratch").addEventListener("change", renderTodo);
@@ -1044,6 +1114,14 @@
         if (inputScratchDamas) {
             inputScratchDamas.addEventListener("change", renderTodo);
         }
+
+        document.addEventListener("click", (ev) => {
+            if (ev.target.closest(".approach-field")) return;
+
+            document.querySelectorAll(".approach-suggestions").forEach(box => {
+                box.style.display = "none";
+            });
+        });
 
         document.addEventListener("click", (ev) => {
             const btn = ev.target.closest("[data-serie-tab]");
@@ -1208,6 +1286,8 @@
                     .order("display_name", { ascending: true });
                 if (errorCards) throw errorCards;
                 scorecards = (cards || []).sort((a, b) => String(a.display_name || "").localeCompare(String(b.display_name || ""), "es"));
+
+                cargarListaJugadoresApproach();
 
                 const { data: cats, error: errorCats } = await supabase
                     .from("tournament_categories")
@@ -2100,6 +2180,99 @@
             return html;
         }
 
+        let jugadoresApproach = [];
+
+        function cargarListaJugadoresApproach() {
+            jugadoresApproach = [...new Set(
+                scorecards
+                    .map(s => String(s.display_name || "").trim())
+                    .filter(Boolean)
+            )].sort((a, b) => a.localeCompare(b, "es"));
+
+            configurarBuscadorApproach("approach3");
+            configurarBuscadorApproach("approach5");
+            configurarBuscadorApproach("approach11");
+            configurarBuscadorApproach("approach13");
+        }
+
+        function configurarBuscadorApproach(inputId) {
+            const input = el(inputId);
+            const box = document.querySelector(`.approach-suggestions[data-for="${inputId}"]`);
+            if (!input || !box) return;
+
+            if (input.dataset.approachReady === "1") return;
+            input.dataset.approachReady = "1";
+
+            input.addEventListener("input", () => {
+                const q = normalizarTextoClave(input.value);
+
+                if (!q) {
+                    box.style.display = "none";
+                    box.innerHTML = "";
+                    return;
+                }
+
+                const matches = jugadoresApproach
+                    .filter(nombre => normalizarTextoClave(nombre).includes(q))
+                    .slice(0, 4);
+
+                if (!matches.length) {
+                    box.style.display = "none";
+                    box.innerHTML = "";
+                    return;
+                }
+
+                box.innerHTML = matches.map(nombre => `
+            <div class="approach-suggestion" data-nombre="${esc(nombre)}">
+                ${esc(nombre)}
+            </div>
+        `).join("");
+
+                box.style.display = "block";
+            });
+
+            box.addEventListener("click", (ev) => {
+                const item = ev.target.closest(".approach-suggestion");
+                if (!item) return;
+
+                input.value = item.dataset.nombre || "";
+                box.style.display = "none";
+            });
+
+            input.addEventListener("focus", () => {
+                if (input.value.trim()) {
+                    input.dispatchEvent(new Event("input"));
+                }
+            });
+        }
+
+        function getApproachGanadores() {
+            return [
+                { hoyo: 3, ganador: el("approach3")?.value?.trim() || "" },
+                { hoyo: 5, ganador: el("approach5")?.value?.trim() || "" },
+                { hoyo: 11, ganador: el("approach11")?.value?.trim() || "" },
+                { hoyo: 13, ganador: el("approach13")?.value?.trim() || "" }
+            ];
+        }
+
+        function renderPrintApproach() {
+            const items = getApproachGanadores().filter(x => x.ganador);
+            if (!items.length) return "";
+
+            let html = `<div class="print-section-title">Premios Approach</div>`;
+
+            items.forEach(x => {
+                html += `
+            <div class="print-winner scratch-print">
+                <div>Hoyo ${x.hoyo}</div>
+                <div>${esc(x.ganador)}</div>
+            </div>
+        `;
+            });
+
+            return html;
+        }
+
         function renderPrintReport() {
             const validas = scorecards.filter(s => s.card_status === "valid" || s.card_status === "cargada");
             const desc = scorecards.filter(s => s.card_status === "desc");
@@ -2121,6 +2294,7 @@
             let html = `<div class="print-page">`;
             html += `<div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">${fechaTexto(torneoActual.tournament_date)}</div>`;
             html += `<div class="print-meta">Modalidad: <b>${esc(torneoActual.game_modes?.name || "—")}</b><br>Tipo de Salida: <b>${esc(torneoActual.start_type || "—")}</b><br>Anotados: <b>${scorecards.length}</b><br>Tarjetas presentadas: <b>${validas.length}</b><br>NPT: <b>${npt.length}</b><br>DSC.: <b>${desc.length}</b><br>Gross Promedio: <b>${fmt(grossAvg, 1)}</b><br>Neto Promedio: <b>${fmt(netAvg, 1)}</b></div>`;
+            html += renderPrintApproach();
             html += `<div class="print-section-title">Ganadores por Categoría</div>`;
 
             function renderPrintScratch(titulo, items) {
