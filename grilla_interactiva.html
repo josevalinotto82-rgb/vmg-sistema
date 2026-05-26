@@ -629,10 +629,11 @@
 
     .share-reserved {
       background: #fff4e5;
-      border-color: #f59e0b;
-      color: #92400e;
-      font-weight: 800;
+      border-color: #fc8d8d;
+      color: #e64e08;
+      font-weight: 550;
       font-size: 8px;
+      font-style: italic;
     }
 
     .selector-torneos-wrap {
@@ -1875,7 +1876,11 @@
   }
 
   function puedeReservarSlotDeSuLinea(slot) {
-    if (APP.esAdmin || !APP.miPlayerId) return false;
+    if (APP.esAdmin) {
+      return slot && isSlotEmpty(slot);
+    }
+
+    if (!APP.miPlayerId) return false;
     if (!slot || !isSlotEmpty(slot)) return false;
 
     const slotsLinea = getLineSlots(slot.starting_line_id);
@@ -1883,18 +1888,24 @@
 
     return (
       slot1 &&
-      Number(slot1.slot_number) === 1 &&
       String(slot1.linked_player_id) === String(APP.miPlayerId)
     );
   }
 
   function esReservaMia(slot) {
+    if (!slot) return false;
+
+    const esReserva =
+      String(slot.notes || "") === "RESERVA_24H_SOCIO" &&
+      lockActive(slot);
+
+    if (!esReserva) return false;
+
+    if (APP.esAdmin) return true;
+
     return (
-      !APP.esAdmin &&
       APP.miPlayerId &&
-      String(slot?.locked_by_player_id || "") === String(APP.miPlayerId) &&
-      String(slot?.notes || "") === "RESERVA_24H_SOCIO" &&
-      lockActive(slot)
+      String(slot.locked_by_player_id || "") === String(APP.miPlayerId)
     );
   }
 
@@ -1903,19 +1914,25 @@
   }
 
   async function reservarSlotPor24Horas(slotId) {
-    if (!APP.miPlayerId) throw new Error("No hay jugador vinculado.");
+    if (!APP.esAdmin && !APP.miPlayerId) {
+      throw new Error("No hay jugador vinculado.");
+    }
 
     const slot = await fetchSlotById(slotId);
 
     if (!puedeReservarSlotDeSuLinea(slot)) {
-      throw new Error("Solo podés reservar lugares de tu misma línea si estás anotado en el slot 1.");
+      throw new Error(
+        APP.esAdmin
+          ? "El slot no está libre."
+          : "Solo podés reservar lugares de tu misma línea si estás anotado en el slot 1."
+      );
     }
 
     const { error } = await supabase
       .from("line_slots")
       .update({
-        locked_by_player_id: APP.miPlayerId,
-        locked_by_session: null,
+        locked_by_player_id: APP.esAdmin ? null : APP.miPlayerId,
+        locked_by_session: APP.esAdmin ? APP.sessionLockId : null,
         lock_expires_at: addHoursIso(24),
         notes: "RESERVA_24H_SOCIO"
       })
@@ -2726,11 +2743,31 @@
     }
 
     if (bloqueadoPorOtro) {
+      const esReserva24 =
+        String(slot?.notes || "") === "RESERVA_24H_SOCIO" &&
+        lockActive(slot);
+
+      if (APP.esAdmin && esReserva24) {
+        return `
+      <td class="slot-cell slot-empty slot-locked-other" data-slot-id="${slot.id}">
+        <div class="slot-box">
+          <button
+            class="slot-inline-manual-btn"
+            type="button"
+            data-release-reserve-slot="${slot.id}"
+          >
+            Liberar reserva
+          </button>
+        </div>
+      </td>
+    `;
+      }
+
       return `
-        <td class="slot-cell slot-empty slot-locked-other">
-          <div class="slot-box"><span class="slot-libre-link" style="text-decoration:none; cursor:not-allowed;">Reservado</span></div>
-        </td>
-      `;
+    <td class="slot-cell slot-empty slot-locked-other">
+      <div class="slot-box"><span class="slot-libre-link" style="text-decoration:none; cursor:not-allowed;">Reservado</span></div>
+    </td>
+  `;
     }
 
     const botonBloquear = APP.esAdmin
@@ -4114,6 +4151,20 @@
 
         try {
           const slot = await fetchSlotById(slotId);
+
+          // 👉 si es reserva 24 hs, admin libera con un click
+          if (
+            APP.esAdmin &&
+            String(slot?.notes || "") === "RESERVA_24H_SOCIO" &&
+            lockActive(slot)
+          ) {
+            const ok = confirm("¿Querés volver a habilitar este lugar reservado?");
+            if (!ok) return;
+
+            await liberarReservaSlot(slotId);
+            await loadGrid();
+            return;
+          }
 
           // 👉 si está bloqueado
           if (slot?.participant_type === "blocked") {
