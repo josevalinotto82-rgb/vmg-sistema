@@ -627,6 +627,14 @@
       color: transparent;
     }
 
+    .share-reserved {
+      background: #fff4e5;
+      border-color: #f59e0b;
+      color: #92400e;
+      font-weight: 800;
+      font-size: 8px;
+    }
+
     .selector-torneos-wrap {
       margin: 0 0 14px;
       text-align: center;
@@ -2992,7 +3000,12 @@
         const participantType = String(slot?.participant_type || "").toLowerCase();
         const isBlocked = participantType === "blocked";
 
-        const nameCompleto = slot && !isSlotEmpty(slot) && !isBlocked
+        const isReserved =
+          slot &&
+          String(slot.notes || "") === "RESERVA_24H_SOCIO" &&
+          lockActive(slot);
+
+        const nameCompleto = slot && !isSlotEmpty(slot) && !isBlocked && !isReserved
           ? normalizeSlotName(slot)
           : "";
 
@@ -3000,14 +3013,28 @@
           ? formatNombreCorto(nameCompleto)
           : "";
 
+        const cellClass = isBlocked
+          ? "share-blocked"
+          : isReserved
+            ? "share-reserved"
+            : name
+              ? ""
+              : "share-empty";
+
+        const cellText = isBlocked
+          ? ""
+          : isReserved
+            ? "RESERVADO"
+            : safeText(name);
+
         html += `
-          <td
-            class="share-name ${isBlocked ? "share-blocked" : (name ? "" : "share-empty")}"
-            title="${safeText(nameCompleto)}"
-          >
-            ${isBlocked ? "" : safeText(name)}
-          </td>
-        `;
+  <td
+    class="share-name ${cellClass}"
+    title="${isReserved ? "Reservado" : safeText(nameCompleto)}"
+  >
+    ${cellText}
+  </td>
+`;
       }
 
       if (state.showAdminSequentialTimes) {
