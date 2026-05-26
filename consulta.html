@@ -654,7 +654,23 @@
             }
 
             .print-winner.scratch-print {
-                grid-template-columns: minmax(0, 1fr) 120px;
+                grid-template-columns: minmax(0, 1fr) 180px;
+                font-size: 15px;
+                font-weight: 800;
+                padding: 6px 0;
+            }
+
+            .print-approach-title {
+                font-size: 20px;
+                font-weight: 900;
+                margin-top: 18px;
+                margin-bottom: 8px;
+            }
+
+            .print-approach-row {
+                font-size: 15px;
+                font-weight: 700;
+                padding: 4px 0;
             }
 
             .grid-table th:nth-child(1),
@@ -738,10 +754,10 @@
 
             .print-winner {
                 display: grid;
-                grid-template-columns: minmax(0, 1.8fr) 92px 72px 88px;
+                grid-template-columns: minmax(0, 1.8fr) 110px 90px 100px;
                 gap: 12px;
-                font-size: 11.5px;
-                padding: 3px 0;
+                font-size: 14px;
+                padding: 5px 0;
                 border-bottom: 1px solid #ddd;
                 align-items: center
             }
@@ -2259,11 +2275,11 @@
             const items = getApproachGanadores().filter(x => x.ganador);
             if (!items.length) return "";
 
-            let html = `<div class="print-section-title">Premios Approach</div>`;
+            let html = `<div class="print-approach-title">Premios Approach</div>`;
 
             items.forEach(x => {
                 html += `
-            <div class="print-winner scratch-print">
+            <div class="print-winner scratch-print print-approach-row">
                 <div>Hoyo ${x.hoyo}</div>
                 <div>${esc(x.ganador)}</div>
             </div>
