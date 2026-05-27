@@ -245,6 +245,148 @@
                 font-size: 12px;
             }
         }
+
+        @media print {
+
+            @page {
+                size: A4 portrait;
+                margin: 12mm;
+            }
+
+            html,
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                font-size: 11px;
+                color: #111827;
+            }
+
+            body.imprimiendo-sync .home-btn,
+            body.imprimiendo-sync #btnSync,
+            body.imprimiendo-sync #btnImprimirSync,
+            body.imprimiendo-sync #resultado,
+            body.imprimiendo-sync hr,
+            body.imprimiendo-sync #buscadorJugador,
+            body.imprimiendo-sync #resultadosBusqueda,
+            body.imprimiendo-sync h2:nth-of-type(2),
+            body.imprimiendo-sync .card>p {
+                display: none !important;
+            }
+
+            body.imprimiendo-sync .card {
+                max-width: 100% !important;
+                width: 100% !important;
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+            }
+
+            body.imprimiendo-sync .inner-card {
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                background: white !important;
+            }
+
+            body.imprimiendo-sync h1 {
+                font-size: 24px;
+                color: #166534 !important;
+                margin-bottom: 4px;
+            }
+
+            body.imprimiendo-sync h2 {
+                font-size: 18px;
+                margin-top: 26px;
+                margin-bottom: 10px;
+                padding-bottom: 4px;
+                border-bottom: 2px solid #d1d5db;
+                color: #111827;
+            }
+
+            body.imprimiendo-sync h3 {
+                margin-top: 20px;
+                margin-bottom: 8px;
+                font-size: 15px;
+            }
+
+            body.imprimiendo-sync .summary-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+                margin: 18px 0 24px;
+            }
+
+            body.imprimiendo-sync .summary-box {
+                border: 1px solid #d1d5db;
+                border-radius: 10px;
+                padding: 12px;
+                text-align: center;
+                background: #f9fafb !important;
+            }
+
+            body.imprimiendo-sync .summary-box b {
+                font-size: 28px;
+                display: block;
+                margin-top: 6px;
+                color: #166534;
+            }
+
+            body.imprimiendo-sync .sync-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 6px;
+                font-size: 10px;
+            }
+
+            body.imprimiendo-sync .sync-table th {
+                background: #e5e7eb !important;
+                color: #111827 !important;
+                padding: 6px;
+                border: 1px solid #d1d5db;
+                text-transform: uppercase;
+                font-size: 9px;
+            }
+
+            body.imprimiendo-sync .sync-table td {
+                padding: 5px;
+                border: 1px solid #e5e7eb;
+                vertical-align: top;
+            }
+
+            body.imprimiendo-sync .sync-table tr:nth-child(even) {
+                background: #f9fafb !important;
+            }
+
+            body.imprimiendo-sync .badge {
+                border: 1px solid #d1d5db;
+                font-size: 11px;
+                padding: 4px 10px;
+            }
+
+            body.imprimiendo-sync .badge-new {
+                background: #dcfce7 !important;
+                color: #166534 !important;
+            }
+
+            body.imprimiendo-sync .badge-index {
+                background: #fef3c7 !important;
+                color: #92400e !important;
+            }
+
+            body.imprimiendo-sync .badge-down {
+                background: #fee2e2 !important;
+                color: #991b1b !important;
+            }
+
+            body.imprimiendo-sync table,
+            body.imprimiendo-sync tr,
+            body.imprimiendo-sync td {
+                page-break-inside: avoid !important;
+            }
+        }
     </style>
 </head>
 
@@ -260,10 +402,12 @@
         <h1>Sincronización AAG</h1>
 
         <p>
-            Sincronización de Jugadores matriculados en la <b>AAG</b>. Actualización de Index y reporte de cambios en socios del <b>Villa María Golf Club.</b>            
+            Sincronización de Jugadores matriculados en la <b>AAG</b>. Actualización de Index y reporte de cambios en
+            socios del <b>Villa María Golf Club.</b>
         </p>
 
         <button id="btnSync">Sync-jugadores</button>
+        <button id="btnImprimirSync" disabled>Imprimir reporte A4</button>
 
         <pre id="resultado">Esperando acción...</pre>
 
@@ -326,6 +470,8 @@
 
         const btnSync = document.getElementById("btnSync");
         const resultado = document.getElementById("resultado");
+        const btnImprimirSync = document.getElementById("btnImprimirSync");
+        let ultimoReporteSync = null;
         const buscadorJugador = document.getElementById("buscadorJugador");
         const resultadosBusqueda = document.getElementById("resultadosBusqueda");
 
@@ -659,6 +805,20 @@
             `;
         }
 
+        function imprimirReporteSyncA4() {
+            if (!ultimoReporteSync) {
+                alert("Primero tenés que hacer una sincronización.");
+                return;
+            }
+
+            document.body.classList.add("imprimiendo-sync");
+
+            setTimeout(() => {
+                window.print();
+                document.body.classList.remove("imprimiendo-sync");
+            }, 100);
+        }
+
         btnSync.addEventListener("click", async () => {
             btnSync.disabled = true;
             resultado.textContent = "Tomando foto previa de players VMGC 408...";
@@ -708,6 +868,9 @@
                     `Dejaron de ser miembros: ${changes.deactivated.length}`;
 
                 renderDetalleSync(changes);
+
+                ultimoReporteSync = changes;
+                btnImprimirSync.disabled = false;
 
             } catch (err) {
                 console.error(err);
@@ -971,6 +1134,8 @@
         buscadorJugador.addEventListener("keydown", (e) => {
             if (e.key === "Enter") buscarJugadores();
         });
+
+        btnImprimirSync.addEventListener("click", imprimirReporteSyncA4);
 
         document.getElementById("btnHome")?.addEventListener("click", () => {
             window.location.href = "panel.html";
