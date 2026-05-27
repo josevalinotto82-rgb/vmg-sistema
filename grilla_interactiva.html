@@ -3004,9 +3004,23 @@
     const lines = sortLinesForDisplay(state.lines);
 
     let lastHole = null;
+    let lastBlockId = null;
 
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index];
+      const block = state.blocks.find(b => String(b.id) === String(line.starting_block_id));
+
+      if (isSim && String(line.starting_block_id) !== String(lastBlockId)) {
+        html += `
+      <tr>
+        <td colspan="${state.showAdminSequentialTimes ? 7 : 5}" class="share-title-row">
+          Salida ${safeText(timeText(block?.start_time || line.line_time))}
+        </td>
+      </tr>
+    `;
+        lastBlockId = line.starting_block_id;
+      }
+
       const nextLine = lines[index + 1] || null;
       const hole = Number(line.starting_hole || 0);
 
