@@ -776,6 +776,8 @@
     let filasVistaCache = null;
     let autoCategoriaDesdeIndexManual = false;
 
+    let usuarioEditandoTabla = false;
+
     torneoSelect.addEventListener("change", cargarTodo);
     btnOficializarTorneo.addEventListener("click", oficializarTorneo);
     btnResumenPagos.addEventListener("click", imprimirResumenPagos);
@@ -784,6 +786,20 @@
 
     tablaWrap.addEventListener("click", manejarClickTabla);
     tablaWrap.addEventListener("change", manejarCambioTabla);
+
+    tablaWrap.addEventListener("focusin", (e) => {
+      if (e.target.matches("input, select")) {
+        usuarioEditandoTabla = true;
+      }
+    });
+
+    tablaWrap.addEventListener("focusout", (e) => {
+      if (e.target.matches("input, select")) {
+        setTimeout(() => {
+          usuarioEditandoTabla = false;
+        }, 1500);
+      }
+    });
 
     document
       .getElementById("buscadorJugadores")
@@ -975,9 +991,12 @@
     }
 
     function programarRecargaOficializacion() {
+      if (usuarioEditandoTabla) return;
+
       clearTimeout(realtimeReloadTimer);
 
       realtimeReloadTimer = setTimeout(() => {
+        if (usuarioEditandoTabla) return;
         cargarTodo();
       }, 500);
     }
@@ -1507,6 +1526,17 @@
     }
 
     async function cargarTodo(esAutoRefresh = false) {
+      const activo = document.activeElement;
+
+      if (
+        esAutoRefresh &&
+        activo &&
+        tablaWrap.contains(activo) &&
+        activo.matches("input, select")
+      ) {
+        return;
+      }
+
       try {
         if (!esAutoRefresh) {
           setEstado("Cargando torneo...");
@@ -1716,7 +1746,16 @@
 
         if (!autoRefreshTimer) {
           autoRefreshTimer = setInterval(() => {
-            if (torneoActual?.id) {
+            const activo = document.activeElement;
+
+            if (
+              torneoActual?.id &&
+              !(
+                activo &&
+                tablaWrap.contains(activo) &&
+                activo.matches("input, select")
+              )
+            ) {
               cargarTodo(true);
             }
           }, 5000);
@@ -2519,7 +2558,7 @@
           }
 
           if (idxEl && jugadorSinIndexAAG(reg)) {
-            idxEl.addEventListener("input", () => {
+            idxEl.addEventListener("blur", () => {
               autoCategoriaDesdeIndexManual = true;
               refrescarFilaSingle(reg);
             });

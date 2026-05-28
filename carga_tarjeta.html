@@ -836,11 +836,17 @@
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
 
-        const torneoInicial =
-          torneos.find(t => {
+        const torneoInicial = torneos
+          .map(t => {
             const fecha = new Date(t.tournament_date + "T00:00:00");
-            return fecha >= hoy;
-          }) || torneos[torneos.length - 1];
+            fecha.setHours(0, 0, 0, 0);
+
+            return {
+              torneo: t,
+              diferencia: Math.abs(fecha.getTime() - hoy.getTime())
+            };
+          })
+          .sort((a, b) => a.diferencia - b.diferencia)[0]?.torneo || null;
 
         if (torneoInicial) {
           torneoSelect.value = torneoInicial.id;

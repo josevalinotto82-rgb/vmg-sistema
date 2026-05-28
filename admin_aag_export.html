@@ -123,6 +123,34 @@
 
         <select id="torneoSelect" style="min-width:360px;"></select>
 
+        <div style="margin-top:12px;">
+            <label><b>Salidas a exportar</b></label><br><br>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+
+                <label>
+                    <input type="checkbox" class="teeExportCheck" value="negra" checked>
+                    Negras
+                </label>
+
+                <label>
+                    <input type="checkbox" class="teeExportCheck" value="amarilla" checked>
+                    Amarillas
+                </label>
+
+                <label>
+                    <input type="checkbox" class="teeExportCheck" value="blanca" checked>
+                    Blancas
+                </label>
+
+                <label>
+                    <input type="checkbox" class="teeExportCheck" value="roja" checked>
+                    Rojas
+                </label>
+
+            </div>
+        </div>
+
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; margin-bottom:12px;">
             <button id="btnValidarAAG">
                 Validar AAG
@@ -397,7 +425,8 @@
                 .from("tournaments")
                 .select("id, name, tournament_date, status")
                 .eq("status", "archived")
-                .order("tournament_date", { ascending: false });
+                .order("tournament_date", { ascending: false })
+                .limit(7);
 
             if (error) throw error;
 
@@ -737,9 +766,24 @@
             // 👉 agrupar por tee + género
             const grupos = {};
 
+            const teesSeleccionados = Array.from(
+                document.querySelectorAll(".teeExportCheck:checked")
+            ).map(el => el.value);
+
             for (const sc of scorecards) {
 
                 if (!sc.aag_member_number || !sc.hole_scores) continue;
+
+                const teeNormalizado = String(sc.tee_name || "")
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toLowerCase();
+
+                const exportarEsteTee = teesSeleccionados.some(t =>
+                    teeNormalizado.includes(t)
+                );
+
+                if (!exportarEsteTee) continue;
 
                 let jugables = 0;
 

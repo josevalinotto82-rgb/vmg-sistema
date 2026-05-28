@@ -183,6 +183,178 @@
             cursor: pointer;
             font-weight: 700;
         }
+
+        .card-hcp-tee {
+            position: relative;
+        }
+
+        .hcp-search-wrap {
+            position: relative;
+        }
+
+        .hcp-input {
+            width: 100%;
+            height: 42px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 0 12px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        .hcp-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+            z-index: 99999;
+            overflow: hidden;
+        }
+
+        .hcp-dropdown-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .hcp-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .hcp-dropdown-item:hover {
+            background: #f5f8f3;
+        }
+
+        .hcp-dropdown-name {
+            font-size: 13px;
+            font-weight: 900;
+            color: #14532d;
+        }
+
+        .hcp-dropdown-extra {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 3px;
+            line-height: 1.25;
+        }
+
+        .hcp-resultados-central {
+            margin-top: 22px;
+        }
+
+        .hcp-presentacion {
+            width: 100%;
+            max-width: 460px;
+            margin: 0 auto;
+            border-radius: 20px;
+            padding: 18px;
+            background: #ffffff;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, .10);
+        }
+
+        .hcp-presentacion-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .hcp-escudo {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .hcp-nombre {
+            font-size: 19px;
+            font-weight: 900;
+            color: #064e3b;
+            line-height: 1.05;
+        }
+
+        .hcp-club {
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .hcp-tees-lista {
+            display: grid;
+            gap: 8px;
+        }
+
+        .hcp-tee-row {
+            display: grid;
+            grid-template-columns: 1fr 54px 54px 54px 44px;
+            align-items: center;
+            gap: 6px;
+            border-radius: 13px;
+            padding: 9px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+        }
+
+        .hcp-tee-row.recomendado {
+            background: #dcfce7;
+            border-color: #86efac;
+        }
+
+        .hcp-tee-nombre {
+            font-size: 15px;
+            font-weight: 900;
+            color: #111827;
+        }
+
+        .hcp-recomendado {
+            font-size: 10px;
+            color: #166534;
+            font-weight: 900;
+            margin-top: 3px;
+        }
+
+        .hcp-mini {
+            text-align: center;
+        }
+
+        .hcp-mini span {
+            display: block;
+            font-size: 8px;
+            color: #6b7280;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .hcp-mini b {
+            font-size: 13px;
+            color: #111827;
+        }
+
+        .hcp-mini.hcp-destacado b {
+            font-size: 20px;
+            color: #166534;
+        }
+
+        @media (max-width: 700px) {
+            .hcp-presentacion {
+                max-width: 100%;
+                padding: 14px;
+            }
+
+            .hcp-tee-row {
+                grid-template-columns: 1fr 48px 48px 48px 38px;
+            }
+
+            .hcp-nombre {
+                font-size: 17px;
+            }
+        }
     </style>
 </head>
 
@@ -285,7 +457,21 @@
                     <p>Generar tarjetas sin torneo y cargar resultados.</p>
                     <a class="button button-amber" href="scorecard_libre.html">Entrar</a>
                 </div>
+
+                <div class="card card-hcp-tee">
+                    <h2>HCP por Tee</h2>
+                    <p>Buscar jugador y calcular hándicap de juego por salida.</p>
+
+                    <div class="hcp-search-wrap">
+                        <input id="buscadorHcpJugador" class="hcp-input" placeholder="Nombre, apellido o matrícula">
+                        <div id="hcpDropdown" class="hcp-dropdown hidden"></div>
+                    </div>
+                </div>
+
             </div>
+
+            <div id="hcpResultados" class="hcp-resultados hcp-resultados-central"></div>
+
         </div>
 
         <div id="playerPanel" class="hidden">
@@ -310,6 +496,7 @@
 
     </div>
 
+
     <script type="module">
         import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -323,6 +510,281 @@
         const playerPanel = document.getElementById("playerPanel");
         const statusEl = document.getElementById("status");
         const logoutBtn = document.getElementById("logoutBtn");
+
+        const buscadorHcpJugador = document.getElementById("buscadorHcpJugador");
+        const hcpResultados = document.getElementById("hcpResultados");
+
+        const hcpDropdown = document.getElementById("hcpDropdown");
+
+        let hcpSearchTimer = null;
+
+        function normalizarTexto(txt) {
+            return String(txt || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .trim();
+        }
+
+        function toNumber(value) {
+            if (value == null || value === "") return null;
+            const n = Number(String(value).replace(",", "."));
+            return Number.isNaN(n) ? null : n;
+        }
+
+        function roundHalfUp(value) {
+            const n = Number(value);
+            if (Number.isNaN(n)) return null;
+            return Math.floor(n + 0.5);
+        }
+
+        function calcularHcpJuego(index, rule) {
+            const idx = toNumber(index);
+            const slope = toNumber(rule?.slope);
+            const rating = toNumber(rule?.course_rating);
+            const par = toNumber(rule?.par);
+
+            if (idx == null || slope == null || rating == null || par == null) return null;
+
+            const hcp = roundHalfUp((idx * (slope / 113)) + (rating - par));
+
+            return Math.min(hcp, 54);
+        }
+
+        function generoJugador(gender) {
+            const g = String(gender || "").toLowerCase();
+
+            if (["female", "f", "dama", "damas", "mujer"].includes(g)) {
+                return "female";
+            }
+
+            return "male";
+        }
+
+        async function buscarJugadorHcp() {
+            const qRaw = buscadorHcpJugador.value.trim();
+
+            if (qRaw.length < 2) {
+                hcpDropdown.classList.add("hidden");
+                hcpDropdown.innerHTML = "";
+                return;
+            }
+
+            const q = normalizarTexto(qRaw).replace(/\s+/g, "%");
+
+            const { data, error } = await supabase
+                .from("aag_enrolleds")
+                .select(`
+            enrollment_number,
+            first_name,
+            last_name,
+            full_name,
+            gender,
+            current_index,
+            club_name,
+            search_text
+        `)
+                .ilike("search_text", `%${q}%`)
+                .limit(4);
+
+            if (error) {
+                console.error(error);
+                hcpDropdown.classList.remove("hidden");
+                hcpDropdown.innerHTML = `
+            <div class="hcp-dropdown-item">
+                <div class="hcp-dropdown-extra">Error buscando jugador.</div>
+            </div>
+        `;
+                return;
+            }
+
+            if (!data || !data.length) {
+                hcpDropdown.classList.remove("hidden");
+                hcpDropdown.innerHTML = `
+            <div class="hcp-dropdown-item">
+                <div class="hcp-dropdown-extra">No se encontraron jugadores.</div>
+            </div>
+        `;
+                return;
+            }
+
+            hcpDropdown.classList.remove("hidden");
+
+            hcpDropdown.innerHTML = data.map((p, idx) => {
+                const nombre = p.full_name || `${p.last_name || ""}, ${p.first_name || ""}`;
+                const index = toNumber(p.current_index);
+
+                return `
+            <div class="hcp-dropdown-item" data-hcp-idx="${idx}">
+                <div class="hcp-dropdown-name">${nombre}</div>
+                <div class="hcp-dropdown-extra">
+                    Matrícula: ${p.enrollment_number || "—"} · 
+                    Index: ${index != null ? index.toFixed(1) : "—"}<br>
+                    ${p.club_name || "—"}
+                </div>
+            </div>
+        `;
+            }).join("");
+
+            hcpDropdown.querySelectorAll("[data-hcp-idx]").forEach(item => {
+                item.addEventListener("click", () => {
+                    const jugador = data[Number(item.dataset.hcpIdx)];
+                    const nombre = jugador.full_name || `${jugador.last_name || ""}, ${jugador.first_name || ""}`;
+
+                    buscadorHcpJugador.value = nombre;
+                    hcpDropdown.classList.add("hidden");
+                    hcpDropdown.innerHTML = "";
+
+                    calcularHcpPorTee(jugador);
+                });
+            });
+        }
+
+        async function calcularHcpPorTee(jugador) {
+            const gender = generoJugador(jugador.gender);
+            const index = toNumber(jugador.current_index);
+
+            if (index == null) {
+                hcpResultados.innerHTML = "El jugador no tiene index cargado.";
+                return;
+            }
+
+            const teesBuscados = gender === "female"
+                ? ["ROJA"]
+                : ["NEGRA", "AMARILLA", "BLANCA"];
+
+            const { data: tees, error: teesError } = await supabase
+                .from("tees")
+                .select("id, name")
+                .order("display_order", { ascending: true });
+
+            if (teesError) {
+                console.error(teesError);
+                hcpResultados.innerHTML = "Error cargando tees.";
+                return;
+            }
+
+            const teesFiltrados = (tees || []).filter(t => {
+                const nombre = normalizarTexto(t.name);
+                return teesBuscados.some(busqueda => nombre.includes(busqueda));
+            });
+
+            if (!teesFiltrados.length) {
+                hcpResultados.innerHTML = "No encontré las tees configuradas.";
+                return;
+            }
+
+            const teeIds = teesFiltrados.map(t => t.id);
+
+            const { data: reglas, error: reglasError } = await supabase
+                .from("tee_handicap_rules")
+                .select("tee_id, gender, segment, slope, course_rating, par")
+                .in("tee_id", teeIds)
+                .eq("gender", gender)
+                .eq("segment", "18");
+
+            if (reglasError) {
+                console.error(reglasError);
+                hcpResultados.innerHTML = "Error cargando reglas de hándicap.";
+                return;
+            }
+
+            const reglasMap = new Map((reglas || []).map(r => [String(r.tee_id), r]));
+
+            function teeCorrespondienteCaballero(index) {
+                if (index <= 9) return "NEGRA";
+                if (index <= 15) return "AMARILLA";
+                return "BLANCA";
+            }
+
+            const teeJugador =
+                gender === "male"
+                    ? teeCorrespondienteCaballero(index)
+                    : "ROJA";
+
+            const filas = teesFiltrados.map(tee => {
+                const rule = reglasMap.get(String(tee.id));
+                const hcp = rule ? calcularHcpJuego(index, rule) : null;
+
+                const nombreTee = String(tee.name || "").toUpperCase();
+                const esTeeJugador = nombreTee.includes(teeJugador);
+
+                return {
+                    tee: tee.name,
+                    hcp,
+                    slope: rule?.slope ?? "—",
+                    rating: rule?.course_rating ?? "—",
+                    par: rule?.par ?? "—",
+                    recomendado: esTeeJugador
+                };
+            });
+
+            const nombreJugador = jugador.full_name || `${jugador.last_name || ""}, ${jugador.first_name || ""}`;
+            const clubJugador = jugador.club_name || "Club no informado";
+
+            const esVillaMaria = normalizarTexto(clubJugador).includes("VILLA MARIA GOLF") ||
+                normalizarTexto(clubJugador).includes("VILLA MARÍA GOLF");
+
+            hcpResultados.innerHTML = `
+                <div class="hcp-presentacion">
+                    <div class="hcp-presentacion-header">
+                        ${esVillaMaria ? `<img src="escudo.png" class="hcp-escudo" alt="VMGC">` : ""}
+                        <div>
+                            <div class="hcp-nombre">${nombreJugador}</div>
+                            <div class="hcp-club">${clubJugador}</div>
+                        </div>
+                    </div>
+
+                    <div class="hcp-tees-lista">
+                        ${filas.map(f => `
+                            <div class="hcp-tee-row ${f.recomendado ? "recomendado" : ""}">
+                                <div>
+                                    <div class="hcp-tee-nombre">${f.tee}</div>
+                                    ${f.recomendado
+                    ? `<div class="hcp-recomendado">TEE RECOMENDADO</div>`
+                    : ""}
+                                </div>
+
+                                <div class="hcp-mini hcp-destacado">
+                                    <span>HCP</span>
+                                    <b>${f.hcp ?? "—"}</b>
+                                </div>
+
+                                <div class="hcp-mini">
+                                    <span>Slope</span>
+                                    <b>${f.slope}</b>
+                                </div>
+
+                                <div class="hcp-mini">
+                                    <span>Rating</span>
+                                    <b>${f.rating}</b>
+                                </div>
+
+                                <div class="hcp-mini">
+                                    <span>Par</span>
+                                    <b>${f.par}</b>
+                                </div>
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            `;
+        }
+
+        buscadorHcpJugador?.addEventListener("input", () => {
+            clearTimeout(hcpSearchTimer);
+            hcpSearchTimer = setTimeout(buscarJugadorHcp, 350);
+        });
+
+        document.addEventListener("click", (e) => {
+            if (
+                hcpDropdown &&
+                !hcpDropdown.contains(e.target) &&
+                e.target !== buscadorHcpJugador
+            ) {
+                hcpDropdown.classList.add("hidden");
+            }
+        });
 
         async function init() {
             const { data: { session } } = await supabase.auth.getSession();
