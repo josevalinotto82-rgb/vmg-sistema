@@ -850,7 +850,10 @@
 
                 const correcta = link.dataset.pass;
 
-                if (input.value === correcta) {
+                if (
+                    input.value.trim().toLowerCase() ===
+                    String(correcta).trim().toLowerCase()
+                ) {
                     window.location.href = link.href;
                 } else {
                     alert("Palabra incorrecta.");
