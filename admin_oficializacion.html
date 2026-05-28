@@ -1745,20 +1745,33 @@
         suscribirRealtimeOficializacion();
 
         if (!autoRefreshTimer) {
+
           autoRefreshTimer = setInterval(() => {
+
             const activo = document.activeElement;
+
+            const usuarioEscribiendo =
+              activo &&
+              (
+                activo.matches("input, select, textarea") ||
+                tablaWrap.contains(activo)
+              );
+
+            // también bloquear si hay texto escrito en el buscador
+            const buscandoJugador =
+              document.getElementById("buscadorJugadores")?.value?.trim()?.length > 0;
 
             if (
               torneoActual?.id &&
-              !(
-                activo &&
-                tablaWrap.contains(activo) &&
-                activo.matches("input, select")
-              )
+              !usuarioEscribiendo &&
+              !buscandoJugador &&
+              !usuarioEditandoTabla
             ) {
               cargarTodo(true);
             }
+
           }, 5000);
+
         }
 
         if (String(torneoActual.status || "").toLowerCase() === "officialized") {
