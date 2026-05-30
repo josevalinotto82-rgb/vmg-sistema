@@ -890,6 +890,19 @@
       return `${dia}/${mes}/${anio}`;
     }
 
+    function hoyoSalidaTexto(line) {
+      if (!line) return "";
+
+      const label = String(line.label || "").trim();
+
+      if (label) {
+        if (label.toLowerCase().includes("hoyo")) return label;
+        return `Hoyo ${label}`;
+      }
+
+      return line.starting_hole ? `Hoyo ${line.starting_hole}` : "";
+    }
+
     function setSucursal(codigo) {
       localStorage.setItem("ticket_branch_code", codigo);
       mostrarSucursal();
@@ -1416,6 +1429,17 @@
       return Number.isNaN(hoyo) ? 999 : hoyo;
     }
 
+    function ordenHoyoConBis(reg) {
+      const line = extraerLinea(reg);
+
+      const hoyo = Number(line?.starting_hole || 999);
+      const label = String(line?.label || "").toUpperCase().trim();
+
+      const esBis = label.includes("BIS");
+
+      return (hoyo * 10) + (esBis ? 1 : 0);
+    }
+
     function ordenarFilasPorSalida(a, b) {
       const regA = a.jugadores[0];
       const regB = b.jugadores[0];
@@ -1425,8 +1449,8 @@
 
       if (horaA !== horaB) return horaA - horaB;
 
-      const hoyoA = hoyoLinea(regA);
-      const hoyoB = hoyoLinea(regB);
+      const hoyoA = ordenHoyoConBis(regA);
+      const hoyoB = ordenHoyoConBis(regB);
 
       if (hoyoA !== hoyoB) return hoyoA - hoyoB;
 
@@ -3209,7 +3233,7 @@
         teeTxt = `Tee: ${tee || tee2 || "—"}`;
       }
 
-      return `${hora ? hora + " hs." : "—"} / ${teeTxt} / Hoyo ${hoyo || "—"}`;
+      return `${hora ? hora + " hs." : "—"} / ${teeTxt} / ${hoyo || "—"}`;
     }
 
     function cssTarjetaLaser(multiple = false) {
@@ -3532,7 +3556,7 @@
 
           const hora = horaTexto(line?.line_time);
 
-          const hoyo = line?.starting_hole || "";
+          const hoyo = hoyoSalidaTexto(line);
 
           const tee = obtenerTeeNombreSingle(reg);
 
@@ -3598,7 +3622,7 @@
 
           const hora = horaTexto(line?.line_time);
 
-          const hoyo = line?.starting_hole || "";
+          const hoyo = hoyoSalidaTexto(line);
 
           let tee = "";
           let tee2 = "";
@@ -3675,7 +3699,7 @@
         );
 
       const hora = horaTexto(line?.line_time);
-      const hoyo = line?.starting_hole || "";
+      const hoyo = hoyoSalidaTexto(line);
       const tee = obtenerTeeNombreSingle(reg);
 
       const datos = datosSalidaTexto({ hora, tee, hoyo });
@@ -3737,7 +3761,7 @@
       const index = `${index1}/${index2}`;
 
       const hora = horaTexto(line?.line_time);
-      const hoyo = line?.starting_hole || "";
+      const hoyo = hoyoSalidaTexto(line);
 
       let tee = "";
       let tee2 = "";
