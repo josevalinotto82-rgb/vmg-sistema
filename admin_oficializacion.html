@@ -3355,8 +3355,63 @@
         text-align: center;
         font-size: 18px;
       }
+
+            .tj-golpe-hoyo {
+        position: absolute;
+        height: 3mm;
+        line-height: 3mm;
+        font-size: 8px;
+        font-weight: 700;
+        text-align: center;
+        color: #000;
+        width: 4mm;
+      }
     </style>
   `;
+    }
+
+    const HCP_HOYOS_VMGC = {
+      1: 15, 2: 3, 3: 5, 4: 11, 5: 9, 6: 1, 7: 13, 8: 7, 9: 17,
+      10: 8, 11: 14, 12: 10, 13: 2, 14: 16, 15: 18, 16: 6, 17: 12, 18: 4
+    };
+
+    const LEFT_GOLPES_HOYOS = {
+      1: 38, 2: 44, 3: 50, 4: 56, 5: 62, 6: 68, 7: 75, 8: 81, 9: 87,
+      10: 102, 11: 108, 12: 114, 13: 121, 14: 127, 15: 133, 16: 139, 17: 146, 18: 152
+    };
+
+    function golpesEnHoyo(hcpJuego, hcpHoyo) {
+      const hcp = Number(hcpJuego || 0);
+      if (!hcp || !hcpHoyo) return "";
+
+      const base = Math.floor(hcp / 18);
+      const resto = hcp % 18;
+
+      const golpes = base + (hcpHoyo <= resto ? 1 : 0);
+
+      return golpes > 0 ? String(Math.min(golpes, 3)) : "";
+    }
+
+    function htmlGolpesAmericana(hcpJugadorA, hcpJugadorB) {
+      let html = "";
+
+      for (let hoyo = 1; hoyo <= 18; hoyo++) {
+        const left = LEFT_GOLPES_HOYOS[hoyo];
+        const hcpHoyo = HCP_HOYOS_VMGC[hoyo];
+
+        const golpesA = golpesEnHoyo(hcpJugadorA, hcpHoyo);
+        const golpesB = golpesEnHoyo(hcpJugadorB, hcpHoyo);
+
+        if (golpesA) {
+          html += `<div class="tj-golpe-hoyo" style="left:${left}mm; top:124mm;">${golpesA}</div>`;
+        }
+
+        if (golpesB) {
+          html += `<div class="tj-golpe-hoyo" style="left:${left}mm; top:132mm;">${golpesB}</div>`;
+        }
+      }
+
+      return html;
     }
 
     function buildTarjetaNuevaHTML({
@@ -3367,7 +3422,8 @@
       handicap = "",
       matricula = "",
       index = "",
-      datos = ""
+      datos = "",
+      golpesAmericana = ""
     }) {
       const esPareja = !!jugadorB;
 
@@ -3408,6 +3464,8 @@
         <div class="tj-field tj-datos">
           ${esc(datos)}
         </div>
+
+                ${golpesAmericana || ""}
 
       </div>
     </div>
@@ -3559,6 +3617,11 @@
             hoyo
           });
 
+          const golpesAmericana =
+            params.method === "individual_percentage"
+              ? htmlGolpesAmericana(datosPair?.playingHandicap1, datosPair?.playingHandicap2)
+              : "";
+
           tarjetas.push(buildTarjetaNuevaHTML({
             torneo,
             fecha,
@@ -3567,7 +3630,8 @@
             handicap,
             matricula,
             index,
-            datos
+            datos,
+            golpesAmericana
           }));
         }
       }
@@ -3687,6 +3751,11 @@
 
       const datosSalida = datosSalidaTexto({ hora, tee, tee2, hoyo });
 
+      const golpesAmericana =
+        params.method === "individual_percentage"
+          ? htmlGolpesAmericana(datos?.playingHandicap1, datos?.playingHandicap2)
+          : "";
+
       imprimirLaserTarjeta(buildTarjetaNuevaHTML({
         torneo,
         fecha,
@@ -3695,7 +3764,8 @@
         handicap,
         matricula,
         index,
-        datos: datosSalida
+        datos: datosSalida,
+        golpesAmericana
       }));
     }
 

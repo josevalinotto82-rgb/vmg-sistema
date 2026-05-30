@@ -105,6 +105,85 @@
             background: #14532d;
             transform: scale(1.05);
         }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .stat {
+            background: #f9fafb;
+            border-radius: 14px;
+            padding: 14px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .stat .num {
+            font-size: 28px;
+            font-weight: 800;
+        }
+
+        .stat .label {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .alerta {
+            border: 1px solid #e5e7eb;
+            border-left: 6px solid #f59e0b;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #fffaf0;
+        }
+
+        .alerta.error {
+            border-left-color: #b91c1c;
+            background: #fff1f2;
+        }
+
+        .alerta.warning {
+            border-left-color: #f59e0b;
+        }
+
+        .alerta-title {
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .badge.sent {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge.pending {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .badge.partial {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge.deleted {
+            background: #e5e7eb;
+            color: #374151;
+        }
     </style>
 </head>
 
@@ -117,6 +196,21 @@
     </div>
 
     <h1>Exportar torneos a AAG</h1>
+
+    <div class="card">
+        <h3>Estado general AAG</h3>
+        <div id="aagResumen" class="dashboard">
+            <div class="stat">
+                <div class="num">-</div>
+                <div class="label">Cargando...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Alertas abiertas</h3>
+        <div id="aagAlertas">Cargando alertas...</div>
+    </div>
 
     <div class="card">
         <label><b>Torneo archivado</b></label><br><br>
@@ -202,6 +296,7 @@
                     <th>ID AAG</th>
                     <th>Tee / Grupo</th>
                     <th>Estado</th>
+                    <th>Resultado</th>
                     <th>Evaluadas</th>
                     <th>Válidas</th>
                     <th>Error</th>
@@ -254,6 +349,126 @@
         const btnGenerar = document.getElementById("btnGenerar");
         const estado = document.getElementById("estado");
         const jsonPreview = document.getElementById("jsonPreview");
+
+        async function cargarResumenAAG() {
+            const box = document.getElementById("aagResumen");
+
+            const { data, error } = await supabase
+                .from("aag_exports")
+                .select("status, aag_remote_status, aag_tournament_id")
+                .eq("is_current", true);
+
+            if (error) {
+                box.innerHTML = `<div class="err">Error cargando resumen AAG</div>`;
+                return;
+            }
+
+            const counts = {
+                sent: 0,
+                pending: 0,
+                partial: 0,
+                error: 0,
+                deleted: 0
+            };
+
+            for (const r of data || []) {
+                let statusReal = r.status;
+
+                if (
+                    r.status === "pending" &&
+                    r.aag_tournament_id &&
+                    ["Abierto", "Procesado"].includes(r.aag_remote_status)
+                ) {
+                    statusReal = "sent";
+                }
+
+                if (counts[statusReal] !== undefined) {
+                    counts[statusReal]++;
+                }
+            }
+
+            box.innerHTML = `
+        <div class="stat">
+            <div class="num ok">${counts.sent}</div>
+            <div class="label">Enviados OK</div>
+        </div>
+        <div class="stat">
+            <div class="num" style="color:#1d4ed8;">${counts.pending}</div>
+            <div class="label">Pendientes</div>
+        </div>
+        <div class="stat">
+            <div class="num" style="color:#92400e;">${counts.partial}</div>
+            <div class="label">Parciales</div>
+        </div>
+        <div class="stat">
+            <div class="num err">${counts.error}</div>
+            <div class="label">Errores</div>
+        </div>
+    `;
+        }
+
+        async function cargarAlertasAAG() {
+            const box = document.getElementById("aagAlertas");
+
+            const { data, error } = await supabase
+                .from("aag_notifications")
+                .select(`
+            id,
+            severity,
+            title,
+            message,
+            created_at,
+            tournament_id,
+            export_id,
+            details,
+            tournaments(name, tournament_date),
+            aag_exports(title, tee_name, gender, status)
+        `)
+                .eq("status", "open")
+                .order("created_at", { ascending: false })
+                .limit(20);
+
+            if (error) {
+                box.innerHTML = `<div class="err">Error cargando alertas AAG</div>`;
+                return;
+            }
+
+            if (!data || !data.length) {
+                box.innerHTML = `<div class="ok">No hay alertas abiertas.</div>`;
+                return;
+            }
+
+            box.innerHTML = data.map(a => {
+                const torneo = a.tournaments?.name || "Torneo sin nombre";
+                const fecha = a.tournaments?.tournament_date || "";
+                const exp = a.aag_exports?.tee_name || a.aag_exports?.title || "Export";
+                const metrics = a.details?.metrics || {};
+                const evaluadas = metrics.evaluated ?? "-";
+                const agregadas = metrics.added ?? "-";
+
+                return `
+            <div class="alerta ${a.severity}">
+                <div class="alerta-title">
+                    ${a.severity === "error" ? "🔴" : "🟡"} ${a.title}
+                </div>
+                <div><b>${torneo}</b> ${fecha ? `· ${fecha}` : ""}</div>
+                <div>${exp}</div>
+                <div style="margin-top:6px;">${a.message || ""}</div>
+                <small>
+                    Tarjetas agregadas: <b>${agregadas}</b> / Evaluadas: <b>${evaluadas}</b>
+                </small>
+                <div style="margin-top:8px;">
+                    <button
+                        class="btnResolverAlerta"
+                        data-alert-id="${a.id}"
+                        style="background:#6b7280;">
+                        Marcar resuelto
+                    </button>
+                </div>
+            </div>
+        `;
+            }).join("");
+        }
 
         document.getElementById("btnSyncFields").addEventListener("click", async () => {
             const out = document.getElementById("resultadoEnvio");
@@ -341,6 +556,8 @@
                 out.textContent = JSON.stringify(resultados, null, 2);
 
                 await cargarExportsDelTorneo(torneoSelect.value);
+                await cargarResumenAAG();
+                await cargarAlertasAAG();
 
             } catch (err) {
                 out.textContent = "Error: " + (err.message || err);
@@ -384,6 +601,9 @@
                     await cargarExportsDelTorneo(
                         torneoSelect.value
                     );
+
+                    await cargarResumenAAG();
+                    await cargarAlertasAAG();
 
                 } catch (err) {
 
@@ -472,17 +692,46 @@
 
             if (error) throw error;
 
+            function resultadoExport(r) {
+                const total = r.aag_total_scorecards ?? null;
+                const added = r.aag_added_scorecards ?? null;
+
+                if (total === null || added === null) {
+                    if (
+                        r.aag_tournament_id &&
+                        ["Abierto", "Procesado"].includes(r.aag_remote_status)
+                    ) {
+                        return `<span class="badge sent">En AAG</span>`;
+                    }
+
+                    return `<span class="badge pending">Sin datos</span>`;
+                }
+
+                if (total > 0 && added === total) {
+                    return `<span class="badge sent">${added} / ${total} ✅</span>`;
+                }
+
+                if (added > 0 && added < total) {
+                    return `<span class="badge partial">${added} / ${total} ⚠️</span>`;
+                }
+
+                return `<span class="badge error">${added} / ${total} ❌</span>`;
+            }
+
             tbody.innerHTML = (data || []).map(r => `
                 <tr>
                     <td>${r.aag_tournament_id || "-"}</td>
                     <td>${r.title || "-"}</td>
                     <td>
-                        ${r.status || "-"}
+                        <span class="badge ${r.status || ""}">
+                          ${r.status || "-"}
+                        </span>
                         <br>
                         <small style="color:#6b7280;">
                             ${r.aag_remote_status || ""}
                         </small>
                     </td>
+                    <td>${resultadoExport(r)}</td>
                     <td>${r.aag_total_scorecards ?? "-"}</td>
                     <td>${r.aag_valid_scorecards ?? "-"}</td>
                     <td>${r.aag_error_scorecards ?? "-"}</td>
@@ -974,7 +1223,12 @@
         }
 
         torneoSelect.addEventListener("change", async () => {
-            await cargarExportsDelTorneo(torneoSelect.value);
+            await cargarExportsDelTorneo(
+                torneoSelect.value
+            );
+
+            await cargarResumenAAG();
+            await cargarAlertasAAG();
         });
 
         document.getElementById("btnValidarAAG")
@@ -1057,6 +1311,9 @@
 
                 await cargarExportsDelTorneo(tournamentId);
 
+                await cargarResumenAAG();
+                await cargarAlertasAAG();
+
             } catch (err) {
                 console.error(err);
                 setEstado(err.message || String(err), "err");
@@ -1064,11 +1321,34 @@
         });
 
         document.addEventListener("click", async (e) => {
+            const btnResolver = e.target.closest(".btnResolverAlerta");
+
+            if (btnResolver) {
+                const alertId = btnResolver.dataset.alertId;
+                if (!alertId) return;
+
+                const { error } = await supabase
+                    .from("aag_notifications")
+                    .update({
+                        status: "resolved",
+                        resolved_at: new Date().toISOString()
+                    })
+                    .eq("id", alertId);
+
+                if (error) {
+                    alert("No se pudo resolver la alerta.");
+                    return;
+                }
+
+                await cargarAlertasAAG();
+                await cargarResumenAAG();
+                return;
+            }
+
             const btn = e.target.closest(".btnDeleteAAG");
             if (!btn) return;
 
             const exportId = btn.dataset.exportId;
-
             if (!exportId) return;
 
             const confirmar = confirm(
@@ -1103,6 +1383,8 @@
                 out.textContent = JSON.stringify(json, null, 2);
 
                 await cargarExportsDelTorneo(torneoSelect.value);
+                await cargarResumenAAG();
+                await cargarAlertasAAG();
 
             } catch (err) {
                 out.textContent = "Error: " + (err.message || err);
@@ -1111,7 +1393,11 @@
             }
         });
 
-        cargarTorneos().catch(err => {
+        Promise.all([
+            cargarTorneos(),
+            cargarResumenAAG(),
+            cargarAlertasAAG()
+        ]).catch(err => {
             console.error(err);
             setEstado(err.message || String(err), "err");
         });
