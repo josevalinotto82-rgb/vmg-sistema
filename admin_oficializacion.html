@@ -2275,10 +2275,14 @@
           pagosMap.get(String(reg.id))?.payment_date ||
           "";
 
-        const importe = obtenerImportePorMetodoYJugador(metodoKey, reg);
+        const pagoGuardado = pagosMap.get(String(reg.id)) || {};
+
+        const importe =
+          pagoGuardado.amount != null
+            ? Number(pagoGuardado.amount)
+            : obtenerImportePorMetodoYJugador(metodoKey, reg);
 
         total += importe;
-
         totalMovimientos++;
 
         resumen[metodoKey].cantidad++;
@@ -3394,7 +3398,7 @@
   `;
     }
 
-// Impresion de tarjeta en pareja americana
+    // Impresion de tarjeta en pareja americana
 
     const HCP_HOYOS_VMGC = {
       1: 15, 2: 3, 3: 5, 4: 11, 5: 9, 6: 1, 7: 13, 8: 7, 9: 17,
