@@ -2322,11 +2322,19 @@
   }
 
   async function asegurarJugadorEnPlayers(jugador) {
-    if (jugador.origen_busqueda === "players" && jugador.id && !String(jugador.id).startsWith("aag:")) {
+    // Si ya viene de players, NO crear nada
+    if (
+      jugador.origen_busqueda === "players" ||
+      (jugador.id && !String(jugador.id).startsWith("aag:") && !jugador.enrollment_number)
+    ) {
       return jugador;
     }
 
     const matricula = jugador.enrollment_number || jugador.aag_member_number;
+
+    if (!matricula) {
+      return jugador;
+    }
 
     const row = {
       aag_member_number: matricula,
@@ -3386,21 +3394,83 @@
   }
 
   async function createManualPlayer({ nombre, apellido, current_index, genero, pais }) {
-
     const first_name = String(nombre || "").trim();
     const last_name = String(apellido || "").trim();
 
     if (!first_name) throw new Error("El nombre es obligatorio.");
     if (!last_name) throw new Error("El apellido es obligatorio.");
-    if (!["male", "female"].includes(genero)) {
-      throw new Error("El género es obligatorio.");
-    }
+    if (!genero) throw new Error("El género es obligatorio.");
 
-    const search_text =
-      `${last_name} ${first_name} ${first_name} ${last_name}`
+    const normalizar = (txt) =>
+      String(txt || "")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
+        .replace(/,/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
         .toUpperCase();
+
+    const full_name = `${last_name}, ${first_name}`;
+
+    const firstNorm = normalizar(first_name);
+    const lastNorm = normalizar(last_name);
+
+    const search_text = normalizar(
+      `${last_name} ${first_name} ${first_name} ${last_name} ${full_name}`
+    );
+
+    // Buscar jugadores manuales existentes parecidos
+    const { data: existentes, error: buscarError } = await supabase
+      .from("players")
+      .select("*")
+      .is("aag_member_number", null)
+      .ilike("search_text", `%${lastNorm}%`)
+      .limit(50);
+
+    if (buscarError) throw buscarError;
+
+    const encontrado = (existentes || []).find((p) => {
+      const pFirst = normalizar(p.first_name);
+      const pLast = normalizar(p.last_name);
+      const pFull = normalizar(p.full_name);
+      const pSearch = normalizar(p.search_text);
+
+      return (
+        (pFirst === firstNorm && pLast === lastNorm) ||
+        pFull === normalizar(full_name) ||
+        pSearch.includes(`${lastNorm} ${firstNorm}`) ||
+        pSearch.includes(`${firstNorm} ${lastNorm}`)
+      );
+    });
+
+    if (encontrado) {
+      const updatePayload = {
+        first_name,
+        last_name,
+        gender: genero,
+        country: pais || encontrado.country || null,
+        source: encontrado.source || "manual",
+        is_club_member: encontrado.is_club_member ?? false,
+        is_aag_active: encontrado.is_aag_active ?? false,
+        search_text
+      };
+
+      if (current_index !== null && current_index !== undefined) {
+        updatePayload.current_index = current_index;
+      }
+
+      const { data, error } = await supabase
+        .from("players")
+        .update(updatePayload)
+        .eq("id", encontrado.id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      searchCache.clear();
+      return data;
+    }
 
     const { data, error } = await supabase
       .from("players")
@@ -3410,20 +3480,18 @@
         current_index,
         gender: genero,
         country: pais || null,
-
         is_club_member: false,
         is_aag_active: false,
-
         source: "manual",
         aag_member_number: null,
-
         search_text
       })
-      .select()
+      .select("*")
       .single();
 
     if (error) throw error;
 
+    searchCache.clear();
     return data;
   }
 
@@ -4088,7 +4156,10 @@
               is_club_member: Number(data.option_club_id) === 408
             };
           } else {
-            elegido = await fetchPlayerById(playerId);
+            elegido = {
+              ...(await fetchPlayerById(playerId)),
+              origen_busqueda: "players"
+            };
           }
 
           const jugador = await asegurarJugadorEnPlayers(elegido);
