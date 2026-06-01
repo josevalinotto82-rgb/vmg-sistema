@@ -242,6 +242,21 @@
                     Rojas
                 </label>
 
+                <label>
+                    <input type="checkbox" class="teeExportCheck" value="eagle" checked>
+                    Eagles
+                </label>
+
+                <label>
+                    <input type="checkbox" class="teeExportCheck" value="birdie" checked>
+                    Birdies
+                </label>
+
+                <label>
+                    <input type="checkbox" class="teeExportCheck" value="albatros" checked>
+                    Albatros
+                </label>
+
             </div>
         </div>
 
@@ -388,23 +403,23 @@
             }
 
             box.innerHTML = `
-        <div class="stat">
-            <div class="num ok">${counts.sent}</div>
-            <div class="label">Enviados OK</div>
-        </div>
-        <div class="stat">
-            <div class="num" style="color:#1d4ed8;">${counts.pending}</div>
-            <div class="label">Pendientes</div>
-        </div>
-        <div class="stat">
-            <div class="num" style="color:#92400e;">${counts.partial}</div>
-            <div class="label">Parciales</div>
-        </div>
-        <div class="stat">
-            <div class="num err">${counts.error}</div>
-            <div class="label">Errores</div>
-        </div>
-    `;
+                <div class="stat">
+                    <div class="num ok">${counts.sent}</div>
+                    <div class="label">Enviados OK</div>
+                </div>
+                <div class="stat">
+                    <div class="num" style="color:#1d4ed8;">${counts.pending}</div>
+                    <div class="label">Pendientes</div>
+                </div>
+                <div class="stat">
+                    <div class="num" style="color:#92400e;">${counts.partial}</div>
+                    <div class="label">Parciales</div>
+                </div>
+                <div class="stat">
+                    <div class="num err">${counts.error}</div>
+                    <div class="label">Errores</div>
+                </div>
+            `;
         }
 
         async function cargarAlertasAAG() {
@@ -420,15 +435,14 @@
             created_at,
             tournament_id,
             export_id,
-            details,
-            tournaments(name, tournament_date),
-            aag_exports(title, tee_name, gender, status)
+            details
         `)
                 .eq("status", "open")
                 .order("created_at", { ascending: false })
                 .limit(20);
 
             if (error) {
+                console.error("Error alertas AAG:", error);
                 box.innerHTML = `<div class="err">Error cargando alertas AAG</div>`;
                 return;
             }
@@ -439,34 +453,32 @@
             }
 
             box.innerHTML = data.map(a => {
-                const torneo = a.tournaments?.name || "Torneo sin nombre";
-                const fecha = a.tournaments?.tournament_date || "";
-                const exp = a.aag_exports?.tee_name || a.aag_exports?.title || "Export";
                 const metrics = a.details?.metrics || {};
                 const evaluadas = metrics.evaluated ?? "-";
                 const agregadas = metrics.added ?? "-";
 
                 return `
-            <div class="alerta ${a.severity}">
-                <div class="alerta-title">
-                    ${a.severity === "error" ? "🔴" : "🟡"} ${a.title}
-                </div>
-                <div><b>${torneo}</b> ${fecha ? `· ${fecha}` : ""}</div>
-                <div>${exp}</div>
-                <div style="margin-top:6px;">${a.message || ""}</div>
-                <small>
-                    Tarjetas agregadas: <b>${agregadas}</b> / Evaluadas: <b>${evaluadas}</b>
-                </small>
-                <div style="margin-top:8px;">
-                    <button
-                        class="btnResolverAlerta"
-                        data-alert-id="${a.id}"
-                        style="background:#6b7280;">
-                        Marcar resuelto
-                    </button>
-                </div>
-            </div>
-        `;
+                    <div class="alerta ${a.severity}">
+                        <div class="alerta-title">
+                            ${a.severity === "error" ? "🔴" : "🟡"} ${a.title}
+                        </div>
+
+                        <div style="margin-top:6px;">${a.message || ""}</div>
+
+                        <small>
+                            Tarjetas agregadas: <b>${agregadas}</b> / Evaluadas: <b>${evaluadas}</b>
+                        </small>
+
+                        <div style="margin-top:8px;">
+                            <button
+                                class="btnResolverAlerta"
+                                data-alert-id="${a.id}"
+                                style="background:#6b7280;">
+                                Marcar resuelto
+                            </button>
+                        </div>
+                    </div>
+                `;
             }).join("");
         }
 
@@ -972,6 +984,41 @@
             return 1;
         }
 
+        function resolverTeeJuniorAAG(teeName, gender) {
+            const t = String(teeName || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase();
+
+            const esDama = String(gender || "").toLowerCase() === "female";
+
+            if (t.includes("eagle") || t.includes("eagles")) {
+                return {
+                    aag_field_id: 2048,
+                    aag_teeout_id: esDama ? 6620 : 6619,
+                    category: esDama ? 1 : 0
+                };
+            }
+
+            if (t.includes("birdie") || t.includes("birdies")) {
+                return {
+                    aag_field_id: 2048,
+                    aag_teeout_id: esDama ? 6622 : 6621,
+                    category: esDama ? 1 : 0
+                };
+            }
+
+            if (t.includes("albatros")) {
+                return {
+                    aag_field_id: 2048,
+                    aag_teeout_id: esDama ? 6618 : 6617,
+                    category: esDama ? 1 : 0
+                };
+            }
+
+            return null;
+        }
+
         async function generarAagPayloadsDesdeTorneo(tournamentId) {
 
             const { data: torneo } = await supabase
@@ -1028,7 +1075,14 @@
                     .replace(/[\u0300-\u036f]/g, "")
                     .toLowerCase();
 
-                const exportarEsteTee = teesSeleccionados.some(t =>
+                const esJunior =
+                    teeNormalizado.includes("eagle") ||
+                    teeNormalizado.includes("eagles") ||
+                    teeNormalizado.includes("birdie") ||
+                    teeNormalizado.includes("birdies") ||
+                    teeNormalizado.includes("albatros");
+
+                const exportarEsteTee = esJunior || teesSeleccionados.some(t =>
                     teeNormalizado.includes(t)
                 );
 
@@ -1076,25 +1130,32 @@
 
                 const hoyosTorneo = Number(torneo.hole_count || 18);
 
-                const teeMatch = teesAAG.find(t => {
-                    const nombreAag = String(t.tee_name || "")
-                        .normalize("NFD")
-                        .replace(/[\u0300-\u036f]/g, "")
-                        .toLowerCase();
+                let teeMatch = resolverTeeJuniorAAG(
+                    ejemplo.tee_name,
+                    ejemplo.player_gender
+                );
 
-                    const field = fieldById.get(Number(t.aag_field_id));
+                if (!teeMatch) {
+                    teeMatch = teesAAG.find(t => {
+                        const nombreAag = String(t.tee_name || "")
+                            .normalize("NFD")
+                            .replace(/[\u0300-\u036f]/g, "")
+                            .toLowerCase();
 
-                    const holesField = Number(
-                        field?.holes_amount || 18
-                    );
+                        const field = fieldById.get(Number(t.aag_field_id));
 
-                    return Number(t.category) === (ejemplo.player_gender === "female" ? 1 : 0)
-                        && nombreAag.includes(teeBuscado)
-                        && (
-                            holesField === hoyosTorneo ||
-                            (hoyosTorneo === 9 && holesField === 18)
+                        const holesField = Number(
+                            field?.holes_amount || 18
                         );
-                });
+
+                        return Number(t.category) === (ejemplo.player_gender === "female" ? 1 : 0)
+                            && nombreAag.includes(teeBuscado)
+                            && (
+                                holesField === hoyosTorneo ||
+                                (hoyosTorneo === 9 && holesField === 18)
+                            );
+                    });
+                }
 
                 if (!teeMatch) {
                     throw new Error(

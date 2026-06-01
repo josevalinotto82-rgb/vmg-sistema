@@ -444,35 +444,35 @@
         </select>
       </div>
 
-    <div class="field">
-      <label for="usaSerie">Serie</label>
-      <select id="usaSerie">
-        <option value="no">Torneo individual</option>
-        <option value="nueva">Crear nueva serie</option>
-        <option value="existente">Vincular a serie existente</option>
-      </select>
-    </div>
+      <div class="field">
+        <label for="usaSerie">Serie</label>
+        <select id="usaSerie">
+          <option value="no">Torneo individual</option>
+          <option value="nueva">Crear nueva serie</option>
+          <option value="existente">Vincular a serie existente</option>
+        </select>
+      </div>
 
-    <div class="field" id="campoSerieExistente" style="display:none;">
-      <label for="serieSelect">Seleccionar serie</label>
-      <select id="serieSelect"></select>
-    </div>
+      <div class="field" id="campoSerieExistente" style="display:none;">
+        <label for="serieSelect">Seleccionar serie</label>
+        <select id="serieSelect"></select>
+      </div>
 
-    <div class="field" id="campoSerieNueva" style="display:none;">
-      <label for="serieNombre">Nombre nueva serie</label>
-      <input id="serieNombre" placeholder="Ej: Campeonato 54 hoyos" />
-    </div>
+      <div class="field" id="campoSerieNueva" style="display:none;">
+        <label for="serieNombre">Nombre nueva serie</label>
+        <input id="serieNombre" placeholder="Ej: Campeonato 54 hoyos" />
+      </div>
 
-    <div class="field" id="campoSerieCantidadFechas" style="display:none;">
-      <label for="serieRequiredRounds">Cantidad total de fechas</label>
-      <input id="serieRequiredRounds" type="number" min="1" value="3" />
-    </div>
+      <div class="field" id="campoSerieCantidadFechas" style="display:none;">
+        <label for="serieRequiredRounds">Cantidad total de fechas</label>
+        <input id="serieRequiredRounds" type="number" min="1" value="3" />
+      </div>
 
-    <div class="field" id="campoRonda" style="display:none;">
-      <label for="serieRonda">Esta es la fecha Nº</label>
-      <input id="serieRonda" type="number" min="1" />
+      <div class="field" id="campoRonda" style="display:none;">
+        <label for="serieRonda">Esta es la fecha Nº</label>
+        <input id="serieRonda" type="number" min="1" />
+      </div>
     </div>
-  </div>
   </div>
 
   <div class="card">
@@ -1192,7 +1192,8 @@
 
       const { data: categoriasData, error: errorCategorias } = await supabase
         .from("category_template_items")
-        .select("*");
+        .select("*")
+        .order("display_order", { ascending: true });
 
       console.log("Tabla consultada: category_templates_items");
 
