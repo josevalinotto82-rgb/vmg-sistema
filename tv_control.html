@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Centro de Control TV - Villa María Golf</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f3f7f0;
+      color: #17221a;
+      padding: 22px;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .logo { width: 58px; height: 58px; object-fit: contain; }
+    h1 { margin: 0; color: #166534; font-size: 28px; }
+    .sub { color: #647068; font-weight: 700; margin-top: 4px; }
+    .card {
+      background: white;
+      border: 1px solid #d7e1d4;
+      border-radius: 22px;
+      box-shadow: 0 14px 35px rgba(20, 83, 45, .08);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    label { font-weight: 900; color: #23412b; display: block; margin-bottom: 7px; }
+    select, input[type="number"] {
+      width: 100%;
+      border: 1px solid #cbd5c0;
+      border-radius: 14px;
+      padding: 13px 14px;
+      font-size: 16px;
+      background: #fbfdf9;
+    }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid #d7e1d4;
+      background: #fbfdf9;
+      border-radius: 15px;
+      padding: 13px;
+      font-weight: 900;
+      color: #17221a;
+    }
+    .check input { transform: scale(1.25); accent-color: #166534; }
+    .section-title {
+      margin: 4px 0 12px;
+      color: #166534;
+      font-size: 14px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 16px;
+      font-weight: 950;
+      cursor: pointer;
+    }
+    .primary { background: #166534; color: white; }
+    .secondary { background: #dbeafe; color: #1e3a8a; }
+    .muted { color: #65756b; font-weight: 700; font-size: 13px; margin-top: 8px; }
+    .status {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #ecfdf5;
+      color: #166534;
+      font-weight: 900;
+      display: none;
+    }
+    .status.error { background: #fef2f2; color: #991b1b; }
+    @media (max-width: 760px) { .grid, .grid3 { grid-template-columns: 1fr; } .header { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="brand">
+        <img src="escudo.png" alt="Villa María Golf" class="logo">
+        <div>
+          <h1>Centro de Control TV</h1>
+          <div class="sub">Elegí qué torneo y qué elementos muestra la pantalla del leaderboard.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <section class="card">
+      <div class="section-title">Torneo en pantalla</div>
+      <label for="torneoSelect">Torneo</label>
+      <select id="torneoSelect"><option value="">Cargando torneos...</option></select>
+      <div class="muted">La TV debe abrir siempre <strong>tv.html</strong>. Esta pantalla solo guarda la configuración.</div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">Premios / Scratch</div>
+      <div class="grid">
+        <label class="check"><input type="checkbox" id="showScratchMale"> Scratch Caballeros</label>
+        <label class="check"><input type="checkbox" id="showScratchFemale"> Scratch Damas</label>
+        <label class="check"><input type="checkbox" id="excludeScratch"> Saltear ganador scratch en categoría</label>
+        <label class="check"><input type="checkbox" id="musicEnabled"> Música</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">Multimedia</div>
+      <div class="grid">
+        <label class="check"><input type="checkbox" id="showPhotos"> Fotos del torneo</label>
+        <label class="check"><input type="checkbox" id="showSponsors"> Sponsors</label>
+        <label class="check"><input type="checkbox" id="showLogoMedia"> Escudo / logo</label>
+        <label class="check"><input type="checkbox" id="showQr"> QR</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">Velocidad de rotación</div>
+      <div class="grid3">
+        <div>
+          <label for="leaderSeconds">Leaderboard, segundos</label>
+          <input type="number" id="leaderSeconds" min="5" max="120" step="1">
+        </div>
+        <div>
+          <label for="mediaSeconds">Fotos/sponsors, segundos</label>
+          <input type="number" id="mediaSeconds" min="3" max="120" step="1">
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="actions">
+        <button class="primary" id="btnGuardar">Guardar y actualizar TV</button>
+        <button class="secondary" id="btnAbrirTv">Abrir TV en esta compu</button>
+      </div>
+      <div class="muted" id="lastUpdate">Última actualización: -</div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://bnnfolhrqxgxjmobclrm.supabase.co",
+      "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+    );
+
+    const SETTINGS_ID = "main";
+    const $ = id => document.getElementById(id);
+
+    function mostrarEstado(texto, error = false) {
+      const el = $("status");
+      el.textContent = texto;
+      el.classList.toggle("error", !!error);
+      el.style.display = "block";
+      setTimeout(() => { el.style.display = "none"; }, 3500);
+    }
+
+    function fechaAObjeto(fecha) {
+      const texto = String(fecha || "").trim();
+      if (!texto) return null;
+      const partes = texto.split("-");
+      if (partes.length === 3) return new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+      const f = new Date(texto);
+      return Number.isNaN(f.getTime()) ? null : f;
+    }
+
+    function formatearFecha(fecha) {
+      const f = fechaAObjeto(fecha);
+      if (!f) return String(fecha || "");
+      return `${String(f.getDate()).padStart(2,"0")}/${String(f.getMonth()+1).padStart(2,"0")}/${f.getFullYear()}`;
+    }
+
+    async function cargarTorneos() {
+      const { data, error } = await supabase
+        .from("tournaments")
+        .select("id, name, tournament_date, status")
+        .order("tournament_date", { ascending: false })
+        .limit(40);
+
+      if (error) throw error;
+
+      $("torneoSelect").innerHTML = `<option value="">Sin torneo seleccionado</option>` +
+        (data || []).map(t => `<option value="${t.id}">${formatearFecha(t.tournament_date)} · ${t.name}</option>`).join("");
+    }
+
+    async function cargarSettings() {
+      const { data, error } = await supabase
+        .from("tv_settings")
+        .select("*")
+        .eq("id", SETTINGS_ID)
+        .single();
+
+      if (error) throw error;
+
+      $("torneoSelect").value = data.tournament_id || "";
+      $("showScratchMale").checked = data.show_scratch_male ?? true;
+      $("showScratchFemale").checked = data.show_scratch_female ?? true;
+      $("excludeScratch").checked = data.exclude_scratch_from_category ?? true;
+      $("showPhotos").checked = data.show_photos ?? true;
+      $("showSponsors").checked = data.show_sponsors ?? true;
+      $("showLogoMedia").checked = data.show_logo_media ?? true;
+      $("showQr").checked = data.show_qr ?? true;
+      $("musicEnabled").checked = data.music_enabled ?? true;
+      $("mediaSeconds").value = data.media_rotation_seconds ?? 9;
+      $("leaderSeconds").value = data.leaderboard_rotation_seconds ?? 14;
+      $("lastUpdate").textContent = `Última actualización: ${data.updated_at ? new Date(data.updated_at).toLocaleString("es-AR") : "-"}`;
+    }
+
+    async function guardarSettings() {
+      const payload = {
+        tournament_id: $("torneoSelect").value || null,
+        show_scratch_male: $("showScratchMale").checked,
+        show_scratch_female: $("showScratchFemale").checked,
+        exclude_scratch_from_category: $("excludeScratch").checked,
+        show_photos: $("showPhotos").checked,
+        show_sponsors: $("showSponsors").checked,
+        show_logo_media: $("showLogoMedia").checked,
+        show_qr: $("showQr").checked,
+        music_enabled: $("musicEnabled").checked,
+        media_rotation_seconds: Number($("mediaSeconds").value || 9),
+        leaderboard_rotation_seconds: Number($("leaderSeconds").value || 14)
+      };
+
+      const { error } = await supabase
+        .from("tv_settings")
+        .update(payload)
+        .eq("id", SETTINGS_ID);
+
+      if (error) throw error;
+      mostrarEstado("Guardado. La TV se actualizará sola en unos segundos.");
+      await cargarSettings();
+    }
+
+    function iniciarRealtimeSettings() {
+      supabase
+        .channel(`tv-control-settings-${SETTINGS_ID}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tv_settings", filter: `id=eq.${SETTINGS_ID}` }, () => cargarSettings())
+        .subscribe();
+    }
+
+    async function inicializar() {
+      try {
+        await cargarTorneos();
+        await cargarSettings();
+        iniciarRealtimeSettings();
+      } catch (err) {
+        console.error(err);
+        mostrarEstado(err?.message || "No se pudo cargar la configuración", true);
+      }
+
+      $("btnGuardar").addEventListener("click", async () => {
+        try { await guardarSettings(); }
+        catch (err) { console.error(err); mostrarEstado(err?.message || "No se pudo guardar", true); }
+      });
+
+      $("btnAbrirTv").addEventListener("click", () => {
+        window.open("tv.html", "_blank");
+      });
+    }
+
+    inicializar();
+  </script>
+</body>
+</html>

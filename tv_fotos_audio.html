@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fotos TV - Villa María Golf</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f5f8f3;
+      color: #1f2937;
+    }
+
+    .app {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 24px 16px 42px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 1px 8px rgba(0, 0, 0, .08);
+      margin-bottom: 16px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .logo {
+      width: 58px;
+      height: 58px;
+      object-fit: contain;
+    }
+
+    h1 {
+      margin: 0;
+      color: #166534;
+      font-size: 28px;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      color: #14532d;
+    }
+
+    h3 {
+      margin: 16px 0 8px;
+      color: #374151;
+    }
+
+    .muted {
+      color: #6b7280;
+      line-height: 1.4;
+    }
+
+    .note {
+      background: #ecfdf5;
+      border: 1px solid #bbf7d0;
+      color: #14532d;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-weight: 800;
+      color: #374151;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      font-size: 16px;
+      background: white;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .box {
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 16px;
+      background: #fbfdfb;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 16px;
+      font-size: 15px;
+      font-weight: 900;
+      cursor: pointer;
+      background: #166534;
+      color: white;
+    }
+
+    button.secondary {
+      background: #374151;
+    }
+
+    button.danger {
+      background: #b91c1c;
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #f3f4f6;
+      color: #374151;
+      font-weight: 700;
+      white-space: pre-wrap;
+      line-height: 1.35;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .preview {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #f9fafb;
+    }
+
+    .preview img {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      display: block;
+      background: #111827;
+    }
+
+    .preview .info {
+      padding: 8px;
+      font-size: 12px;
+      color: #4b5563;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .small-preview img {
+      height: 90px;
+      object-fit: contain;
+      padding: 8px;
+    }
+
+    @media (max-width:800px) {
+
+      .row,
+      .section-grid {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="card">
+      <div class="header">
+        <img src="escudo.png" class="logo" alt="Villa María Golf">
+        <div>
+          <h1>Fotos / Logo / QR / Sponsors / Música TV</h1>
+          <div class="muted">Administración del bloque multimedia del leaderboard proyectable.</div>
+        </div>
+      </div>
+      <div class="note">
+        Se usa siempre el bucket <strong>tv-media</strong>. Las fotos del día van en <strong>leaderboard/</strong>, el
+        logo y QR quedan fijos en <strong>fixed/</strong>, los sponsors van en <strong>sponsors/</strong> y la música en
+        <strong>audio/musica.mp3</strong>.
+      </div>
+    </div>
+
+    <div id="loginCard" class="card">
+      <h2>Ingreso administrador</h2>
+      <p class="muted">Usá tu usuario administrador de la app para permitir la carga y borrado.</p>
+      <div class="row">
+        <div><label>Email</label><input id="email" type="email" autocomplete="email" placeholder="admin@club.com"></div>
+        <div><label>Contraseña</label><input id="password" type="password" autocomplete="current-password"
+            placeholder="Contraseña"></div>
+      </div>
+      <div class="actions"><button id="btnLogin">Ingresar</button></div>
+      <div id="loginStatus" class="status" style="display:none;"></div>
+    </div>
+
+    <div id="uploadCard" style="display:none;">
+      <div class="card">
+        <h2>Fotos del día</h2>
+        <p class="muted">Seleccioná hasta 10 fotos. Se borran las anteriores y se suben comprimidas como
+          <strong>foto_01.jpg</strong>, <strong>foto_02.jpg</strong>, etc.</p>
+        <label>Fotos del torneo</label>
+        <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+        <div class="actions">
+          <button id="btnUpload">Comprimir y reemplazar fotos</button>
+          <button id="btnList" class="secondary">Ver fotos actuales</button>
+          <button id="btnDelete" class="danger">Borrar fotos actuales</button>
+        </div>
+        <div id="status" class="status">Listo.</div>
+        <div id="previewGrid" class="preview-grid"></div>
+      </div>
+
+      <div class="section-grid">
+        <div class="card">
+          <h2>Logo fijo</h2>
+          <p class="muted">Se guarda como <strong>fixed/logo.png</strong>. No se borra al reemplazar fotos del día.</p>
+          <label>Logo PNG</label>
+          <input id="logoInput" type="file" accept="image/png,image/jpeg,image/webp">
+          <div class="actions"><button id="btnLogo">Reemplazar logo</button><button id="btnVerLogo"
+              class="secondary">Ver logo</button></div>
+          <div id="logoStatus" class="status">Logo fijo: fixed/logo.png</div>
+          <div id="logoPreview" class="preview-grid small-preview"></div>
+        </div>
+
+        <div class="card">
+          <h2>QR fijo</h2>
+          <p class="muted">Se guarda como <strong>fixed/qr.png</strong>. Ideal para inscripción o link del club.</p>
+          <label>QR PNG</label>
+          <input id="qrInput" type="file" accept="image/png,image/jpeg,image/webp">
+          <div class="actions"><button id="btnQr">Reemplazar QR</button><button id="btnVerQr" class="secondary">Ver
+              QR</button></div>
+          <div id="qrStatus" class="status">QR fijo: fixed/qr.png</div>
+          <div id="qrPreview" class="preview-grid small-preview"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Música ambiental</h2>
+        <p class="muted">Subí un MP3 liviano. Se guarda siempre como <strong>audio/musica.mp3</strong> y el TV lo
+          reproduce en loop.</p>
+        <label>Archivo MP3</label>
+        <input id="audioInput" type="file" accept="audio/mpeg,audio/mp3,.mp3">
+        <div class="actions">
+          <button id="btnAudio">Reemplazar música</button>
+          <button id="btnVerAudio" class="secondary">Probar música actual</button>
+          <button id="btnDeleteAudio" class="danger">Borrar música</button>
+        </div>
+        <div id="audioStatus" class="status">Música: tv-media/audio/musica.mp3</div>
+        <div id="audioPreview" class="status" style="display:none;"></div>
+      </div>
+
+      <div class="card">
+        <h2>Sponsors</h2>
+        <p class="muted">Seleccioná los sponsors actuales. Se borran los sponsors anteriores y se suben como
+          <strong>sponsor_01.png</strong>, <strong>sponsor_02.png</strong>, etc. No toca las fotos del día ni el
+          logo/QR.</p>
+        <label>Archivos de sponsors</label>
+        <input id="sponsorInput" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+        <div class="actions">
+          <button id="btnSponsors">Reemplazar sponsors</button>
+          <button id="btnListSponsors" class="secondary">Ver sponsors actuales</button>
+          <button id="btnDeleteSponsors" class="danger">Borrar sponsors</button>
+          <button id="btnLogout" class="secondary">Salir</button>
+        </div>
+        <div id="sponsorStatus" class="status">Sponsors: tv-media/sponsors/</div>
+        <div id="sponsorPreview" class="preview-grid small-preview"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://bnnfolhrqxgxjmobclrm.supabase.co",
+      "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+    );
+
+    const BUCKET = "tv-media";
+    const FOLDER_FOTOS = "leaderboard";
+    const FOLDER_FIXED = "fixed";
+    const FOLDER_SPONSORS = "sponsors";
+    const FOLDER_AUDIO = "audio";
+    const AUDIO_FILENAME = "musica.mp3";
+    const MAX_AUDIO_MB = 30;
+    const MAX_FILES = 10;
+    const MAX_SPONSORS = 20;
+    const MAX_WIDTH_PHOTO = 1600;
+    const MAX_WIDTH_SPONSOR = 1400;
+    const JPEG_QUALITY = 0.75;
+    const $ = id => document.getElementById(id);
+
+    function status(id, text) { $(id).textContent = text; }
+    function loginStatus(text) { const b = $("loginStatus"); b.style.display = "block"; b.textContent = text; }
+    function formatBytes(bytes) { if (!bytes && bytes !== 0) return "-"; const mb = bytes / 1024 / 1024; return mb >= 1 ? `${mb.toFixed(2)} MB` : `${(bytes / 1024).toFixed(0)} KB`; }
+    function publicUrl(path) { return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl + `?v=${Date.now()}`; }
+
+    async function checkSession() {
+      const { data } = await supabase.auth.getSession();
+      const logged = !!data.session;
+      $("loginCard").style.display = logged ? "none" : "block";
+      $("uploadCard").style.display = logged ? "block" : "none";
+      if (logged) { await listarFotos(); await verFijo("logo"); await verFijo("qr"); await listarSponsors(); }
+    }
+
+    async function login() {
+      const email = $("email").value.trim();
+      const password = $("password").value;
+      if (!email || !password) return loginStatus("Completá email y contraseña.");
+      $("btnLogin").disabled = true; loginStatus("Ingresando...");
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      $("btnLogin").disabled = false;
+      if (error) return loginStatus("No se pudo ingresar: " + error.message);
+      loginStatus("Ingreso correcto."); await checkSession();
+    }
+    async function logout() { await supabase.auth.signOut(); await checkSession(); }
+
+    function cargarImagen(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image(); const url = URL.createObjectURL(file);
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("No se pudo leer la imagen " + file.name)); };
+        img.src = url;
+      });
+    }
+
+    async function comprimirJpg(file, index, maxWidth, prefix) {
+      const img = await cargarImagen(file);
+      const scale = Math.min(1, maxWidth / img.width);
+      const width = Math.round(img.width * scale);
+      const height = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
+      if (!blob) throw new Error("No se pudo comprimir " + file.name);
+      return { filename: `${prefix}_${String(index + 1).padStart(2, "0")}.jpg`, blob, originalName: file.name, originalSize: file.size, finalSize: blob.size, previewUrl: URL.createObjectURL(blob), contentType: "image/jpeg" };
+    }
+
+    async function convertirPng(file, filename, maxWidth = 1200) {
+      const img = await cargarImagen(file);
+      const scale = Math.min(1, maxWidth / img.width);
+      const width = Math.round(img.width * scale);
+      const height = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("No se pudo preparar " + file.name);
+      return { filename, blob, originalName: file.name, originalSize: file.size, finalSize: blob.size, previewUrl: URL.createObjectURL(blob), contentType: "image/png" };
+    }
+
+    async function listarCarpeta(folder, gridId, statusId) {
+      status(statusId, "Leyendo archivos...");
+      const { data, error } = await supabase.storage.from(BUCKET).list(folder, { limit: 100, sortBy: { column: "name", order: "asc" } });
+      if (error) { status(statusId, "No se pudo leer: " + error.message); return []; }
+      const files = (data || []).filter(f => f.name && !f.name.startsWith("."));
+      const grid = $(gridId);
+      if (!files.length) { grid.innerHTML = ""; status(statusId, "No hay archivos cargados."); return []; }
+      grid.innerHTML = files.map(f => {
+        const path = `${folder}/${f.name}`;
+        return `<div class="preview"><img src="${publicUrl(path)}" alt="${f.name}"><div class="info">${f.name}<br>${formatBytes(f.metadata?.size)}</div></div>`;
+      }).join("");
+      status(statusId, `Archivos actuales: ${files.length}`);
+      return files;
+    }
+
+    async function borrarCarpeta(folder, statusId) {
+      status(statusId, "Buscando archivos para borrar...");
+      const { data, error } = await supabase.storage.from(BUCKET).list(folder, { limit: 100 });
+      if (error) throw error;
+      const paths = (data || []).filter(f => f.name && !f.name.startsWith(".")).map(f => `${folder}/${f.name}`);
+      if (!paths.length) { status(statusId, "No había archivos para borrar."); return; }
+      const { error: removeError } = await supabase.storage.from(BUCKET).remove(paths);
+      if (removeError) throw removeError;
+      status(statusId, `Borrados: ${paths.length}`);
+    }
+
+    async function listarFotos() { return listarCarpeta(FOLDER_FOTOS, "previewGrid", "status"); }
+    async function listarSponsors() { return listarCarpeta(FOLDER_SPONSORS, "sponsorPreview", "sponsorStatus"); }
+
+    async function subirFotos() {
+      const files = Array.from($("fileInput").files || []);
+      if (!files.length) return status("status", "Seleccioná al menos una foto.");
+      if (files.length > MAX_FILES) return status("status", `Máximo permitido: ${MAX_FILES} fotos.`);
+      $("btnUpload").disabled = true;
+      try {
+        const comprimidas = [];
+        for (let i = 0; i < files.length; i++) { status("status", `Comprimiendo ${i + 1}/${files.length}: ${files[i].name}`); comprimidas.push(await comprimirJpg(files[i], i, MAX_WIDTH_PHOTO, "foto")); }
+        $("previewGrid").innerHTML = comprimidas.map(f => `<div class="preview"><img src="${f.previewUrl}"><div class="info">${f.filename}<br>${formatBytes(f.originalSize)} → ${formatBytes(f.finalSize)}</div></div>`).join("");
+        await borrarCarpeta(FOLDER_FOTOS, "status");
+        for (let i = 0; i < comprimidas.length; i++) {
+          const f = comprimidas[i]; status("status", `Subiendo ${i + 1}/${comprimidas.length}: ${f.filename}`);
+          const { error } = await supabase.storage.from(BUCKET).upload(`${FOLDER_FOTOS}/${f.filename}`, f.blob, { contentType: f.contentType, cacheControl: "60", upsert: true });
+          if (error) throw error;
+        }
+        status("status", `Listo. Fotos subidas: ${comprimidas.length}`); await listarFotos();
+      } catch (err) { console.error(err); status("status", "Error: " + (err?.message || err)); }
+      finally { $("btnUpload").disabled = false; }
+    }
+
+    async function subirFijo(tipo) {
+      const input = tipo === "logo" ? $("logoInput") : $("qrInput");
+      const statusId = tipo === "logo" ? "logoStatus" : "qrStatus";
+      const file = input.files?.[0];
+      if (!file) return status(statusId, "Seleccioná una imagen.");
+      const filename = tipo === "logo" ? "logo.png" : "qr.png";
+      const path = `${FOLDER_FIXED}/${filename}`;
+      const btn = tipo === "logo" ? $("btnLogo") : $("btnQr");
+      btn.disabled = true;
+      try {
+        status(statusId, `Preparando ${filename}...`);
+        const preparado = await convertirPng(file, filename, tipo === "logo" ? 1200 : 900);
+        const { error } = await supabase.storage.from(BUCKET).upload(path, preparado.blob, { contentType: "image/png", cacheControl: "60", upsert: true });
+        if (error) throw error;
+        status(statusId, `Listo. Reemplazado ${path}\n${formatBytes(file.size)} → ${formatBytes(preparado.finalSize)}`);
+        await verFijo(tipo);
+      } catch (err) { console.error(err); status(statusId, "Error: " + (err?.message || err)); }
+      finally { btn.disabled = false; }
+    }
+
+    async function verFijo(tipo) {
+      const gridId = tipo === "logo" ? "logoPreview" : "qrPreview";
+      const statusId = tipo === "logo" ? "logoStatus" : "qrStatus";
+      const filename = tipo === "logo" ? "logo.png" : "qr.png";
+      const path = `${FOLDER_FIXED}/${filename}`;
+      const url = publicUrl(path);
+      $(gridId).innerHTML = `<div class="preview"><img src="${url}" onerror="this.closest('.preview').remove(); document.getElementById('${statusId}').textContent='No hay ${filename} cargado.'"><div class="info">${path}</div></div>`;
+      status(statusId, `Archivo fijo: ${path}`);
+    }
+
+    async function subirAudio() {
+      const file = $("audioInput").files?.[0];
+      if (!file) return status("audioStatus", "Seleccioná un archivo MP3.");
+      if (!/\.mp3$/i.test(file.name) && file.type !== "audio/mpeg") return status("audioStatus", "El archivo debe ser MP3.");
+      const maxBytes = MAX_AUDIO_MB * 1024 * 1024;
+      if (file.size > maxBytes) return status("audioStatus", `El MP3 pesa ${formatBytes(file.size)}. Máximo recomendado: ${MAX_AUDIO_MB} MB.`);
+
+      $("btnAudio").disabled = true;
+      try {
+        const path = `${FOLDER_AUDIO}/${AUDIO_FILENAME}`;
+        status("audioStatus", `Subiendo música: ${file.name}\n${formatBytes(file.size)}`);
+        const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+          contentType: "audio/mpeg",
+          cacheControl: "60",
+          upsert: true
+        });
+        if (error) throw error;
+        status("audioStatus", `Listo. Música reemplazada: ${path}\nPeso: ${formatBytes(file.size)}`);
+        await verAudio();
+      } catch (err) {
+        console.error(err);
+        status("audioStatus", "Error: " + (err?.message || err));
+      } finally {
+        $("btnAudio").disabled = false;
+      }
+    }
+
+    async function verAudio() {
+      const path = `${FOLDER_AUDIO}/${AUDIO_FILENAME}`;
+      const url = publicUrl(path);
+      $("audioPreview").style.display = "block";
+      $("audioPreview").innerHTML = `
+        <div style="margin-bottom:8px;font-weight:900;">${path}</div>
+        <audio controls style="width:100%;">
+          <source src="${url}" type="audio/mpeg">
+          Tu navegador no puede reproducir este audio.
+        </audio>
+      `;
+      status("audioStatus", `Música actual: ${path}`);
+    }
+
+    async function borrarAudio() {
+      const path = `${FOLDER_AUDIO}/${AUDIO_FILENAME}`;
+      const { error } = await supabase.storage.from(BUCKET).remove([path]);
+      if (error) throw error;
+      $("audioPreview").style.display = "none";
+      $("audioPreview").innerHTML = "";
+      status("audioStatus", `Música borrada: ${path}`);
+    }
+
+    async function subirSponsors() {
+      const files = Array.from($("sponsorInput").files || []);
+      if (!files.length) return status("sponsorStatus", "Seleccioná al menos un sponsor.");
+      if (files.length > MAX_SPONSORS) return status("sponsorStatus", `Máximo permitido: ${MAX_SPONSORS} sponsors.`);
+      $("btnSponsors").disabled = true;
+      try {
+        const preparados = [];
+        for (let i = 0; i < files.length; i++) { status("sponsorStatus", `Optimizando ${i + 1}/${files.length}: ${files[i].name}`); preparados.push(await convertirPng(files[i], `sponsor_${String(i + 1).padStart(2, "0")}.png`, MAX_WIDTH_SPONSOR)); }
+        $("sponsorPreview").innerHTML = preparados.map(f => `<div class="preview"><img src="${f.previewUrl}"><div class="info">${f.filename}<br>${formatBytes(f.originalSize)} → ${formatBytes(f.finalSize)}</div></div>`).join("");
+        await borrarCarpeta(FOLDER_SPONSORS, "sponsorStatus");
+        for (let i = 0; i < preparados.length; i++) {
+          const f = preparados[i]; status("sponsorStatus", `Subiendo ${i + 1}/${preparados.length}: ${f.filename}`);
+          const { error } = await supabase.storage.from(BUCKET).upload(`${FOLDER_SPONSORS}/${f.filename}`, f.blob, { contentType: "image/png", cacheControl: "60", upsert: true });
+          if (error) throw error;
+        }
+        status("sponsorStatus", `Listo. Sponsors subidos: ${preparados.length}`); await listarSponsors();
+      } catch (err) { console.error(err); status("sponsorStatus", "Error: " + (err?.message || err)); }
+      finally { $("btnSponsors").disabled = false; }
+    }
+
+    $("btnLogin").addEventListener("click", login);
+    $("btnLogout").addEventListener("click", logout);
+    $("btnUpload").addEventListener("click", subirFotos);
+    $("btnList").addEventListener("click", listarFotos);
+    $("btnDelete").addEventListener("click", async () => { if (!confirm("¿Borrar todas las fotos actuales del TV?")) return; try { await borrarCarpeta(FOLDER_FOTOS, "status"); await listarFotos(); } catch (e) { status("status", "Error: " + e.message); } });
+    $("btnLogo").addEventListener("click", () => subirFijo("logo"));
+    $("btnQr").addEventListener("click", () => subirFijo("qr"));
+    $("btnVerLogo").addEventListener("click", () => verFijo("logo"));
+    $("btnVerQr").addEventListener("click", () => verFijo("qr"));
+    $("btnAudio").addEventListener("click", subirAudio);
+    $("btnVerAudio").addEventListener("click", verAudio);
+    $("btnDeleteAudio").addEventListener("click", async () => { if (!confirm("¿Borrar la música ambiental actual?")) return; try { await borrarAudio(); } catch (e) { status("audioStatus", "Error: " + e.message); } });
+    $("btnSponsors").addEventListener("click", subirSponsors);
+    $("btnListSponsors").addEventListener("click", listarSponsors);
+    $("btnDeleteSponsors").addEventListener("click", async () => { if (!confirm("¿Borrar todos los sponsors actuales?")) return; try { await borrarCarpeta(FOLDER_SPONSORS, "sponsorStatus"); await listarSponsors(); } catch (e) { status("sponsorStatus", "Error: " + e.message); } });
+
+    checkSession();
+  </script>
+</body>
+
+</html>
