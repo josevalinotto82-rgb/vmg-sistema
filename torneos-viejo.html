@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados del torneo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f8f3;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px 16px 40px;
+        }
+
+        .back {
+            display: inline-block;
+            margin-bottom: 18px;
+            text-decoration: none;
+            color: #166534;
+            font-weight: bold;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            margin-bottom: 18px;
+        }
+
+        .club-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .escudo {
+            height: 56px;
+            width: auto;
+            display: block;
+        }
+
+        .club-name {
+            margin: 0;
+            font-size: 22px;
+            color: #3e5740;
+            line-height: 1.1;
+        }
+
+        .titulo {
+            margin: 0 0 8px;
+            font-size: 28px;
+            text-transform: uppercase;
+        }
+
+        .subtitulo {
+            color: #6b7280;
+            font-size: 15px;
+            margin: 0;
+        }
+
+        .categoria-card {
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            margin-bottom: 22px;
+            overflow: hidden;
+        }
+
+        .categoria-header {
+            background: #166534;
+            color: white;
+            padding: 16px 18px;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .tabla-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 980px;
+        }
+
+        th,
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: center;
+            font-size: 16px;
+            vertical-align: middle;
+        }
+
+        th {
+            background: #f3f4f6;
+            color: #6b7280;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        td.nombre {
+            text-align: left;
+            font-weight: 600;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        tr.player-row {
+            transition: background 0.18s ease;
+        }
+
+        tr.player-row.row-white td {
+            background: #ffffff;
+        }
+
+        tr.player-row.row-gray td {
+            background: #f7f7f8;
+        }
+
+        tr.player-row:hover td {
+            background: #eef7ef;
+        }
+
+        tr.player-row.open td {
+            background: #e9f5eb !important;
+        }
+
+        .detail-row {
+            display: none;
+        }
+
+        .detail-row.show {
+            display: table-row;
+        }
+
+        .detail-cell {
+            padding: 0 !important;
+            background: #ffffff !important;
+        }
+
+        .detail-box {
+            padding: 18px;
+            background: #fbfdfb;
+            border-top: 1px solid #dbe7dd;
+        }
+
+        .detail-top {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px 22px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .detail-top strong {
+            color: #111827;
+        }
+
+        .desempate-box {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        .desempate-box h4 {
+            margin: 0 0 10px;
+            font-size: 16px;
+        }
+
+        .desempate-linea {
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+
+        .scorecard-desktop {
+            display: block;
+        }
+
+        .scorecard-mobile {
+            display: none;
+        }
+
+        .scorecard-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1100px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .scorecard-table td {
+            padding: 10px 8px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+            font-size: 15px;
+        }
+
+        .scorecard-table .label {
+            text-align: left;
+            font-weight: 700;
+            background: #f3f4f6;
+            min-width: 90px;
+            font-size: 14px;
+        }
+
+        .scorecard-table .head-green {
+            background: #166534;
+            color: white;
+            font-weight: 700;
+        }
+
+        .scorecard-table .par-row td,
+        .scorecard-table .hcp-row td {
+            background: #f3f4f6;
+            font-size: 12px;
+            padding-top: 6px;
+            padding-bottom: 6px;
+        }
+
+        .scorecard-table .score-row td {
+            background: white;
+        }
+
+        .scorecard-table .sum {
+            background: #eef6ef !important;
+            font-weight: 700;
+        }
+
+        .score {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+            padding: 0 7px;
+            font-weight: 600;
+            font-size: 15px;
+            line-height: 1;
+            background: white;
+            color: #1f2937;
+        }
+
+        .under {
+            color: #15803d;
+        }
+
+        .over {
+            color: #dc2626;
+        }
+
+        .par {
+            border: none;
+        }
+
+        .birdie {
+            border: 2px solid currentColor;
+            border-radius: 50%;
+        }
+
+        .eagle {
+            border: 4px double currentColor;
+            border-radius: 50%;
+        }
+
+        .bogey {
+            border: 2px solid currentColor;
+            border-radius: 5px;
+        }
+
+        .double-bogey {
+            border: 4px double currentColor;
+            border-radius: 4px;
+        }
+
+        .to-par {
+            font-weight: 700;
+        }
+
+        .to-par.under {
+            color: #15803d;
+        }
+
+        .to-par.over {
+            color: #dc2626;
+        }
+
+        .to-par.even {
+            color: #374151;
+        }
+
+        .empty {
+            background: white;
+            border-radius: 14px;
+            padding: 24px;
+            text-align: center;
+            color: #6b7280;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        @media (max-width: 860px) {
+            .container {
+                width: 100%;
+                max-width: 100%;
+                padding: 10px 6px 20px;
+            }
+
+            .card,
+            .categoria-card {
+                border-radius: 12px;
+            }
+
+            .categoria-header {
+                padding: 14px 14px;
+                font-size: 18px;
+            }
+
+            table {
+                min-width: 100%;
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            .tabla-wrap {
+                overflow-x: hidden;
+            }
+
+            .scorecard-table {
+                min-width: 0 !important;
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            .scorecard-table td {
+                font-size: 11px;
+                padding: 5px 2px;
+            }
+
+            td.nombre {
+                font-size: 13px;
+                line-height: 1.1;
+                word-break: break-word;
+            }
+
+            .card {
+                padding: 12px;
+            }
+
+            .categoria-card {
+                overflow: hidden;
+            }
+
+            th,
+            td {
+                font-size: 11px;
+                padding: 6px 3px;
+            }
+
+            .scorecard-desktop {
+                display: none;
+            }
+
+            .scorecard-mobile {
+                display: block;
+            }
+
+            .detail-box {
+                padding: 12px;
+            }
+
+            .detail-top {
+                gap: 8px 14px;
+                font-size: 12px;
+                margin-bottom: 12px;
+            }
+
+            .mini-card {
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                overflow: hidden;
+                margin-bottom: 10px;
+            }
+
+            .mini-table {
+                width: 100%;
+                border-collapse: collapse;
+                min-width: 0;
+            }
+
+            .mini-table td {
+                border: 1px solid #e5e7eb;
+                text-align: center;
+                padding: 5px 2px;
+                font-size: 11px;
+            }
+
+            .mini-table .label {
+                text-align: left;
+                font-weight: 700;
+                background: #f3f4f6;
+                width: 42px;
+                padding-left: 5px;
+            }
+
+            .mini-table .par-row td,
+            .mini-table .hcp-row td {
+                background: #f3f4f6;
+                font-size: 10px;
+                padding-top: 4px;
+                padding-bottom: 4px;
+            }
+
+            .mini-table .sum {
+                background: #eef6ef;
+                font-weight: 700;
+                width: 42px;
+            }
+
+            .scorecard-mobile .score {
+                min-width: 22px;
+                height: 22px;
+                font-size: 11px;
+                padding: 0;
+            }
+
+            .birdie {
+                border-width: 1.5px;
+            }
+
+            .eagle {
+                border-width: 3px;
+            }
+
+            .bogey {
+                border-width: 1.5px;
+            }
+
+            .double-bogey {
+                border-width: 3px;
+            }
+
+            table {
+                table-layout: auto;
+            }
+
+            th:nth-child(2),
+            td.nombre {
+                width: 42%;
+            }
+
+            td.nombre {
+                font-size: 12px;
+                line-height: 1.15;
+                white-space: normal;
+                word-break: normal;
+                overflow-wrap: break-word;
+            }
+
+            th,
+            td {
+                font-size: 10px;
+                padding: 6px 2px;
+            }
+
+            th:nth-child(1),
+            td:nth-child(1) {
+                width: 26px;
+            }
+
+            th:nth-child(3),
+            td:nth-child(3),
+            th:nth-child(4),
+            td:nth-child(4),
+            th:nth-child(5),
+            td:nth-child(5),
+            th:nth-child(6),
+            td:nth-child(6),
+            th:nth-child(7),
+            td:nth-child(7) {
+                width: 38px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a class="back" href="resultados.html">← Volver a torneos</a>
+
+        <div class="card">
+            <div class="club-row">
+                <img src="escudo.png" alt="Escudo Villa María Golf" class="escudo">
+                <div>
+                    <h1 class="club-name">Villa María Golf Club</h1>
+                </div>
+            </div>
+
+            <h1 id="titulo" class="titulo">Cargando...</h1>
+            <p id="subtitulo" class="subtitulo"></p>
+        </div>
+
+        <div id="contenido"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+        const supabase = createClient(
+            "https://bnnfolhrqxgxjmobclrm.supabase.co",
+            "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+        );
+
+        const params = new URLSearchParams(window.location.search);
+        const torneoId = (params.get("id") || "").trim();
+        const busquedaJugador = params.get("q") || "";
+
+        let indiceAutoAbrir = null;
+
+        const HOYOS = [
+            { h: 1, par: 4, hp: 15 },
+            { h: 2, par: 4, hp: 3 },
+            { h: 3, par: 3, hp: 5 },
+            { h: 4, par: 4, hp: 11 },
+            { h: 5, par: 3, hp: 9 },
+            { h: 6, par: 4, hp: 1 },
+            { h: 7, par: 4, hp: 13 },
+            { h: 8, par: 4, hp: 7 },
+            { h: 9, par: 5, hp: 17 },
+            { h: 10, par: 4, hp: 8 },
+            { h: 11, par: 3, hp: 14 },
+            { h: 12, par: 5, hp: 10 },
+            { h: 13, par: 3, hp: 2 },
+            { h: 14, par: 4, hp: 16 },
+            { h: 15, par: 4, hp: 18 },
+            { h: 16, par: 4, hp: 6 },
+            { h: 17, par: 5, hp: 12 },
+            { h: 18, par: 4, hp: 4 }
+        ];
+
+        const PAR_IDA = 35;
+        const PAR_VUELTA = 36;
+        const PAR_TOTAL = 71;
+
+        let torneoActual = null;
+        let categorias = [];
+        let jugadores = [];
+        let hoyosPorScorecard = {};
+
+        function fechaAObjeto(fecha) {
+            const texto = String(fecha || "").trim();
+            if (!texto) return null;
+
+            const partes = texto.split("-");
+            if (partes.length === 3) {
+                const [yyyy, mm, dd] = partes;
+                return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+            }
+
+            const f = new Date(texto);
+            if (Number.isNaN(f.getTime())) return null;
+
+            return f;
+        }
+
+        function formatearFecha(fecha) {
+            const f = fechaAObjeto(fecha);
+            if (!f) return String(fecha || "");
+
+            const dd = String(f.getDate()).padStart(2, "0");
+            const mm = String(f.getMonth() + 1).padStart(2, "0");
+            const yyyy = String(f.getFullYear());
+
+            return `${dd}/${mm}/${yyyy}`;
+        }
+
+        function parseNumero(valor) {
+            if (valor === undefined || valor === null || valor === "") return null;
+            const limpio = String(valor).trim().replace(",", ".");
+            const n = Number(limpio);
+            return Number.isNaN(n) ? null : n;
+        }
+
+        function n(valor) {
+            const x = Number(String(valor ?? "").trim().replace(",", "."));
+            return Number.isNaN(x) ? 0 : x;
+        }
+
+        function normalizarTexto(texto) {
+            return String(texto || "")
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[,.;:()]/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        function nombreModalidad() {
+            return normalizarTexto(torneoActual?.game_modes?.name || "");
+        }
+
+        function esMedal() {
+            return nombreModalidad().includes("medal");
+        }
+
+        function esAmericana() {
+            const nombre = nombreModalidad();
+            return nombre.includes("americana") || nombre.includes("american");
+        }
+
+        function normalizarGenero(valor) {
+            const g = normalizarTexto(valor);
+            if (["male", "m", "masculino", "hombre", "caballero", "caballeros"].includes(g)) return "male";
+            if (["female", "f", "femenino", "mujer", "dama", "damas"].includes(g)) return "female";
+            return "";
+        }
+
+        function generoCategoria(cat) {
+            const directo = normalizarGenero(cat?.gender);
+            if (directo) return directo;
+
+            const nombre = normalizarTexto(cat?.name || "");
+            if (nombre.includes("dama") || nombre.includes("damas")) return "female";
+            if (nombre.includes("caballero") || nombre.includes("caballeros")) return "male";
+            return "";
+        }
+
+        function generoJugador(j) {
+            return normalizarGenero(j?.player_gender || j?.gender || "");
+        }
+
+        function jugadorEnRangoScratch(j, genero) {
+            if (esNoValido(j)) return false;
+            if (generoJugador(j) !== genero) return false;
+
+            const idx = parseNumero(j.official_index);
+            if (idx === null) return false;
+
+            if (genero === "male") return idx >= -6 && idx <= 9;
+            if (genero === "female") return idx >= -6 && idx <= 54;
+            return false;
+        }
+
+        function valorGross(j) {
+            if (esNoValido(j)) return 999999;
+
+            const gross = parseNumero(j.gross);
+
+            if (gross === null || gross <= 0) return 999999;
+
+            return gross;
+        }
+
+        function coincideBusquedaJugador(nombreJugador, busqueda) {
+            const palabras = normalizarTexto(busqueda).split(" ").filter(Boolean);
+            const nombre = normalizarTexto(nombreJugador);
+            if (palabras.length === 0) return false;
+            return palabras.every(p => nombre.includes(p));
+        }
+
+        function esNoValido(j) {
+            const estado = String(j.card_status || "").toLowerCase();
+            return estado === "desc" || estado === "npt" || estado === "incomplete";
+        }
+
+        function textoEstadoVisible(j) {
+            const estado = String(j.card_status || "").toLowerCase();
+
+            if (estado === "desc") return "DESC";
+            if (estado === "npt") return "NPT";
+            if (estado === "incomplete") return "NPT";
+            return "";
+        }
+
+        function valorPrincipal(j) {
+            if (esNoValido(j)) return 999999;
+
+            if (esAmericana()) {
+                return valorGross(j);
+            }
+
+            const total = parseNumero(j.total);
+            const net = parseNumero(j.net);
+            const gross = parseNumero(j.gross);
+
+            if (total !== null && total > 0) return total;
+            if (net !== null && net > 0) return net;
+            if (gross !== null && gross > 0) return gross;
+
+            return 999999;
+        }
+
+        function sumaHoyosArray(hoyos, desde, hasta) {
+            let total = 0;
+            for (let i = desde; i <= hasta; i++) {
+                total += n(hoyos[i]);
+            }
+            return total;
+        }
+
+        function hcpJuego(j) {
+            const hcp = parseNumero(j.playing_handicap);
+            return hcp === null ? 0 : hcp;
+        }
+
+        function valorDesempateNeto(j, desde, hasta, divisorHcp) {
+            const hoyos = hoyosPorScorecard[j.id] || {};
+            const suma = sumaHoyosArray(hoyos, desde, hasta);
+            return suma - (hcpJuego(j) / divisorHcp);
+        }
+
+        function fmtDesempate(valor) {
+            const n = Number(valor);
+            if (Number.isNaN(n)) return "-";
+            return Number.isInteger(n) ? String(n) : n.toFixed(2);
+        }
+
+        function tieneHoyosCompletos(hoyos, desde, hasta) {
+            for (let i = desde; i <= hasta; i++) {
+                const valor = parseNumero(hoyos[i]);
+                if (valor === null || valor === 0) return false;
+            }
+            return true;
+        }
+
+        function toParHtmlONulo(valor) {
+            if (valor === null || valor === undefined || Number.isNaN(Number(valor))) {
+                return "-";
+            }
+            return toParHtml(valor);
+        }
+
+        function compararJugadores(a, b) {
+            const ordenEstado = { valid: 0, desc: 1, npt: 2, incomplete: 3 };
+
+            const ea = ordenEstado[String(a.card_status || "").toLowerCase()] ?? 9;
+            const eb = ordenEstado[String(b.card_status || "").toLowerCase()] ?? 9;
+
+            if (ea !== eb) return ea - eb;
+
+            if (ea !== 0) {
+                return String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+            }
+
+            const aPrincipal = valorPrincipal(a);
+            const bPrincipal = valorPrincipal(b);
+            if (aPrincipal !== bPrincipal) return aPrincipal - bPrincipal;
+
+            // Desempate NETO para categorías:
+            // últimos 9 - 1/2 HCP
+            // últimos 6 - 1/3 HCP
+            // últimos 3 - 1/6 HCP
+            // último hoyo - 1/9 HCP
+            const criterios = [
+                { desde: 10, hasta: 18, divisor: 2 },
+                { desde: 13, hasta: 18, divisor: 3 },
+                { desde: 16, hasta: 18, divisor: 6 },
+                { desde: 18, hasta: 18, divisor: 9 }
+            ];
+
+            for (const c of criterios) {
+                const va = valorDesempateNeto(a, c.desde, c.hasta, c.divisor);
+                const vb = valorDesempateNeto(b, c.desde, c.hasta, c.divisor);
+
+                if (Math.abs(va - vb) > 0.00001) return va - vb;
+            }
+
+            return String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+        }
+
+        function obtenerDetalleDesempate(jugador, rivalesEmpatados, esScratch = false) {
+            if (!rivalesEmpatados || rivalesEmpatados.length === 0) return "";
+
+            const criteriosScratch = [
+                { desde: 10, hasta: 18, nombre: "Segunda vuelta" },
+                { desde: 13, hasta: 18, nombre: "Últimos 6 hoyos" },
+                { desde: 16, hasta: 18, nombre: "Últimos 3 hoyos" },
+                { desde: 17, hasta: 18, nombre: "Últimos 2 hoyos" },
+                { desde: 18, hasta: 18, nombre: "Último hoyo" }
+            ];
+
+            const criteriosNeto = [
+                { desde: 10, hasta: 18, nombre: "Últimos 9 hoyos", divisor: 2, textoHcp: "1/2 HCP" },
+                { desde: 13, hasta: 18, nombre: "Últimos 6 hoyos", divisor: 3, textoHcp: "1/3 HCP" },
+                { desde: 16, hasta: 18, nombre: "Últimos 3 hoyos", divisor: 6, textoHcp: "1/6 HCP" },
+                { desde: 18, hasta: 18, nombre: "Último hoyo", divisor: 9, textoHcp: "1/9 HCP" }
+            ];
+
+            const misHoyos = hoyosPorScorecard[jugador.id] || {};
+
+            for (const rival of rivalesEmpatados) {
+                const hoyosRival = hoyosPorScorecard[rival.id] || {};
+                const lineas = [];
+
+                const criterios = esScratch ? criteriosScratch : criteriosNeto;
+
+                for (const c of criterios) {
+                    let miValor;
+                    let suValor;
+                    let textoJugador;
+                    let textoRival;
+
+                    if (esScratch) {
+                        miValor = sumaHoyosArray(misHoyos, c.desde, c.hasta);
+                        suValor = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
+
+                        textoJugador = `${miValor}`;
+                        textoRival = `${suValor}`;
+                    } else {
+                        const miSuma = sumaHoyosArray(misHoyos, c.desde, c.hasta);
+                        const suSuma = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
+
+                        miValor = miSuma - (hcpJuego(jugador) / c.divisor);
+                        suValor = suSuma - (hcpJuego(rival) / c.divisor);
+
+                        textoJugador = `${miSuma} - ${c.textoHcp} = ${fmtDesempate(miValor)}`;
+                        textoRival = `${suSuma} - ${c.textoHcp} = ${fmtDesempate(suValor)}`;
+                    }
+
+                    const decisivo = Math.abs(miValor - suValor) > 0.00001;
+
+                    lineas.push({
+                        nombre: c.nombre,
+                        jugador: textoJugador,
+                        rival: textoRival,
+                        decisivo
+                    });
+
+                    if (decisivo) {
+                        return `
+                    <div class="desempate-box">
+                        <h4>Desempate automático</h4>
+                        <div class="desempate-linea"><strong>Empatado con:</strong> ${rival.display_name}</div>
+                        ${lineas.map(l => `
+                            <div class="desempate-linea">
+                                ${l.decisivo ? "<strong>" : ""}
+                                ${l.nombre}: ${l.jugador} / Rival: ${l.rival}${l.decisivo ? " ← criterio decisivo" : ""}
+                                ${l.decisivo ? "</strong>" : ""}
+                            </div>
+                        `).join("")}
+                    </div>
+                `;
+                    }
+                }
+            }
+
+            return "";
+        }
+
+        function claseScore(golpes, par) {
+            const g = n(golpes);
+            const diff = g - par;
+            if (diff <= -2) return { forma: "eagle", tono: "under" };
+            if (diff === -1) return { forma: "birdie", tono: "under" };
+            if (diff === 0) return { forma: "par", tono: "" };
+            if (diff === 1) return { forma: "bogey", tono: "over" };
+            return { forma: "double-bogey", tono: "over" };
+        }
+
+        function htmlScore(golpes, par) {
+            const valor = String(golpes ?? "").trim();
+            if (!valor || valor === "-" || valor === "0") return "";
+            const c = claseScore(valor, par);
+            return `<span class="score ${c.forma} ${c.tono}">${valor}</span>`;
+        }
+
+        function toParHtml(valor) {
+            const v = Number(valor);
+            if (Number.isNaN(v)) return "";
+            if (v < 0) return `<span class="to-par under">${v}</span>`;
+            if (v > 0) return `<span class="to-par over">+${v}</span>`;
+            return `<span class="to-par even">E</span>`;
+        }
+
+        function detalleDesktop(j) {
+            const dataHoyos = hoyosPorScorecard[j.id] || {};
+            const ida = sumaHoyosArray(dataHoyos, 1, 9);
+            const vuelta = sumaHoyosArray(dataHoyos, 10, 18);
+            const total = ida + vuelta;
+
+            const idaCompleta = tieneHoyosCompletos(dataHoyos, 1, 9);
+            const vueltaCompleta = tieneHoyosCompletos(dataHoyos, 10, 18);
+            const totalCompleto = idaCompleta && vueltaCompleta;
+
+            const idaPar = ida - PAR_IDA;
+            const vueltaPar = vuelta - PAR_VUELTA;
+            const totalPar = total - PAR_TOTAL;
+
+            return `
+        <div class="scorecard-desktop">
+          <table class="scorecard-table">
+            <tbody>
+              <tr>
+                <td class="label head-green">Hoyo</td>
+                ${HOYOS.slice(0, 9).map(x => `<td class="head-green">${x.h}</td>`).join("")}
+                <td class="head-green">Ida</td>
+                ${HOYOS.slice(9).map(x => `<td class="head-green">${x.h}</td>`).join("")}
+                <td class="head-green">Vta</td>
+                <td class="head-green">Total</td>
+              </tr>
+              <tr class="par-row">
+                <td class="label">Par</td>
+                ${HOYOS.slice(0, 9).map(x => `<td>${x.par}</td>`).join("")}
+                <td class="sum">${PAR_IDA}</td>
+                ${HOYOS.slice(9).map(x => `<td>${x.par}</td>`).join("")}
+                <td class="sum">${PAR_VUELTA}</td>
+                <td class="sum">${PAR_TOTAL}</td>
+              </tr>
+              ${esAmericana() ? "" : `
+              <tr class="hcp-row">
+                <td class="label">HCP</td>
+                ${HOYOS.slice(0, 9).map(x => `<td>${x.hp}</td>`).join("")}
+                <td class="sum"></td>
+                ${HOYOS.slice(9).map(x => `<td>${x.hp}</td>`).join("")}
+                <td class="sum"></td>
+                <td class="sum"></td>
+              </tr>`}
+              <tr class="score-row">
+                <td class="label">Score</td>
+                ${HOYOS.slice(0, 9).map(x => `<td>${htmlScore(dataHoyos[x.h], x.par)}</td>`).join("")}
+                <td class="sum">${ida ?? "-"}</td>
+                ${HOYOS.slice(9).map(x => `<td>${htmlScore(dataHoyos[x.h], x.par)}</td>`).join("")}
+                <td class="sum">${vuelta ?? "-"}</td>
+                <td class="sum">${total ?? "-"}</td>
+              </tr>
+              <tr>
+                <td class="label">Al Par</td>
+                ${HOYOS.slice(0, 9).map(x => {
+                const golpes = parseNumero(dataHoyos[x.h]);
+                const diff = golpes === null ? NaN : golpes - x.par;
+                return `<td>${toParHtml(diff)}</td>`;
+            }).join("")}
+                <td class="sum">${idaCompleta ? toParHtml(idaPar) : "-"}</td>
+                ${HOYOS.slice(9).map(x => {
+                const golpes = parseNumero(dataHoyos[x.h]);
+                const diff = golpes === null ? NaN : golpes - x.par;
+                return `<td>${toParHtml(diff)}</td>`;
+            }).join("")}
+                <td class="sum">${vueltaCompleta ? toParHtml(vueltaPar) : "-"}</td>
+                <td class="sum">${totalCompleto ? toParHtml(totalPar) : "-"}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+        }
+
+        function detalleMobileBloque(j, desde, hasta, titulo, parTotal) {
+            const dataHoyos = hoyosPorScorecard[j.id] || {};
+            const hoyos = HOYOS.filter(x => x.h >= desde && x.h <= hasta);
+            const suma = sumaHoyosArray(dataHoyos, desde, hasta);
+            const alPar = suma - parTotal;
+
+            return `
+        <div class="mini-card">
+          <table class="mini-table">
+            <tbody>
+              <tr>
+                <td class="label mini-head">H</td>
+                ${hoyos.map(x => `<td class="mini-head">${x.h}</td>`).join("")}
+                <td class="mini-head">${titulo}</td>
+              </tr>
+              <tr class="par-row">
+                <td class="label">Par</td>
+                ${hoyos.map(x => `<td>${x.par}</td>`).join("")}
+                <td class="sum">${parTotal}</td>
+              </tr>
+              ${esAmericana() ? "" : `
+              <tr class="hcp-row">
+                <td class="label">HCP</td>
+                ${hoyos.map(x => `<td>${x.hp}</td>`).join("")}
+                <td class="sum"></td>
+              </tr>`}
+              <tr>
+                <td class="label">Score</td>
+                ${hoyos.map(x => `<td>${htmlScore(dataHoyos[x.h], x.par)}</td>`).join("")}
+                <td class="sum">${suma}</td>
+              </tr>
+              <tr>
+                <td class="label">Al Par</td>
+                ${hoyos.map(x => {
+                const golpes = parseNumero(dataHoyos[x.h]);
+                const diff = golpes === null ? NaN : golpes - x.par;
+                return `<td>${toParHtml(diff)}</td>`;
+            }).join("")}
+                <td class="sum">${toParHtml(alPar)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+        }
+
+        function detalleMobile(j) {
+            return `
+        <div class="scorecard-mobile">
+          ${detalleMobileBloque(j, 1, 9, "Ida", PAR_IDA)}
+          ${detalleMobileBloque(j, 10, 18, "Vta", PAR_VUELTA)}
+        </div>
+      `;
+        }
+
+        function detalleJugadorHtml(j, posicion, empatados, categoriaNombre, esScratch = false) {
+            const datosTop = esScratch
+                ? `
+                <div><strong>Puesto:</strong> ${posicion || ""}</div>
+                <div><strong>Gross:</strong> ${j.gross ?? ""}</div>
+                `
+                : esAmericana()
+                    ? `
+                <div><strong>Puesto:</strong> ${posicion || ""}</div>
+                <div><strong>Gross:</strong> ${j.gross ?? ""}</div>
+                `
+                    : `
+                <div><strong>Puesto:</strong> ${posicion || ""}</div>
+                <div><strong>Index:</strong> ${j.official_index ?? ""}</div>
+                <div><strong>Gross:</strong> ${j.gross ?? ""}</div>
+                <div><strong>HCP:</strong> ${j.playing_handicap ?? ""}</div>
+                <div><strong>Neto:</strong> ${j.net ?? ""}</div>
+                `;
+
+            return `
+        <div class="detail-box">
+          <div class="detail-top">
+            ${datosTop}
+          </div>
+
+          ${obtenerDetalleDesempate(j, empatados, esScratch)}
+          ${detalleDesktop(j)}
+          ${detalleMobile(j)}
+        </div>
+      `;
+        }
+
+        function limpiarValorHistorico(valor) {
+            if (valor === undefined || valor === null) return "";
+
+            const texto = String(valor).trim();
+
+            if (!texto) return "";
+
+            return texto;
+        }
+
+        function detectarEstadoHistorico(p) {
+            const valores = [
+                p.gross,
+                p.neto,
+                p.total
+            ].map(v => String(v || "").toUpperCase().trim());
+
+            if (valores.includes("NPT")) return "npt";
+            if (valores.includes("DESC")) return "desc";
+
+            return "valid";
+        }
+
+        function detectarGeneroCategoria(nombreCategoria) {
+            const n = normalizarTexto(nombreCategoria);
+
+            if (n.includes("dama")) return "female";
+            if (n.includes("damas")) return "female";
+            if (n.includes("seniora")) return "female";
+
+            if (n.includes("caballero")) return "male";
+            if (n.includes("caballeros")) return "male";
+            if (n.includes("senior")) return "male";
+
+            return "";
+        }
+
+        function ordenCategoriaHistorica(nombreCategoria) {
+            const n = normalizarTexto(nombreCategoria);
+
+            if (n.includes("scratch")) return 0;
+
+            // NEGRAS: 0 a 9
+            if (
+                n.includes("negra") ||
+                n.includes("negras") ||
+                n.includes("0 9") ||
+                n.includes("0 a 9") ||
+                n.includes("hasta 9")
+            ) return 10;
+
+            // AMARILLAS: 9.1 a 15
+            if (
+                n.includes("amarilla") ||
+                n.includes("amarillas") ||
+                n.includes("9 1") ||
+                n.includes("9.1") ||
+                n.includes("9,1")
+            ) return 20;
+
+            // BLANCAS A: 15.1 a 21
+            if (
+                n.includes("15 1") ||
+                n.includes("15.1") ||
+                n.includes("15,1") ||
+                n.includes("15 a 21")
+            ) return 30;
+
+            // BLANCAS B: 21.1 a 54
+            if (
+                n.includes("21 1") ||
+                n.includes("21.1") ||
+                n.includes("21,1") ||
+                n.includes("21 a 54") ||
+                n.includes("54")
+            ) return 40;
+
+            // DAMAS ROJAS
+            if (
+                n.includes("dama") ||
+                n.includes("damas") ||
+                n.includes("roja") ||
+                n.includes("rojas")
+            ) return 50;
+
+            return 99;
+        }
+
+        async function cargarTorneoHistorico() {
+            const { data: torneo, error } = await supabase
+                .from("historical_tournaments")
+                .select("id, fecha, torneo, modalidad, players")
+                .eq("id", torneoId)
+                .single();
+
+            if (error || !torneo) {
+                document.getElementById("titulo").textContent = "Torneo histórico no encontrado";
+                document.getElementById("subtitulo").textContent = "";
+                document.getElementById("contenido").innerHTML =
+                    `<div class="empty">No hay datos históricos para mostrar.</div>`;
+                return;
+            }
+
+            torneoActual = {
+                id: torneo.id,
+                name: torneo.torneo,
+                tournament_date: torneo.fecha,
+                game_modes: {
+                    name: torneo.modalidad || ""
+                },
+                legacy: true
+            };
+
+            document.getElementById("titulo").textContent = torneo.torneo;
+            document.getElementById("subtitulo").textContent =
+                `${formatearFecha(torneo.fecha)} · ${torneo.modalidad || ""}`;
+
+            const players = torneo.players || [];
+
+            const categoriasMap = new Map();
+
+            players.forEach(p => {
+                const nombreCat = String(p.categoria || "Sin categoría").trim();
+
+                if (!categoriasMap.has(nombreCat)) {
+                    categoriasMap.set(nombreCat, {
+                        id: nombreCat,
+                        name: nombreCat,
+                        display_order: categoriasMap.size + 1,
+                        gender: detectarGeneroCategoria(nombreCat)
+                    });
+                }
+            });
+
+            categorias = Array.from(categoriasMap.values())
+                .sort((a, b) => {
+
+                    const oa = ordenCategoriaHistorica(a.name);
+                    const ob = ordenCategoriaHistorica(b.name);
+
+                    if (oa !== ob) return oa - ob;
+
+                    return String(a.name || "")
+                        .localeCompare(String(b.name || ""), "es");
+                });
+
+            jugadores = players.map((p, index) => {
+                const categoriaNombre = String(p.categoria || "Sin categoría").trim();
+                const cat = categoriasMap.get(categoriaNombre);
+
+                const estado = detectarEstadoHistorico(p);
+
+                return {
+                    id: `legacy_player_${index}`,
+                    display_name: p.jugador || "",
+                    gross: limpiarValorHistorico(p.gross),
+                    net: limpiarValorHistorico(p.neto),
+                    total: limpiarValorHistorico(p.total),
+                    card_status: estado,
+                    category_id: cat?.id || categoriaNombre,
+                    official_index: limpiarValorHistorico(p.index),
+                    playing_handicap: limpiarValorHistorico(p.hp),
+                    player_gender: cat?.gender || "",
+                    legacy_position: p.posicion || "",
+                    hole_scores: p.hoyos || {}
+                };
+            });
+
+            hoyosPorScorecard = {};
+
+            jugadores.forEach(j => {
+                hoyosPorScorecard[j.id] = {};
+
+                const hoyos = j.hole_scores || {};
+
+                Object.entries(hoyos).forEach(([holeNumber, valor]) => {
+                    const hole = Number(holeNumber);
+                    hoyosPorScorecard[j.id][hole] = limpiarValorHistorico(valor);
+                });
+            });
+
+            renderTorneo();
+        }
+
+        async function cargarTorneo() {
+            try {
+
+                if (torneoId.startsWith("legacy_")) {
+                    await cargarTorneoHistorico();
+                    return;
+                }
+
+                const { data: torneo, error: errorTorneo } = await supabase
+                    .from("tournaments")
+                    .select(`
+                    id,
+                    name,
+                    tournament_date,
+                    game_modes (
+                    name
+                    )
+                `)
+                    .eq("id", torneoId)
+                    .single();
+
+                if (errorTorneo || !torneo) {
+                    document.getElementById("titulo").textContent = "Torneo no encontrado";
+                    document.getElementById("subtitulo").textContent = "";
+                    document.getElementById("contenido").innerHTML = `<div class="empty">No hay datos para mostrar.</div>`;
+                    return;
+                }
+
+                torneoActual = torneo;
+
+                document.getElementById("titulo").textContent = torneo.name;
+                document.getElementById("subtitulo").textContent =
+                    `${formatearFecha(torneo.tournament_date)} · ${torneo.game_modes?.name || ""}`;
+
+                const { data: cats, error: errorCats } = await supabase
+                    .from("tournament_categories")
+                    .select("id, name, display_order, gender")
+                    .eq("tournament_id", torneoId)
+                    .order("display_order", { ascending: true });
+
+                if (errorCats) throw errorCats;
+                categorias = cats || [];
+
+                const { data: scorecards, error: errorSc } = await supabase
+                    .from("scorecards")
+                    .select(`
+                    id,
+                    display_name,
+                    gross,
+                    net,
+                    total,
+                    card_status,
+                    category_id,
+                    official_index,
+                    playing_handicap,
+                    player_gender,
+                    hole_scores
+                `)
+                    .eq("tournament_id", torneoId);
+
+                if (errorSc) throw errorSc;
+                jugadores = scorecards || [];
+
+                hoyosPorScorecard = {};
+
+                jugadores.forEach(j => {
+                    hoyosPorScorecard[j.id] = {};
+
+                    const holeScores = j.hole_scores || {};
+
+                    Object.entries(holeScores).forEach(([holeNumber, data]) => {
+                        const hole = Number(holeNumber);
+
+                        if (data && typeof data === "object") {
+                            hoyosPorScorecard[j.id][hole] = data.strokes ?? null;
+                        } else {
+                            hoyosPorScorecard[j.id][hole] = data ?? null;
+                        }
+                    });
+                });
+
+                renderTorneo();
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById("titulo").textContent = "Error";
+                document.getElementById("subtitulo").textContent = err.message || "";
+                document.getElementById("contenido").innerHTML = `<div class="empty">No se pudieron cargar los resultados.</div>`;
+            }
+        }
+
+        function renderTorneo() {
+            indiceAutoAbrir = null;
+
+            if (!jugadores.length) {
+                document.getElementById("contenido").innerHTML = `<div class="empty">No hay tarjetas válidas para mostrar.</div>`;
+                return;
+            }
+
+            let html = "";
+            let globalIndex = 0;
+            let scratchCaballerosAgregado = false;
+            let scratchDamasAgregado = false;
+
+            function renderTablaCategoria(titulo, lista, esScratch = false) {
+                if (!lista.length) return;
+
+                const columnas = (esAmericana() || esScratch)
+                    ? `
+                <th>Pos</th>
+                <th>Jugador</th>
+                <th>Gross</th>
+              `
+                    : `
+                <th>Pos</th>
+                <th>Jugador</th>
+                <th>Index</th>
+                <th>Gross</th>
+                <th>HCP</th>
+                <th>Neto</th>
+                <th>Total</th>
+              `;
+
+                const colspanDetalle = (esAmericana() || esScratch) ? 3 : 7;
+
+                html += `
+            <div class="categoria-card">
+                <div class="categoria-header">${titulo}</div>
+                <div class="tabla-wrap">
+                    <table>
+                        <thead>
+                            <tr>${columnas}</tr>
+                        </thead>
+                        <tbody>
+        `;
+
+                let posicion = 1;
+                let colorIdx = 0;
+
+                lista.forEach(j => {
+                    const idx = esScratch
+                        ? `scratch-${titulo.replace(/\s+/g, "-").toLowerCase()}-${globalIndex++}`
+                        : globalIndex++;
+
+                    const posMostrar = esNoValido(j) ? "" : posicion++;
+                    const rowColor = colorIdx % 2 === 0 ? "row-white" : "row-gray";
+                    colorIdx++;
+
+                    const empatados = esNoValido(j)
+                        ? []
+                        : lista.filter(r =>
+                            r.id !== j.id &&
+                            !esNoValido(r) &&
+                            (
+                                esScratch
+                                    ? parseNumero(r.gross) === parseNumero(j.gross)
+                                    : valorPrincipal(r) === valorPrincipal(j)
+                            )
+                        );
+
+                    const coincideJugadorBuscado = coincideBusquedaJugador(j.display_name, busquedaJugador);
+
+                    if (!esScratch && coincideJugadorBuscado && indiceAutoAbrir === null) {
+                        indiceAutoAbrir = idx;
+                    }
+
+                    const highlight = coincideJugadorBuscado
+                        ? ' style="outline: 2px solid #86efac;"'
+                        : '';
+
+                    const filaSimple = `
+                <td>${posMostrar}</td>
+                <td class="nombre">${j.display_name}</td>
+                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross ?? "")}</td>
+            `;
+
+                    const filaNormal = `
+                <td>${posMostrar}</td>
+                <td class="nombre">${j.display_name}</td>
+                <td>${j.official_index ?? ""}</td>
+                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross ?? "")}</td>
+                <td>${j.playing_handicap ?? ""}</td>
+                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.net ?? "")}</td>
+                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>
+            `;
+
+                    html += `
+                <tr id="player-${idx}" class="player-row ${rowColor}"${highlight} onclick="toggleDetalle('${idx}')">
+                    ${(esAmericana() || esScratch) ? filaSimple : filaNormal}
+                </tr>
+                <tr id="detail-${idx}" class="detail-row">
+                    <td colspan="${colspanDetalle}" class="detail-cell">
+                        ${detalleJugadorHtml(j, posMostrar, empatados, titulo, esScratch)}
+                    </td>
+                </tr>
+            `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+            }
+
+            function renderScratch(genero) {
+                if (!esMedal()) return;
+
+                if (genero === "male" && scratchCaballerosAgregado) return;
+                if (genero === "female" && scratchDamasAgregado) return;
+
+                const indexMin = -6;
+                const indexMax = genero === "male" ? 9 : 54;
+                const titulo = genero === "male" ? "Scratch Caballeros" : "Scratch Damas";
+
+                const listaScratch = jugadores
+                    .filter(j => jugadorEnRangoScratch(j, genero))
+                    .slice()
+                    .sort((a, b) => {
+
+                        const ea = String(a.card_status || "").toLowerCase();
+                        const eb = String(b.card_status || "").toLowerCase();
+
+                        if (ea !== "valid" || eb !== "valid") {
+                            return compararJugadores(a, b);
+                        }
+
+                        const ag = valorGross(a);
+                        const bg = valorGross(b);
+
+                        if (ag !== bg) return ag - bg;
+
+                        // usar exactamente el mismo desempate
+                        // que usan las categorías normales
+
+                        const criterios = [
+                            [10, 18],
+                            [13, 18],
+                            [16, 18],
+                            [17, 18],
+                            [18, 18]
+                        ];
+
+                        const hoyosA = hoyosPorScorecard[a.id] || {};
+                        const hoyosB = hoyosPorScorecard[b.id] || {};
+
+                        for (const [desde, hasta] of criterios) {
+
+                            const sa = sumaHoyosArray(hoyosA, desde, hasta);
+                            const sb = sumaHoyosArray(hoyosB, desde, hasta);
+
+                            if (sa !== sb) return sa - sb;
+                        }
+
+                        return String(a.display_name || "")
+                            .localeCompare(String(b.display_name || ""), "es");
+                    })
+                    .slice(0, 3);
+
+                renderTablaCategoria(titulo, listaScratch, true);
+
+                if (genero === "male") scratchCaballerosAgregado = true;
+                if (genero === "female") scratchDamasAgregado = true;
+            }
+
+            console.log("CATEGORIAS ANTES DE ORDENAR:", categorias.map(c => c.name));
+            console.log("ORDENES:", categorias.map(c => ({
+                name: c.name,
+                orden: ordenCategoriaHistorica(c.name)
+            })));
+
+            categorias
+                .slice()
+                .sort((a, b) => {
+                    const oa = torneoActual?.legacy
+                        ? ordenCategoriaHistorica(a.name)
+                        : (a.display_order ?? 99);
+
+                    const ob = torneoActual?.legacy
+                        ? ordenCategoriaHistorica(b.name)
+                        : (b.display_order ?? 99);
+
+                    if (oa !== ob) return oa - ob;
+
+                    return String(a.name || "").localeCompare(String(b.name || ""), "es");
+                })
+                .forEach(cat => {
+
+                    const generoCat = generoCategoria(cat);
+
+                    if (generoCat === "male") renderScratch("male");
+                    if (generoCat === "female") renderScratch("female");
+
+                    const lista = jugadores
+                        .filter(j => j.category_id === cat.id)
+                        .slice()
+                        .sort(compararJugadores);
+
+                    if (!lista.length) return;
+
+                    renderTablaCategoria(cat.name, lista, false);
+                });
+
+            document.getElementById("contenido").innerHTML = html;
+
+            if (indiceAutoAbrir !== null) {
+                setTimeout(() => {
+                    const fila = document.getElementById(`player-${indiceAutoAbrir}`);
+                    if (fila) {
+                        fila.scrollIntoView({ behavior: "smooth", block: "center" });
+                        toggleDetalle(indiceAutoAbrir);
+                    }
+                }, 250);
+            }
+        }
+
+        window.toggleDetalle = function (idx) {
+            const allDetails = document.querySelectorAll(".detail-row");
+            const allRows = document.querySelectorAll(".player-row");
+
+            const detail = document.getElementById("detail-" + idx);
+            const row = document.getElementById("player-" + idx);
+
+            const abrir = !detail.classList.contains("show");
+
+            allDetails.forEach(d => d.classList.remove("show"));
+            allRows.forEach(r => r.classList.remove("open"));
+
+            if (abrir) {
+                detail.classList.add("show");
+                row.classList.add("open");
+            }
+        };
+
+        cargarTorneo();
+    </script>
+</body>
+
+</html>

@@ -318,6 +318,51 @@
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
         }
 
+
+        .net-click {
+            cursor: pointer;
+            font-weight: 800;
+            color: #166534;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .net-current {
+            background: linear-gradient(90deg, rgba(220, 252, 231, 0.35), rgba(187, 247, 208, 0.85), rgba(220, 252, 231, 0.35)) !important;
+            color: #14532d;
+            font-weight: 800;
+            box-shadow: inset 0 -2px 0 rgba(22, 101, 52, 0.18);
+        }
+
+        .net-current .net-click {
+            color: #14532d;
+            text-decoration: none;
+        }
+
+        .serie-other-netos {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 4px 0 14px;
+            font-size: 14px;
+        }
+
+        .serie-pill {
+            background: #eef6ef;
+            border: 1px solid #cfe6d2;
+            border-radius: 999px;
+            padding: 7px 10px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .serie-pill.actual {
+            background: #166534;
+            color: white;
+            border-color: #166534;
+        }
+
         @media (max-width: 860px) {
             .container {
                 width: 100%;
@@ -567,6 +612,12 @@
         let jugadores = [];
         let hoyosPorScorecard = {};
 
+        let torneosSerie = [];
+        let scorecardsSerie = [];
+        let scorecardsSeriePorJugador = new Map();
+        let scorecardsSeriePorId = new Map();
+        let detalleJugadoresMap = new Map();
+
         function fechaAObjeto(fecha) {
             const texto = String(fecha || "").trim();
             if (!texto) return null;
@@ -614,6 +665,279 @@
                 .replace(/[,.;:()]/g, " ")
                 .replace(/\s+/g, " ")
                 .trim();
+        }
+
+
+        function torneoTieneSerie() {
+            return !!torneoActual?.series_id && torneosSerie.length > 1;
+        }
+
+        function numeroRondaTorneo(torneo) {
+            const n = Number(torneo?.series_round_number);
+            return Number.isFinite(n) && n > 0 ? n : null;
+        }
+
+        function numeroRondaActual() {
+            return numeroRondaTorneo(torneoActual);
+        }
+
+        function claveJugadorSerie(j) {
+            const linked = String(j?.linked_player_id || "").trim();
+            if (linked) return `player:${linked}`;
+
+            const matricula = String(j?.aag_member_number || "").trim();
+            if (matricula) return `aag:${matricula}`;
+
+            return `name:${normalizarTexto(j?.display_name || "")}`;
+        }
+
+        function reconstruirHoyosScorecard(j) {
+            hoyosPorScorecard[j.id] = {};
+
+            const holeScores = j.hole_scores || {};
+
+            Object.entries(holeScores).forEach(([holeNumber, data]) => {
+                const hole = Number(holeNumber);
+
+                if (data && typeof data === "object") {
+                    hoyosPorScorecard[j.id][hole] = data.strokes ?? null;
+                } else {
+                    hoyosPorScorecard[j.id][hole] = data ?? null;
+                }
+            });
+        }
+
+        function netoSerie(j, ronda) {
+            const key = claveJugadorSerie(j);
+            const mapa = scorecardsSeriePorJugador.get(key);
+            const sc = mapa?.get(Number(ronda));
+
+            if (!sc || esNoValido(sc)) return "";
+
+            const net = parseNumero(sc.net);
+            if (net !== null && net > 0) return net;
+
+            const total = parseNumero(sc.total);
+            if (total !== null && total > 0) return total;
+
+            return "";
+        }
+
+        function scorecardSerie(j, ronda) {
+            const key = claveJugadorSerie(j);
+            return scorecardsSeriePorJugador.get(key)?.get(Number(ronda)) || null;
+        }
+
+        function posicionScorecardSerie(sc) {
+            if (!sc) return "";
+
+            const lista = scorecardsSerie
+                .filter(x =>
+                    String(x.tournament_id) === String(sc.tournament_id) &&
+                    String(x.category_id) === String(sc.category_id)
+                )
+                .slice()
+                .sort(compararJugadores);
+
+            let pos = 1;
+
+            for (const item of lista) {
+                if (esNoValido(item)) continue;
+
+                if (String(item.id) === String(sc.id)) return pos;
+
+                pos++;
+            }
+
+            return "";
+        }
+
+        function totalSerie(j) {
+            if (!torneoTieneSerie()) return valorPrincipal(j);
+
+            let total = 0;
+            let tieneAlgo = false;
+
+            torneosSerie.forEach(t => {
+                const ronda = numeroRondaTorneo(t);
+                if (!ronda) return;
+
+                const neto = netoSerie(j, ronda);
+                if (neto === "") return;
+
+                total += Number(neto);
+                tieneAlgo = true;
+            });
+
+            return tieneAlgo ? total : 999999;
+        }
+
+        function scorecardRondaActual(j) {
+            if (!torneoTieneSerie()) return j;
+
+            const ronda = numeroRondaActual();
+            if (!ronda) return j;
+
+            const sc = scorecardSerie(j, ronda);
+
+            if (sc) return sc;
+
+            if (String(j?.tournament_id || "") === String(torneoActual?.id || "")) {
+                return j;
+            }
+
+            return null;
+        }
+
+        function jugoRondaActual(j) {
+            const sc = scorecardRondaActual(j);
+            if (!sc || esNoValido(sc)) return false;
+
+            const net = parseNumero(sc.net);
+            const total = parseNumero(sc.total);
+            const gross = parseNumero(sc.gross);
+
+            return (net !== null && net > 0) ||
+                (total !== null && total > 0) ||
+                (gross !== null && gross > 0);
+        }
+
+        function compararSeriePorRondaActual(a, b) {
+            const aJugo = jugoRondaActual(a);
+            const bJugo = jugoRondaActual(b);
+
+            // Primero siempre los que participaron en ESTE torneo.
+            if (aJugo !== bJugo) return aJugo ? -1 : 1;
+
+            const scA = scorecardRondaActual(a) || a;
+            const scB = scorecardRondaActual(b) || b;
+
+            // Entre los que jugaron este torneo, respetar el orden/posición de ESTE día.
+            if (aJugo && bJugo) {
+                return compararJugadores(scA, scB);
+            }
+
+            // Los que no jugaron este torneo quedan abajo.
+            // Entre ellos, dejo primero los que tienen más rondas cargadas y luego menor total.
+            const rondasA = cantidadRondasJugadasSerie(a);
+            const rondasB = cantidadRondasJugadasSerie(b);
+
+            if (rondasA !== rondasB) return rondasB - rondasA;
+
+            const ta = totalSerie(a);
+            const tb = totalSerie(b);
+
+            if (ta !== tb) return ta - tb;
+
+            return String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+        }
+
+        function cantidadRondasJugadasSerie(j) {
+            if (!torneoTieneSerie()) return 0;
+
+            let cantidad = 0;
+
+            torneosSerie.forEach(t => {
+                const ronda = numeroRondaTorneo(t);
+                if (!ronda) return;
+
+                const sc = scorecardSerie(j, ronda);
+                if (sc && !esNoValido(sc) && netoSerie(j, ronda) !== "") {
+                    cantidad++;
+                }
+            });
+
+            return cantidad;
+        }
+
+        function posicionSerieEnRondaActual(j, listaCategoria) {
+            if (!torneoTieneSerie() || !jugoRondaActual(j)) return "";
+
+            const ordenadosDelDia = listaCategoria
+                .filter(x => jugoRondaActual(x))
+                .slice()
+                .sort((a, b) => {
+                    const scA = scorecardRondaActual(a) || a;
+                    const scB = scorecardRondaActual(b) || b;
+                    return compararJugadores(scA, scB);
+                });
+
+            const miKey = claveJugadorSerie(j);
+
+            const index = ordenadosDelDia.findIndex(x => claveJugadorSerie(x) === miKey);
+
+            return index >= 0 ? index + 1 : "";
+        }
+
+        function rondasSerieHtml(j, idx) {
+            if (!torneoTieneSerie()) return "";
+
+            const rondaActual = numeroRondaActual();
+
+            return torneosSerie.map(t => {
+                const ronda = numeroRondaTorneo(t);
+                if (!ronda) return "";
+
+                const sc = scorecardSerie(j, ronda);
+                const neto = netoSerie(j, ronda);
+                const claseActual = ronda === rondaActual ? "net-current" : "";
+
+                if (!sc || neto === "") {
+                    return `<td class="${claseActual}">-</td>`;
+                }
+
+                return `<td class="${claseActual}">
+                    <span class="net-click" onclick="event.stopPropagation(); toggleDetalle('${idx}', '${sc.id}')">${neto}</span>
+                </td>`;
+            }).join("");
+        }
+
+        function otrosNetosSerieHtml(j, scorecardActualDetalle, idx) {
+            if (!torneoTieneSerie()) return "";
+
+            const key = claveJugadorSerie(j);
+            const mapa = scorecardsSeriePorJugador.get(key);
+            if (!mapa) return "";
+
+            const rondaDetalle = Number(scorecardActualDetalle?.series_round_number || numeroRondaActual());
+
+            const pills = torneosSerie.map(t => {
+                const ronda = numeroRondaTorneo(t);
+                if (!ronda) return "";
+
+                const sc = mapa.get(ronda);
+                const neto = sc ? netoSerie(j, ronda) : "";
+
+                if (!sc || neto === "") return "";
+
+                const actual = ronda === rondaDetalle ? "actual" : "";
+
+                return `<span class="serie-pill ${actual}" onclick="event.stopPropagation(); toggleDetalle('${idx}', '${sc.id}')">Net${ronda} ${neto}</span>`;
+            }).filter(Boolean).join("");
+
+            if (!pills) return "";
+
+            return `<div class="serie-other-netos">${pills}</div>`;
+        }
+
+        function prepararSerie() {
+            scorecardsSeriePorJugador = new Map();
+            scorecardsSeriePorId = new Map();
+
+            scorecardsSerie.forEach(sc => {
+                reconstruirHoyosScorecard(sc);
+                scorecardsSeriePorId.set(String(sc.id), sc);
+
+                const ronda = Number(sc.series_round_number);
+                if (!ronda) return;
+
+                const key = claveJugadorSerie(sc);
+                if (!scorecardsSeriePorJugador.has(key)) {
+                    scorecardsSeriePorJugador.set(key, new Map());
+                }
+
+                scorecardsSeriePorJugador.get(key).set(ronda, sc);
+            });
         }
 
         function nombreModalidad() {
@@ -1021,23 +1345,52 @@
       `;
         }
 
-        function detalleJugadorHtml(j, posicion, empatados, categoriaNombre, esScratch = false) {
+
+        function empatadosParaScorecardDetalle(scDetalle, esScratch = false) {
+            if (!scDetalle || !torneoTieneSerie() || esNoValido(scDetalle)) return [];
+
+            const miTorneoId = String(scDetalle.tournament_id || "");
+            const miCategoriaId = String(scDetalle.category_id || "");
+            const miValor = esScratch ? parseNumero(scDetalle.gross) : valorPrincipal(scDetalle);
+
+            if (miValor === null || miValor === 999999) return [];
+
+            return scorecardsSerie
+                .filter(r => {
+                    if (!r || String(r.id) === String(scDetalle.id)) return false;
+                    if (String(r.tournament_id || "") !== miTorneoId) return false;
+                    if (String(r.category_id || "") !== miCategoriaId) return false;
+                    if (esNoValido(r)) return false;
+
+                    const valorRival = esScratch ? parseNumero(r.gross) : valorPrincipal(r);
+                    return valorRival !== null && valorRival === miValor;
+                })
+                .slice()
+                .sort((a, b) => compararJugadores(a, b));
+        }
+
+        function detalleJugadorHtml(j, posicion, empatados, categoriaNombre, esScratch = false, scorecardDetalle = null, idx = "") {
+            const jDetalle = scorecardDetalle || (torneoTieneSerie() ? scorecardRondaActual(j) : null) || j;
+            const posicionDetalle = torneoTieneSerie()
+                ? (jDetalle ? posicionScorecardSerie(jDetalle) : "")
+                : (scorecardDetalle ? posicionScorecardSerie(jDetalle) : posicion);
+
             const datosTop = esScratch
                 ? `
-                <div><strong>Puesto:</strong> ${posicion || ""}</div>
-                <div><strong>Gross:</strong> ${j.gross ?? ""}</div>
+                <div><strong>Puesto:</strong> ${posicionDetalle || ""}</div>
+                <div><strong>Gross:</strong> ${jDetalle.gross ?? ""}</div>
                 `
                 : esAmericana()
                     ? `
-                <div><strong>Puesto:</strong> ${posicion || ""}</div>
-                <div><strong>Gross:</strong> ${j.gross ?? ""}</div>
+                <div><strong>Puesto:</strong> ${posicionDetalle || ""}</div>
+                <div><strong>Gross:</strong> ${jDetalle.gross ?? ""}</div>
                 `
                     : `
-                <div><strong>Puesto:</strong> ${posicion || ""}</div>
-                <div><strong>Index:</strong> ${j.official_index ?? ""}</div>
-                <div><strong>Gross:</strong> ${j.gross ?? ""}</div>
-                <div><strong>HCP:</strong> ${j.playing_handicap ?? ""}</div>
-                <div><strong>Neto:</strong> ${j.net ?? ""}</div>
+                <div><strong>Puesto:</strong> ${posicionDetalle || ""}</div>
+                <div><strong>Index:</strong> ${jDetalle.official_index ?? ""}</div>
+                <div><strong>Gross:</strong> ${jDetalle.gross ?? ""}</div>
+                <div><strong>HCP:</strong> ${jDetalle.playing_handicap ?? ""}</div>
+                <div><strong>Neto:</strong> ${jDetalle.net ?? ""}</div>
                 `;
 
             return `
@@ -1046,9 +1399,10 @@
             ${datosTop}
           </div>
 
-          ${obtenerDetalleDesempate(j, empatados, esScratch)}
-          ${detalleDesktop(j)}
-          ${detalleMobile(j)}
+          ${otrosNetosSerieHtml(j, jDetalle, idx)}
+          ${obtenerDetalleDesempate(jDetalle, torneoTieneSerie() ? empatadosParaScorecardDetalle(jDetalle, esScratch) : empatados, esScratch)}
+          ${detalleDesktop(jDetalle)}
+          ${detalleMobile(jDetalle)}
         </div>
       `;
         }
@@ -1251,6 +1605,8 @@
                     id,
                     name,
                     tournament_date,
+                    series_id,
+                    series_round_number,
                     game_modes (
                     name
                     )
@@ -1284,6 +1640,9 @@
                     .from("scorecards")
                     .select(`
                     id,
+                    tournament_id,
+                    linked_player_id,
+                    aag_member_number,
                     display_name,
                     gross,
                     net,
@@ -1302,21 +1661,62 @@
 
                 hoyosPorScorecard = {};
 
-                jugadores.forEach(j => {
-                    hoyosPorScorecard[j.id] = {};
+                jugadores.forEach(j => reconstruirHoyosScorecard(j));
 
-                    const holeScores = j.hole_scores || {};
+                torneosSerie = [];
+                scorecardsSerie = [];
 
-                    Object.entries(holeScores).forEach(([holeNumber, data]) => {
-                        const hole = Number(holeNumber);
+                if (torneo.series_id) {
+                    const { data: rondas, error: errorRondas } = await supabase
+                        .from("tournaments")
+                        .select("id, name, tournament_date, series_id, series_round_number")
+                        .eq("series_id", torneo.series_id)
+                        .order("series_round_number", { ascending: true });
 
-                        if (data && typeof data === "object") {
-                            hoyosPorScorecard[j.id][hole] = data.strokes ?? null;
-                        } else {
-                            hoyosPorScorecard[j.id][hole] = data ?? null;
-                        }
-                    });
-                });
+                    if (errorRondas) throw errorRondas;
+
+                    torneosSerie = (rondas || [])
+                        .filter(t => numeroRondaTorneo(t))
+                        .sort((a, b) => numeroRondaTorneo(a) - numeroRondaTorneo(b));
+
+                    const idsRondas = torneosSerie.map(t => t.id);
+
+                    if (idsRondas.length > 1) {
+                        const { data: scSerie, error: errorScSerie } = await supabase
+                            .from("scorecards")
+                            .select(`
+                                id,
+                                tournament_id,
+                                linked_player_id,
+                                aag_member_number,
+                                display_name,
+                                gross,
+                                net,
+                                total,
+                                card_status,
+                                category_id,
+                                official_index,
+                                playing_handicap,
+                                player_gender,
+                                hole_scores
+                            `)
+                            .in("tournament_id", idsRondas);
+
+                        if (errorScSerie) throw errorScSerie;
+
+                        scorecardsSerie = (scSerie || []).map(sc => {
+                            const t = torneosSerie.find(r => String(r.id) === String(sc.tournament_id));
+                            return {
+                                ...sc,
+                                series_round_number: numeroRondaTorneo(t),
+                                tournament_name: t?.name || "",
+                                tournament_date: t?.tournament_date || ""
+                            };
+                        });
+
+                        prepararSerie();
+                    }
+                }
 
                 renderTorneo();
 
@@ -1330,6 +1730,7 @@
 
         function renderTorneo() {
             indiceAutoAbrir = null;
+            detalleJugadoresMap = new Map();
 
             if (!jugadores.length) {
                 document.getElementById("contenido").innerHTML = `<div class="empty">No hay tarjetas válidas para mostrar.</div>`;
@@ -1344,7 +1745,17 @@
             function renderTablaCategoria(titulo, lista, esScratch = false) {
                 if (!lista.length) return;
 
-                const columnas = (esAmericana() || esScratch)
+                const columnasSerie = torneoTieneSerie() && !esScratch && !esAmericana()
+                    ? `
+                <th>Pos</th>
+                <th>Jugador</th>
+                <th>Index</th>
+                ${torneosSerie.map(t => `<th>Net${numeroRondaTorneo(t)}</th>`).join("")}
+                <th>Total</th>
+              `
+                    : "";
+
+                const columnas = columnasSerie || ((esAmericana() || esScratch)
                     ? `
                 <th>Pos</th>
                 <th>Jugador</th>
@@ -1358,9 +1769,11 @@
                 <th>HCP</th>
                 <th>Neto</th>
                 <th>Total</th>
-              `;
+              `);
 
-                const colspanDetalle = (esAmericana() || esScratch) ? 3 : 7;
+                const colspanDetalle = columnasSerie
+                    ? (4 + torneosSerie.length)
+                    : ((esAmericana() || esScratch) ? 3 : 7);
 
                 html += `
             <div class="categoria-card">
@@ -1381,7 +1794,9 @@
                         ? `scratch-${titulo.replace(/\s+/g, "-").toLowerCase()}-${globalIndex++}`
                         : globalIndex++;
 
-                    const posMostrar = esNoValido(j) ? "" : posicion++;
+                    const posMostrar = torneoTieneSerie() && !esScratch && !esAmericana()
+                        ? posicionSerieEnRondaActual(j, lista)
+                        : (esNoValido(j) ? "" : posicion++);
                     const rowColor = colorIdx % 2 === 0 ? "row-white" : "row-gray";
                     colorIdx++;
 
@@ -1393,7 +1808,7 @@
                             (
                                 esScratch
                                     ? parseNumero(r.gross) === parseNumero(j.gross)
-                                    : valorPrincipal(r) === valorPrincipal(j)
+                                    : (torneoTieneSerie() ? totalSerie(r) : valorPrincipal(r)) === (torneoTieneSerie() ? totalSerie(j) : valorPrincipal(j))
                             )
                         );
 
@@ -1413,6 +1828,14 @@
                 <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross ?? "")}</td>
             `;
 
+                    const filaSerie = `
+                <td>${posMostrar}</td>
+                <td class="nombre">${j.display_name}</td>
+                <td>${j.official_index ?? ""}</td>
+                ${rondasSerieHtml(j, idx)}
+                <td>${totalSerie(j) === 999999 ? "" : totalSerie(j)}</td>
+            `;
+
                     const filaNormal = `
                 <td>${posMostrar}</td>
                 <td class="nombre">${j.display_name}</td>
@@ -1423,13 +1846,25 @@
                 <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>
             `;
 
+                    const filaVisible = torneoTieneSerie() && !esScratch && !esAmericana()
+                        ? filaSerie
+                        : ((esAmericana() || esScratch) ? filaSimple : filaNormal);
+
+                    detalleJugadoresMap.set(String(idx), {
+                        j,
+                        posicion: posMostrar,
+                        empatados,
+                        categoriaNombre: titulo,
+                        esScratch
+                    });
+
                     html += `
-                <tr id="player-${idx}" class="player-row ${rowColor}"${highlight} onclick="toggleDetalle('${idx}')">
-                    ${(esAmericana() || esScratch) ? filaSimple : filaNormal}
+                <tr id="player-${idx}" data-serie-key="${claveJugadorSerie(j)}" class="player-row ${rowColor}"${highlight} onclick="toggleDetalle('${idx}')">
+                    ${filaVisible}
                 </tr>
                 <tr id="detail-${idx}" class="detail-row">
                     <td colspan="${colspanDetalle}" class="detail-cell">
-                        ${detalleJugadorHtml(j, posMostrar, empatados, titulo, esScratch)}
+                        ${detalleJugadorHtml(j, posMostrar, empatados, titulo, esScratch, null, idx)}
                     </td>
                 </tr>
             `;
@@ -1534,7 +1969,7 @@
                     const lista = jugadores
                         .filter(j => j.category_id === cat.id)
                         .slice()
-                        .sort(compararJugadores);
+                        .sort(torneoTieneSerie() ? compararSeriePorRondaActual : compararJugadores);
 
                     if (!lista.length) return;
 
@@ -1554,19 +1989,43 @@
             }
         }
 
-        window.toggleDetalle = function (idx) {
+        window.toggleDetalle = function (idx, scorecardId = null) {
             const allDetails = document.querySelectorAll(".detail-row");
             const allRows = document.querySelectorAll(".player-row");
 
             const detail = document.getElementById("detail-" + idx);
             const row = document.getElementById("player-" + idx);
 
-            const abrir = !detail.classList.contains("show");
+            if (!detail || !row) return;
+
+            const abrir = scorecardId || !detail.classList.contains("show");
 
             allDetails.forEach(d => d.classList.remove("show"));
             allRows.forEach(r => r.classList.remove("open"));
 
             if (abrir) {
+                const datos = detalleJugadoresMap.get(String(idx));
+
+                if (datos) {
+                    const scDetalle = scorecardId
+                        ? scorecardsSeriePorId.get(String(scorecardId))
+                        : null;
+
+                    const cell = detail.querySelector(".detail-cell");
+
+                    if (cell) {
+                        cell.innerHTML = detalleJugadorHtml(
+                            datos.j,
+                            datos.posicion,
+                            datos.empatados,
+                            datos.categoriaNombre,
+                            datos.esScratch,
+                            scDetalle,
+                            idx
+                        );
+                    }
+                }
+
                 detail.classList.add("show");
                 row.classList.add("open");
             }
