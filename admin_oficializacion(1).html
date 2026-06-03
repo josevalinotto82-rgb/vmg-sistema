@@ -3459,8 +3459,18 @@
 
     async function upsertScorecardIndividual(reg, payload) {
       const scorecardExistente = extraerScorecard(reg);
+
       if (scorecardExistente?.id) {
-        const { error } = await supabase.from("scorecards").update(payload).eq("id", scorecardExistente.id);
+        const { hole_scores, ...payloadSinHoleScores } = payload;
+
+        const { error } = await supabase
+          .from("scorecards")
+          .update({
+            ...payloadSinHoleScores,
+            card_status: scorecardExistente.card_status || payload.card_status || "npt"
+          })
+          .eq("id", scorecardExistente.id);
+
         if (error) throw error;
         return scorecardExistente.id;
       }
@@ -3473,6 +3483,7 @@
         aag_member_number: getAagMemberNumber(reg),
         ...payload
       }).select("id").single();
+
       if (error) throw error;
       return nuevaScorecard.id;
     }
@@ -3481,9 +3492,14 @@
       const existente = pairSharedScorecard(reg1, reg2);
 
       if (existente?.id) {
+        const { hole_scores, ...payloadSinHoleScores } = payload;
+
         const { error } = await supabase
           .from("scorecards")
-          .update(payload)
+          .update({
+            ...payloadSinHoleScores,
+            card_status: existente.card_status || payload.card_status || "npt"
+          })
           .eq("id", existente.id);
 
         if (error) throw error;
@@ -3504,7 +3520,6 @@
         .single();
 
       if (error) throw error;
-
       return nuevaScorecard.id;
     }
 

@@ -993,8 +993,7 @@
                 <div class="sub">Ganadores, scratch, informe general y estadísticas hoyo por hoyo.</div>
             </div>
             <div class="actions no-print">
-                <button id="btnImprimir" class="btn-primary">Imprimir Resumen</button>
-                <button id="btnInformeJugadores" class="btn-secondary">Informe jugadores</button>
+                <button id="btnImprimir" class="btn-primary">Imprimir A4</button>
             </div>
         </div>
 
@@ -1149,12 +1148,6 @@
             renderPrintReport();
             window.print();
         });
-
-        el("btnInformeJugadores").addEventListener("click", () => {
-            renderInformeJugadores();
-            window.print();
-        });
-
         torneoSelect.addEventListener("change", cargarInforme);
         el("topCategoria").addEventListener("change", renderTodo);
         el("topScratch").addEventListener("change", renderTodo);
@@ -1291,84 +1284,6 @@
 
             return String(a.display_name)
                 .localeCompare(String(b.display_name), "es");
-        }
-
-        function renderInformeJugadores() {
-
-            const validas = scorecards.filter(s =>
-                s.card_status === "valid" || s.card_status === "cargada"
-            );
-
-            const grupos = {};
-
-            validas.forEach(sc => {
-                const cat = sc.category_name || "Sin categoría";
-
-                if (!grupos[cat]) grupos[cat] = [];
-
-                grupos[cat].push(sc);
-            });
-
-            let html = `
-    <div class="print-page">
-        <div class="print-title">${esc(torneoActual.name)}</div>
-        <div class="print-date">
-            Informe completo de jugadores · ${fechaTexto(torneoActual.tournament_date)}
-        </div>
-    `;
-
-            const categoriasOrdenadas = Object.keys(grupos)
-                .sort((a, b) => ordenCategoria(a) - ordenCategoria(b));
-
-            categoriasOrdenadas.forEach(cat => {
-
-                const jugadores = grupos[cat]
-                    .sort((a, b) => compareScore(a, b, "net"));
-
-                html += `
-            <div class="print-section-title">
-                ${esc(cat)}
-            </div>
-
-            <table class="print-series-table informe-jugadores">
-                <thead>
-                    <tr>
-                        <th style="width:45px">Pos</th>
-                        <th style="width:90px">Matrícula</th>
-                        <th class="left">Jugador</th>
-                        <th style="width:60px">Gross</th>
-                        <th style="width:60px">HCP</th>
-                        <th style="width:60px">Neto</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-                jugadores.forEach((j, idx) => {
-
-                    html += `
-                <tr>
-                    <td><b>${idx + 1}</b></td>
-                    <td>${esc(j.aag_member_number || "—")}</td>
-                    <td class="left">
-                        <b>${esc(j.display_name || "")}</b>
-                    </td>
-                    <td>${fmt(j.gross, 0)}</td>
-                    <td>${fmt(j.playing_handicap, 0)}</td>
-                    <td><b>${fmt(j.net, 0)}</b></td>
-                </tr>
-            `;
-                });
-
-                html += `
-                </tbody>
-            </table>
-        `;
-            });
-
-            html += `</div>`;
-
-            el("printArea").innerHTML = html;
         }
 
         async function init() {
@@ -2571,49 +2486,16 @@
                         <tbody>
                 `;
 
-                const esSimultanea = String(torneoActual?.start_type || "")
-                    .toLowerCase()
-                    .includes("simult");
-
                 const lineas = (b.starting_lines || []).sort((a, b) => {
-                    if (esSimultanea) {
-                        const hoyoA = Number(a.starting_hole || 0);
-                        const hoyoB = Number(b.starting_hole || 0);
-
-                        if (hoyoA !== hoyoB) return hoyoA - hoyoB;
-
-                        const bisA = String(a.label || "").toLowerCase().includes("bis") ? 1 : 0;
-                        const bisB = String(b.label || "").toLowerCase().includes("bis") ? 1 : 0;
-
-                        return bisA - bisB;
-                    }
-
                     return (a.display_order ?? 0) - (b.display_order ?? 0) ||
                         String(a.line_time || "").localeCompare(String(b.line_time || "")) ||
                         (a.starting_hole ?? 0) - (b.starting_hole ?? 0);
                 });
 
                 for (const linea of lineas) {
-                    const esSimultanea = String(torneoActual?.start_type || "")
-                        .toLowerCase()
-                        .includes("simult");
-
-                    let cabecera = "";
-
-                    if (esSimultanea) {
-                        const hoyo = linea.starting_hole ? Number(linea.starting_hole) : "";
-                        const label = String(linea.label || "").toLowerCase();
-
-                        const esBis = label.includes("bis");
-
-                        cabecera = hoyo
-                            ? `H${hoyo}${esBis ? " BIS" : ""}`
-                            : (esBis ? "BIS" : "");
-                    } else {
-                        cabecera = linea.line_time
-                            ? horaTexto(linea.line_time)
-                            : (linea.starting_hole ? `H${linea.starting_hole}` : "");
-                    }
+                    const cabecera = linea.line_time
+                        ? horaTexto(linea.line_time)
+                        : (linea.starting_hole ? `H${linea.starting_hole}` : (linea.label || ""));
 
                     const slots = (linea.line_slots || [])
                         .sort((a, b) => (a.slot_number || 0) - (b.slot_number || 0))

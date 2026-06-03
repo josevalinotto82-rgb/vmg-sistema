@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Uso de la App - Villa María Golf</title>
+
+  <style>
+    :root {
+      --bg: #f3f6f1;
+      --card: #ffffff;
+      --line: #e5e7eb;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --green: #166534;
+      --blue: #0841bb;
+      --gold: #e7b067;
+      --red: #b91c1c;
+      --soft-green: #dcfce7;
+      --soft-blue: #dbeafe;
+      --soft-amber: #fef3c7;
+      --soft-red: #fee2e2;
+      --soft-gray: #f3f4f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .page {
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 10px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .title-wrap h1 {
+      margin: 0 0 4px;
+      font-size: 24px;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+      margin-bottom: 16px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 160px 160px 160px auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+
+    select,
+    input {
+      width: 100%;
+      height: 36px;
+      border: 1px solid #d1d5db;
+      border-radius: 9px;
+      padding: 6px 8px;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      height: 36px;
+      padding: 0 14px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .btn-light {
+      background: var(--gold);
+      color: #fff;
+    }
+
+    .status-text.ok {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .status-text.error {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .status-text.warn {
+      color: #b45309;
+      font-weight: 700;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
+      gap: 8px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fafafa;
+      min-height: 86px;
+    }
+
+    .stat .k {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 8px;
+      line-height: 1.25;
+    }
+
+    .stat .v {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .stat .mini {
+      margin-top: 7px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-weight: 900;
+      color: #111827;
+      font-size: 15px;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      width: 100%;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 7px;
+      vertical-align: middle;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--green);
+      color: white;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    td.center {
+      text-align: center;
+    }
+
+    td.right {
+      text-align: right;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fbfbfb;
+    }
+
+    tbody tr:hover {
+      background: #f9fafb;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tag.green {
+      background: var(--soft-green);
+      color: var(--green);
+    }
+
+    .tag.blue {
+      background: var(--soft-blue);
+      color: #1d4ed8;
+    }
+
+    .tag.amber {
+      background: var(--soft-amber);
+      color: #92400e;
+    }
+
+    .tag.red {
+      background: var(--soft-red);
+      color: var(--red);
+    }
+
+    .tag.gray {
+      background: var(--soft-gray);
+      color: #374151;
+    }
+
+    .bar-wrap {
+      width: 100%;
+      height: 10px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 7px;
+    }
+
+    .bar {
+      height: 100%;
+      background: var(--green);
+      border-radius: 999px;
+      width: 0%;
+      transition: width .25s ease;
+    }
+
+    .home-btn {
+      position: fixed;
+      top: 30px;
+      right: 27px;
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      background: #166534;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      z-index: 9999;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .home-btn:hover {
+      background: #166534;
+      transform: scale(1.05);
+    }
+
+    .empty {
+      padding: 18px;
+      color: var(--muted);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    @media (max-width: 1300px) {
+      .stats {
+        grid-template-columns: repeat(3, minmax(130px, 1fr));
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .page {
+        padding: 12px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .title-wrap h1 {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="home-btn" id="btnHome" title="Volver al panel">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+        stroke-width="2" />
+    </svg>
+  </div>
+
+  <div class="page">
+    <div class="topbar">
+      <div class="title-wrap">
+        <h1>Uso de la App</h1>
+        <div class="sub">Seguimiento de socios, accesos, páginas usadas y adopción de VMGC Members.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="field">
+          <label>Buscar socio / email</label>
+          <input id="buscador" type="text" placeholder="Nombre, matrícula o email..." />
+        </div>
+        <div class="field">
+          <label>Desde</label>
+          <input id="fechaDesde" type="date" />
+        </div>
+        <div class="field">
+          <label>Hasta</label>
+          <input id="fechaHasta" type="date" />
+        </div>
+        <div class="field">
+          <label>Página</label>
+          <select id="filtroPagina">
+            <option value="">Todas</option>
+            <option value="panel">Panel</option>
+            <option value="grilla">Grilla</option>
+            <option value="consulta_torneos">Consulta torneos</option>
+            <option value="perfil">Perfil</option>
+            <option value="torneos_internos">Torneos internos</option>
+          </select>
+        </div>
+        <button id="btnActualizar" class="btn btn-primary">Actualizar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="estado" class="status-text">Cargando...</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="k">Perfiles activos</div>
+        <div class="v" id="statPerfiles">0</div>
+        <div class="mini">Usuarios habilitados</div>
+      </div>
+      <div class="stat">
+        <div class="k">Usuarios que usaron app</div>
+        <div class="v" id="statUsuariosUsaron">0</div>
+        <div class="mini" id="statUsuariosUsaronMini">—</div>
+      </div>
+      <div class="stat">
+        <div class="k">Uso general</div>
+        <div class="v" id="statPorcentajeUso">0%</div>
+        <div class="bar-wrap">
+          <div id="barUsoGeneral" class="bar"></div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="k">Activos últimos 7 días</div>
+        <div class="v" id="statActivos7">0</div>
+        <div class="mini" id="statActivos7Mini">—</div>
+      </div>
+      <div class="stat">
+        <div class="k">Activos últimos 30 días</div>
+        <div class="v" id="statActivos30">0</div>
+        <div class="mini" id="statActivos30Mini">—</div>
+      </div>
+      <div class="stat">
+        <div class="k">Eventos registrados</div>
+        <div class="v" id="statEventos">0</div>
+        <div class="mini">Acciones totales</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-title">
+          <span>Uso por página</span>
+          <span class="tag green" id="tagPaginas">0 páginas</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Página</th>
+                <th>Eventos</th>
+                <th>Usuarios</th>
+                <th>% sobre usuarios</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyPaginas"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <span>Uso por acción</span>
+          <span class="tag blue" id="tagAcciones">0 acciones</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Acción</th>
+                <th>Página</th>
+                <th>Eventos</th>
+                <th>Usuarios</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAcciones"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <span>Ranking de socios más activos</span>
+        <span class="tag amber" id="tagRanking">Top 30</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Socio</th>
+              <th>Email</th>
+              <th>Matrícula</th>
+              <th>Eventos</th>
+              <th>Páginas usadas</th>
+              <th>Último uso</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyRanking"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-title">
+          <span>Últimos movimientos</span>
+          <span class="tag gray" id="tagMovimientos">Últimos 50</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Email</th>
+                <th>Página</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyMovimientos"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <span>Usuarios con cuenta pero sin uso</span>
+          <span class="tag red" id="tagSinUso">0</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Socio</th>
+                <th>Email</th>
+                <th>Matrícula</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tbodySinUso"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://bnnfolhrqxgxjmobclrm.supabase.co",
+      "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+    );
+
+    const $ = (id) => document.getElementById(id);
+
+    const estado = $("estado");
+    const buscador = $("buscador");
+    const fechaDesde = $("fechaDesde");
+    const fechaHasta = $("fechaHasta");
+    const filtroPagina = $("filtroPagina");
+
+    const PAGE_LABELS = {
+      panel: "Panel",
+      grilla: "Grilla",
+      consulta_torneos: "Consulta torneos",
+      perfil: "Perfil",
+      torneos_internos: "Torneos internos"
+    };
+
+    const ACTION_LABELS = {
+      view: "Vista",
+      inscripcion: "Inscripción",
+      ver_resultado: "Ver resultado",
+      entrar_torneo: "Entrar torneo"
+    };
+
+    function setEstado(texto, tipo = "") {
+      estado.textContent = texto;
+      estado.className = `status-text ${tipo}`.trim();
+    }
+
+    function fmtNum(n) {
+      return new Intl.NumberFormat("es-AR").format(Number(n || 0));
+    }
+
+    function fmtPct(n) {
+      const v = Number(n || 0);
+      return `${v.toFixed(1).replace(".0", "")}%`;
+    }
+
+    function fmtFecha(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "—";
+      return d.toLocaleString("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function isoDesdeInput(value, finDelDia = false) {
+      if (!value) return null;
+      return `${value}T${finDelDia ? "23:59:59" : "00:00:00"}`;
+    }
+
+    function haceDias(dias) {
+      const d = new Date();
+      d.setDate(d.getDate() - dias);
+      return d;
+    }
+
+    function normalizar(txt) {
+      return String(txt || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+    }
+
+    async function exigirAdmin() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        window.location.href = "login.html";
+        throw new Error("Sin sesión");
+      }
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("role, active")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (error || !profile || profile.active !== true || profile.role !== "admin") {
+        alert("No tenés permiso para entrar a esta página.");
+        window.location.href = "panel.html";
+        throw new Error("Sin permiso admin");
+      }
+    }
+
+    async function cargarDatos() {
+      try {
+        setEstado("Cargando datos de uso...");
+
+        const desde = isoDesdeInput(fechaDesde.value, false);
+        const hasta = isoDesdeInput(fechaHasta.value, true);
+        const pageFilter = filtroPagina.value;
+        const q = normalizar(buscador.value);
+
+        const [{ data: profiles, error: profilesError }, { data: players, error: playersError }] = await Promise.all([
+          supabase.from("profiles").select("id, role, active"),
+          supabase.from("players").select("id, profile_id, full_name, first_name, last_name, aag_member_number, email")
+        ]);
+
+        if (profilesError) throw profilesError;
+        if (playersError) throw playersError;
+
+        let eventosQuery = supabase
+          .from("app_usage_events")
+          .select("id, user_id, player_id, email, page, action, tournament_id, metadata, created_at")
+          .order("created_at", { ascending: false })
+          .limit(50000);
+
+        if (desde) eventosQuery = eventosQuery.gte("created_at", desde);
+        if (hasta) eventosQuery = eventosQuery.lte("created_at", hasta);
+        if (pageFilter) eventosQuery = eventosQuery.eq("page", pageFilter);
+
+        const { data: eventos, error: eventosError } = await eventosQuery;
+        if (eventosError) throw eventosError;
+
+        console.log("Eventos encontrados:", eventos.length);
+
+        procesarDatos(profiles || [], players || [], eventos || [], q);
+        setEstado(`Datos actualizados · ${fmtNum((eventos || []).length)} eventos leídos`, "ok");
+      } catch (err) {
+        console.error(err);
+        setEstado(err.message || "No se pudieron cargar los datos.", "error");
+      }
+    }
+
+    function procesarDatos(profiles, players, eventos, q) {
+      const profilesActivos = profiles.filter(p => p.active === true);
+      const playersByProfile = new Map(players.filter(p => p.profile_id).map(p => [String(p.profile_id), p]));
+      const eventosByUser = new Map();
+
+      for (const ev of eventos) {
+        if (!ev.user_id) continue;
+        const key = String(ev.user_id);
+        if (!eventosByUser.has(key)) eventosByUser.set(key, []);
+        eventosByUser.get(key).push(ev);
+      }
+
+      let usuariosConUso = [...new Set(eventos.map(e => e.user_id).filter(Boolean).map(String))];
+
+      const activos7 = new Set();
+      const activos30 = new Set();
+      const limite7 = haceDias(7).getTime();
+      const limite30 = haceDias(30).getTime();
+
+      for (const ev of eventos) {
+        if (!ev.user_id || !ev.created_at) continue;
+        const t = new Date(ev.created_at).getTime();
+        if (t >= limite7) activos7.add(String(ev.user_id));
+        if (t >= limite30) activos30.add(String(ev.user_id));
+      }
+
+      const totalActivos = profilesActivos.length;
+      const porcentajeUso = totalActivos ? usuariosConUso.length / totalActivos * 100 : 0;
+      const porcentaje7 = totalActivos ? activos7.size / totalActivos * 100 : 0;
+      const porcentaje30 = totalActivos ? activos30.size / totalActivos * 100 : 0;
+
+      $("statPerfiles").textContent = fmtNum(totalActivos);
+      $("statUsuariosUsaron").textContent = fmtNum(usuariosConUso.length);
+      $("statUsuariosUsaronMini").textContent = `${fmtPct(porcentajeUso)} de perfiles activos`;
+      $("statPorcentajeUso").textContent = fmtPct(porcentajeUso);
+      $("barUsoGeneral").style.width = `${Math.min(porcentajeUso, 100)}%`;
+      $("statActivos7").textContent = fmtNum(activos7.size);
+      $("statActivos7Mini").textContent = `${fmtPct(porcentaje7)} de perfiles activos`;
+      $("statActivos30").textContent = fmtNum(activos30.size);
+      $("statActivos30Mini").textContent = `${fmtPct(porcentaje30)} de perfiles activos`;
+      $("statEventos").textContent = fmtNum(eventos.length);
+
+      renderUsoPorPagina(eventos, totalActivos);
+      renderUsoPorAccion(eventos);
+      renderRanking(eventosByUser, playersByProfile, q);
+      renderMovimientos(eventos, playersByProfile, q);
+      renderSinUso(profilesActivos, playersByProfile, eventosByUser, q);
+    }
+
+    function renderUsoPorPagina(eventos, totalActivos) {
+      const map = new Map();
+      for (const ev of eventos) {
+        const key = ev.page || "sin_pagina";
+        if (!map.has(key)) map.set(key, { eventos: 0, usuarios: new Set() });
+        map.get(key).eventos++;
+        if (ev.user_id) map.get(key).usuarios.add(String(ev.user_id));
+      }
+
+      const rows = [...map.entries()].sort((a, b) => b[1].eventos - a[1].eventos);
+      $("tagPaginas").textContent = `${rows.length} páginas`;
+
+      $("tbodyPaginas").innerHTML = rows.length ? rows.map(([page, info]) => {
+        const usuarios = info.usuarios.size;
+        const pct = totalActivos ? usuarios / totalActivos * 100 : 0;
+        return `
+          <tr>
+            <td><span class="tag green">${PAGE_LABELS[page] || page}</span></td>
+            <td class="center">${fmtNum(info.eventos)}</td>
+            <td class="center">${fmtNum(usuarios)}</td>
+            <td class="center">${fmtPct(pct)}</td>
+          </tr>`;
+      }).join("") : `<tr><td colspan="4" class="empty">Sin datos.</td></tr>`;
+    }
+
+    function renderUsoPorAccion(eventos) {
+      const map = new Map();
+      for (const ev of eventos) {
+        const key = `${ev.page || "sin_pagina"}__${ev.action || "sin_accion"}`;
+        if (!map.has(key)) map.set(key, { page: ev.page, action: ev.action, eventos: 0, usuarios: new Set() });
+        map.get(key).eventos++;
+        if (ev.user_id) map.get(key).usuarios.add(String(ev.user_id));
+      }
+
+      const rows = [...map.values()].sort((a, b) => b.eventos - a.eventos);
+      $("tagAcciones").textContent = `${rows.length} acciones`;
+
+      $("tbodyAcciones").innerHTML = rows.length ? rows.map(info => `
+        <tr>
+          <td><span class="tag blue">${ACTION_LABELS[info.action] || info.action || "—"}</span></td>
+          <td>${PAGE_LABELS[info.page] || info.page || "—"}</td>
+          <td class="center">${fmtNum(info.eventos)}</td>
+          <td class="center">${fmtNum(info.usuarios.size)}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="4" class="empty">Sin datos.</td></tr>`;
+    }
+
+    function nombrePlayer(player) {
+      if (!player) return "—";
+      return player.full_name || [player.last_name, player.first_name].filter(Boolean).join(", ") || "—";
+    }
+
+    function pasaFiltroTexto(texto, q) {
+      if (!q) return true;
+      return normalizar(texto).includes(q);
+    }
+
+    function renderRanking(eventosByUser, playersByProfile, q) {
+      const rows = [...eventosByUser.entries()].map(([userId, evs]) => {
+        const player = playersByProfile.get(String(userId));
+        const paginas = new Set(evs.map(e => e.page).filter(Boolean));
+        const ultimo = evs.reduce((max, e) => !max || new Date(e.created_at) > new Date(max) ? e.created_at : max, null);
+        const email = evs.find(e => e.email)?.email || player?.email || "—";
+        return {
+          userId,
+          player,
+          email,
+          eventos: evs.length,
+          paginas: paginas.size,
+          ultimo
+        };
+      }).filter(r => pasaFiltroTexto(`${nombrePlayer(r.player)} ${r.email} ${r.player?.aag_member_number || ""}`, q))
+        .sort((a, b) => b.eventos - a.eventos)
+        .slice(0, 30);
+
+      $("tagRanking").textContent = `Top ${rows.length}`;
+      $("tbodyRanking").innerHTML = rows.length ? rows.map((r, i) => `
+        <tr>
+          <td class="center">${i + 1}</td>
+          <td>${nombrePlayer(r.player)}</td>
+          <td>${r.email}</td>
+          <td class="center">${r.player?.aag_member_number || "—"}</td>
+          <td class="center"><span class="tag amber">${fmtNum(r.eventos)}</span></td>
+          <td class="center">${fmtNum(r.paginas)}</td>
+          <td class="center">${fmtFecha(r.ultimo)}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="7" class="empty">Sin datos.</td></tr>`;
+    }
+
+    function renderMovimientos(eventos, playersByProfile, q) {
+      const rows = eventos.filter(ev => {
+        const player = ev.user_id ? playersByProfile.get(String(ev.user_id)) : null;
+        return pasaFiltroTexto(`${nombrePlayer(player)} ${ev.email || ""} ${player?.aag_member_number || ""}`, q);
+      }).slice(0, 50);
+
+      $("tagMovimientos").textContent = `Últimos ${rows.length}`;
+      $("tbodyMovimientos").innerHTML = rows.length ? rows.map(ev => `
+        <tr>
+          <td class="center">${fmtFecha(ev.created_at)}</td>
+          <td>${ev.email || "—"}</td>
+          <td><span class="tag green">${PAGE_LABELS[ev.page] || ev.page || "—"}</span></td>
+          <td><span class="tag blue">${ACTION_LABELS[ev.action] || ev.action || "—"}</span></td>
+        </tr>
+      `).join("") : `<tr><td colspan="4" class="empty">Sin movimientos.</td></tr>`;
+    }
+
+    function renderSinUso(profilesActivos, playersByProfile, eventosByUser, q) {
+      const rows = profilesActivos
+        .filter(p => !eventosByUser.has(String(p.id)))
+        .map(p => ({ profile: p, player: playersByProfile.get(String(p.id)) }))
+        .filter(r => pasaFiltroTexto(`${nombrePlayer(r.player)} ${r.player?.email || ""} ${r.player?.aag_member_number || ""}`, q))
+        .sort((a, b) => nombrePlayer(a.player).localeCompare(nombrePlayer(b.player), "es", { sensitivity: "base" }))
+        .slice(0, 80);
+
+      $("tagSinUso").textContent = fmtNum(rows.length);
+      $("tbodySinUso").innerHTML = rows.length ? rows.map(r => `
+        <tr>
+          <td>${nombrePlayer(r.player)}</td>
+          <td>${r.player?.email || "—"}</td>
+          <td class="center">${r.player?.aag_member_number || "—"}</td>
+          <td class="center"><span class="tag red">Sin uso</span></td>
+        </tr>
+      `).join("") : `<tr><td colspan="4" class="empty">No hay usuarios sin uso para este filtro.</td></tr>`;
+    }
+
+    let debounceTimer = null;
+    function debounceCargar() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(cargarDatos, 250);
+    }
+
+    $("btnHome")?.addEventListener("click", () => window.location.href = "panel.html");
+    $("btnActualizar")?.addEventListener("click", cargarDatos);
+    buscador?.addEventListener("input", debounceCargar);
+    fechaDesde?.addEventListener("change", cargarDatos);
+    fechaHasta?.addEventListener("change", cargarDatos);
+    filtroPagina?.addEventListener("change", cargarDatos);
+
+    await exigirAdmin();
+    await cargarDatos();
+  </script>
+</body>
+
+</html>
