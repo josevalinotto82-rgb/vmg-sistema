@@ -685,6 +685,35 @@
             };
         }
 
+        async function guardarHistorialSync(changes, workerData = {}) {
+            const payload = {
+                club_id: VMGC_CLUB_ID,
+                generated_at: new Date().toISOString(),
+                totals: changes.totals || {},
+                added: changes.added || [],
+                updated: changes.updated || [],
+                deactivated: changes.deactivated || [],
+                worker_response: workerData || {}
+            };
+
+            const { error } = await supabase
+                .from("aag_sync_history")
+                .insert({
+                    created_by: currentSession?.user?.id || null,
+                    club_id: VMGC_CLUB_ID,
+                    added_count: changes.added.length,
+                    updated_count: changes.updated.length,
+                    deactivated_count: changes.deactivated.length,
+                    before_vmgc: changes.totals?.before_vmgc ?? null,
+                    after_vmgc: changes.totals?.after_vmgc ?? null,
+                    data: payload
+                });
+
+            if (error) {
+                console.warn("No se pudo guardar historial AAG:", error);
+            }
+        }
+
         function renderTabla(rows, tipo) {
             if (!rows.length) return `<p class="muted">No hubo movimientos.</p>`;
 
@@ -794,14 +823,8 @@
                     ${totals.total_upserted != null ? ` · Upsert en players: <b>${escapeHtml(totals.total_upserted)}</b>` : ""}
                 </p>
 
-                <h3><span class="badge badge-new">ALTAS</span></h3>
-                ${renderTabla(changes.added, "added")}
-
                 <h3><span class="badge badge-index">CAMBIOS DE INDEX</span></h3>
                 ${renderTabla(changes.updated, "updated")}
-
-                <h3><span class="badge badge-down">DEJARON DE SER MIEMBROS</span></h3>
-                ${renderTabla(changes.deactivated, "deactivated")}
             `;
         }
 
@@ -859,6 +882,8 @@
 
                 const afterMap = await getPlayersSnapshot();
                 const changes = armarCambiosSync(beforeMap, afterMap, data);
+
+                await guardarHistorialSync(changes, data);
 
                 resultado.innerHTML =
                     `<span class="ok">Sincronización correcta</span>\n\n` +
