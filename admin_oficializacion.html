@@ -5230,6 +5230,38 @@
     }
 
     mostrarSucursal();
+
+    // ===== AUTO VOLVER AL PANEL POR INACTIVIDAD =====
+
+    const TIEMPO_INACTIVIDAD = 30 * 60 * 1000; // 1 hora
+
+    let inactivityTimer;
+
+    function reiniciarTemporizadorInactividad() {
+      clearTimeout(inactivityTimer);
+
+      inactivityTimer = setTimeout(() => {
+        window.location.href = "panel.html";
+      }, TIEMPO_INACTIVIDAD);
+    }
+
+    [
+      "mousemove",
+      "mousedown",
+      "click",
+      "keydown",
+      "touchstart",
+      "scroll"
+    ].forEach(evento => {
+      document.addEventListener(evento, reiniciarTemporizadorInactividad, true);
+    });
+
+    reiniciarTemporizadorInactividad();
+
+    document.getElementById("btnHome").addEventListener("click", () => {
+      window.location.href = "panel.html";
+    });
+
     cargarTodo();
 
     document.getElementById("btnHome").addEventListener("click", () => {

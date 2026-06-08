@@ -375,6 +375,98 @@
             color: #166534;
         }
 
+        .hcp-club-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #faffee, #bff0ca);
+            color: #0f503a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 15px;
+            letter-spacing: .5px;
+            box-shadow: 0 4px 12px rgba(30, 58, 138, .22);
+            border: 1px solid rgba(30, 58, 138, .14);
+            flex-shrink: 0;
+        }
+
+
+        .hcp-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, .48);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            z-index: 200000;
+        }
+
+        .hcp-modal-backdrop.open {
+            display: flex;
+        }
+
+        .hcp-modal-box {
+            position: relative;
+            width: min(520px, 100%);
+            animation: hcpModalIn .16s ease-out;
+        }
+
+        .hcp-modal-close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+
+            width: 36px;
+            height: 36px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 50%;
+            border: none;
+
+            background: #f3f4f6;
+            color: #374151;
+
+            font-size: 22px;
+            font-weight: 700;
+
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+
+        .hcp-modal-close:hover {
+            background: #ef4444;
+            color: white;
+            transform: scale(1.08);
+        }
+
+        .hcp-modal-timer {
+            margin-top: 8px;
+            text-align: center;
+            color: #e5e7eb;
+            font-size: 12px;
+            font-weight: 700;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+        }
+
+        @keyframes hcpModalIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px) scale(.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
         @media (max-width: 700px) {
             .hcp-presentacion {
                 max-width: 100%;
@@ -540,6 +632,16 @@
     </div>
 
 
+
+    <div id="hcpModal" class="hcp-modal-backdrop" aria-hidden="true">
+        <div class="hcp-modal-box" role="dialog" aria-modal="true">
+            <button id="hcpModalClose" class="hcp-modal-close" type="button">×</button>
+            <div id="hcpModalContent"></div>
+            <div class="hcp-modal-timer">Se cierra automáticamente en 5 segundos</div>
+        </div>
+    </div>
+
+
     <script type="module">
         import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -558,8 +660,12 @@
         const hcpResultados = document.getElementById("hcpResultados");
 
         const hcpDropdown = document.getElementById("hcpDropdown");
+        const hcpModal = document.getElementById("hcpModal");
+        const hcpModalContent = document.getElementById("hcpModalContent");
+        const hcpModalClose = document.getElementById("hcpModalClose");
 
         let hcpSearchTimer = null;
+        let hcpModalTimer = null;
 
         function normalizarTexto(txt) {
             return String(txt || "")
@@ -683,6 +789,62 @@
             });
         }
 
+        function inicialesClub(nombreClub) {
+            const limpio = String(nombreClub || "")
+                .replace(/club/gi, "")
+                .replace(/golf/gi, "")
+                .replace(/country/gi, "")
+                .replace(/&/g, " ")
+                .replace(/[^\p{L}\p{N}\s]/gu, " ")
+                .trim();
+
+            const palabras = limpio
+                .split(/\s+/)
+                .filter(Boolean);
+
+            if (!palabras.length) return "GC";
+
+            return palabras
+                .slice(0, 3)
+                .map(p => p.charAt(0).toUpperCase())
+                .join("");
+        }
+
+
+        function cerrarHcpModal() {
+            clearTimeout(hcpModalTimer);
+
+            hcpModal?.classList.remove("open");
+            hcpModal?.setAttribute("aria-hidden", "true");
+
+            if (hcpModalContent) {
+                hcpModalContent.innerHTML = "";
+            }
+
+            buscadorHcpJugador.value = "";
+
+            if (hcpDropdown) {
+                hcpDropdown.innerHTML = "";
+                hcpDropdown.classList.add("hidden");
+            }
+
+            buscadorHcpJugador.focus();
+        }
+
+        function abrirHcpModal(html) {
+            clearTimeout(hcpModalTimer);
+
+            if (!hcpModal || !hcpModalContent) return;
+
+            hcpModalContent.innerHTML = html;
+            hcpModal.classList.add("open");
+            hcpModal.setAttribute("aria-hidden", "false");
+
+            hcpModalTimer = setTimeout(() => {
+                cerrarHcpModal();
+            }, 5000);
+        }
+
         async function calcularHcpPorTee(jugador) {
             const gender = generoJugador(jugador.gender);
             const index = toNumber(jugador.current_index);
@@ -768,13 +930,19 @@
             const esVillaMaria = normalizarTexto(clubJugador).includes("VILLA MARIA GOLF") ||
                 normalizarTexto(clubJugador).includes("VILLA MARÍA GOLF");
 
-            hcpResultados.innerHTML = `
+            const htmlHcp = `
                 <div class="hcp-presentacion">
                     <div class="hcp-presentacion-header">
-                        ${esVillaMaria ? `<img src="escudo.png" class="hcp-escudo" alt="VMGC">` : ""}
+                        ${esVillaMaria
+                    ? `<img src="escudo.png" class="hcp-escudo" alt="VMGC">`
+                    : `<div class="hcp-club-avatar">${inicialesClub(clubJugador)}</div>`
+                }
                         <div>
                             <div class="hcp-nombre">${nombreJugador}</div>
                             <div class="hcp-club">${clubJugador}</div>
+                            <div class="hcp-club">
+                                Matrícula: ${jugador.enrollment_number || "—"} · Index: <b>${index.toFixed(1)}</b>
+                            </div>
                         </div>
                     </div>
 
@@ -784,8 +952,8 @@
                                 <div>
                                     <div class="hcp-tee-nombre">${f.tee}</div>
                                     ${f.recomendado
-                    ? `<div class="hcp-recomendado">TEE RECOMENDADO</div>`
-                    : ""}
+                        ? `<div class="hcp-recomendado">TEE RECOMENDADO</div>`
+                        : ""}
                                 </div>
 
                                 <div class="hcp-mini hcp-destacado">
@@ -812,7 +980,24 @@
                     </div>
                 </div>
             `;
+
+            hcpResultados.innerHTML = "";
+            abrirHcpModal(htmlHcp);
         }
+
+        hcpModalClose?.addEventListener("click", cerrarHcpModal);
+
+        hcpModal?.addEventListener("click", (e) => {
+            if (e.target === hcpModal) {
+                cerrarHcpModal();
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && hcpModal?.classList.contains("open")) {
+                cerrarHcpModal();
+            }
+        });
 
         buscadorHcpJugador?.addEventListener("input", () => {
             clearTimeout(hcpSearchTimer);
