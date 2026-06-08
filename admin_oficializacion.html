@@ -73,9 +73,15 @@
 
     .toolbar {
       display: grid;
-      grid-template-columns: minmax(320px, 1.4fr) minmax(150px, .55fr) minmax(150px, .55fr) minmax(200px, .9fr);
+      grid-template-columns: 2fr 140px auto;
       gap: 12px;
       align-items: end;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
     }
 
     .field label {
@@ -783,35 +789,53 @@
   </div>
 
   <div class="page">
+
     <div class="topbar">
       <div class="title-wrap">
         <h1>Facturero de Torneos</h1>
-        <div class="sub">Buscar jugador, facturar, guardar scorecard e imprimir cupón desde una sola ventana.</div>
+        <div class="sub">
+          Buscar jugador, facturar, imprimir cupón y generar tarjetas desde una sola ventana.
+        </div>
       </div>
     </div>
 
     <div class="card">
-      <div class="toolbar">
+
+      <div class="toolbar" style="
+          display:grid;
+          grid-template-columns:minmax(360px, 1fr) 130px auto;
+          gap:12px;
+          align-items:end;
+        ">
+
         <div class="field">
           <label for="torneoSelect">Seleccionar torneo abierto / guardado</label>
           <select id="torneoSelect"></select>
         </div>
+
         <div class="field">
           <label>Fecha</label>
           <input id="torneoFecha" value="" readonly />
         </div>
+
         <div class="field">
-          <label>Acción general</label>
-          <div style="display:flex; gap:8px;">
-            <button id="btnOficializarTorneo" class="btn btn-primary" style="flex:1">
-              Guardar Torneo
+          <label>&nbsp;</label>
+          <div style="
+              display:flex;
+              justify-content:flex-end;
+              gap:8px;
+              min-width:280px;
+            ">
+            <button id="btnResumenPagos" class="btn btn-secondary" type="button">
+              Informe pagos
             </button>
 
-            <button id="btnResumenPagos" class="btn btn-secondary" style="flex:1">
-              Ver pagos
+            <button id="btnOficializarTorneo" class="btn btn-primary" type="button">
+              Guardar Torneo
             </button>
           </div>
         </div>
+
       </div>
 
       <div class="stats">
@@ -819,43 +843,64 @@
           <div class="k">Total de jugadores inscriptos</div>
           <div class="v" id="statTotal">0</div>
         </div>
+
         <div class="stat">
           <div class="k">Damas</div>
           <div class="v" id="statDamas">0</div>
         </div>
+
         <div class="stat">
           <div class="k">Caballeros</div>
           <div class="v" id="statCaballeros">0</div>
         </div>
+
         <div class="stat">
           <div class="k">Socios</div>
           <div class="v" id="statSocios">0</div>
         </div>
+
         <div class="stat">
           <div class="k">Invitados</div>
           <div class="v" id="statInvitados">0</div>
         </div>
       </div>
+
     </div>
 
     <div class="card status-bar">
       <div id="estado" class="status-text">Conectando...</div>
+
       <div class="actions-top">
-        <button id="btnGuardarTodos" class="btn btn-primary">Guardar scorecards</button>
-        <button id="btnImprimirTodasTarjetas" class="btn btn-secondary">Imprimir tarjetas</button>
+        <button id="btnGuardarTodos" class="btn btn-primary" type="button" style="display:none;">
+          Guardar scorecards
+        </button>
+
+        <button id="btnImprimirTodasTarjetas" class="btn btn-secondary" type="button">
+          Imprimir tarjetas
+        </button>
       </div>
     </div>
 
     <div class="card" style="margin-bottom:10px;">
       <div class="quick-panel">
+
         <input id="buscadorJugadores" type="text"
           placeholder="Buscar por apellido, nombre, matrícula, club, hora u hoyo..." autocomplete="off" />
+
         <input id="torneoPrecio" type="text" value="" placeholder="Precio socio" />
+
         <input id="torneoPrecioInvitado" type="text" value="" placeholder="Precio invitado" />
-        <button id="btnLimpiarBusqueda" class="btn btn-secondary" type="button">Limpiar búsqueda</button>
+
+        <button id="btnLimpiarBusqueda" class="btn btn-secondary" type="button">
+          Limpiar búsqueda
+        </button>
+
       </div>
-      <div class="hint-line">Tip: escribís parte del apellido o matrícula, hacés clic en el jugador y se abre la
-        facturación. En Fourball se ve como pareja, pero el cobro es independiente por jugador.</div>
+
+      <div class="hint-line">
+        Tip: escribís parte del apellido o matrícula, hacés clic en el jugador y se abre la facturación.
+        En Fourball se ve como pareja, pero el cobro es independiente por jugador.
+      </div>
 
       <select id="pagoGeneral" style="display:none;">
         <option value="pending">Pendiente</option>
@@ -866,31 +911,46 @@
         <option value="current_account">Cuenta corriente</option>
         <option value="no_pay">No paga</option>
       </select>
+
       <input id="fechaPagoGeneral" type="date" style="display:none;" />
     </div>
 
     <div class="card table-card">
       <div class="table-scroll" id="tablaWrap"></div>
     </div>
+
   </div>
-
-
 
   <div id="factModal" class="modal-backdrop" aria-hidden="true">
     <div class="modal-box" role="dialog" aria-modal="true">
+
       <div class="modal-head">
         <div>
           <h2 id="factModalTitle">Facturación</h2>
           <div class="mini" id="factModalSub">Seleccioná un jugador</div>
         </div>
-        <button class="modal-close" id="btnCerrarFactModal" type="button">×</button>
+
+        <button class="modal-close" id="btnCerrarFactModal" type="button">
+          ×
+        </button>
       </div>
+
       <div class="modal-body" id="factModalBody"></div>
+
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="btnModalTarjeta" type="button">Sólo imprimir tarjeta</button>
-        <button class="btn btn-light" id="btnModalCupon" type="button">Sólo imprimir cupón</button>
-        <button class="btn btn-primary" id="btnModalFacturar" type="button">Facturar + guardar + cupón</button>
+        <button class="btn btn-secondary" id="btnModalTarjeta" type="button">
+          Imprimir tarjeta
+        </button>
+
+        <button class="btn btn-light" id="btnModalCupon" type="button">
+          Guardar pago
+        </button>
+
+        <button class="btn btn-primary" id="btnModalFacturar" type="button">
+          Imprimir cupón y asentar pago
+        </button>
       </div>
+
     </div>
   </div>
 
@@ -928,7 +988,22 @@
 
     const supabase = createClient(
       "https://bnnfolhrqxgxjmobclrm.supabase.co",
-      "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+      "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ",
+      {
+        global: {
+          fetch: (url, options = {}) => {
+            const headers = new Headers(options.headers || {});
+            headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+            headers.set("Pragma", "no-cache");
+
+            return fetch(url, {
+              ...options,
+              cache: "no-store",
+              headers
+            });
+          }
+        }
+      }
     );
 
     async function exigirAdmin() {
@@ -1037,6 +1112,7 @@
     let realtimeChannel = null;
     let realtimeReloadTimer = null;
     let autoRefreshTimer = null;
+    let indexRefreshTimer = null;
     let realtimeTournamentId = null;
 
     let torneoActual = null;
@@ -1062,13 +1138,13 @@
     torneoSelect.addEventListener("change", cargarTodo);
     btnOficializarTorneo.addEventListener("click", oficializarTorneo);
     btnResumenPagos.addEventListener("click", imprimirResumenPagos);
-    btnGuardarTodos.addEventListener("click", guardarTodosLosInscriptos);
+    btnGuardarTodos?.addEventListener("click", guardarTodosLosInscriptos);
     btnImprimirTodasTarjetas.addEventListener("click", imprimirTodasLasTarjetas);
     document.getElementById("btnLimpiarBusqueda")?.addEventListener("click", () => { const b = document.getElementById("buscadorJugadores"); if (b) b.value = ""; filtrarTablaJugadores(); b?.focus(); });
     document.getElementById("btnCerrarFactModal")?.addEventListener("click", cerrarFacturacion);
     document.getElementById("factModal")?.addEventListener("click", (e) => { if (e.target?.id === "factModal") cerrarFacturacion(); });
-    document.getElementById("btnModalFacturar")?.addEventListener("click", () => facturarDesdeModal({ imprimirCupon: true, guardarPago: true, guardarScorecard: true }));
-    document.getElementById("btnModalCupon")?.addEventListener("click", () => facturarDesdeModal({ imprimirCupon: true, guardarPago: true, guardarScorecard: true }));
+    document.getElementById("btnModalFacturar")?.addEventListener("click", () => facturarDesdeModal({ imprimirCupon: true, guardarPago: true, guardarScorecard: false }));
+    document.getElementById("btnModalCupon")?.addEventListener("click", () => facturarDesdeModal({ imprimirCupon: false, guardarPago: true, guardarScorecard: false }));
     document.getElementById("btnModalTarjeta")?.addEventListener("click", imprimirTarjetaDesdeModal);
 
     tablaWrap.addEventListener("click", manejarClickTabla);
@@ -1339,10 +1415,74 @@
           },
           () => programarRecargaOficializacion()
         )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "aag_enrolleds"
+          },
+          () => programarRefrescoIndicesVivos()
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "players"
+          },
+          () => programarRefrescoIndicesVivos()
+        )
 
         .subscribe((status) => {
           console.log("Realtime oficialización:", status);
         });
+    }
+
+    function hayEdicionManualActiva() {
+      const activo = document.activeElement;
+      if (!activo) return false;
+
+      // No interrumpir si secretaria está cargando un índice manual o editando un campo.
+      return !!(
+        activo.matches("input, select, textarea") &&
+        (
+          activo.id?.startsWith("idx-") ||
+          activo.id?.includes("Manual") ||
+          activo.closest("#factModal")
+        )
+      );
+    }
+
+    function programarRefrescoIndicesVivos() {
+      clearTimeout(realtimeReloadTimer);
+
+      realtimeReloadTimer = setTimeout(async () => {
+        if (hayEdicionManualActiva() || usuarioEditandoTabla) return;
+
+        try {
+          await refrescarIndicesVivosInscritos({ render: true });
+          setEstado(`Índices actualizados automáticamente · ${torneoActual?.game_modes?.name || ""}`, "ok");
+        } catch (err) {
+          console.warn("No se pudieron actualizar índices automáticamente", err);
+        }
+      }, 500);
+    }
+
+    function iniciarAutoRefrescoIndicesVivos() {
+      if (indexRefreshTimer) return;
+
+      indexRefreshTimer = setInterval(async () => {
+        if (!torneoActual?.id) return;
+        if (hayEdicionManualActiva() || usuarioEditandoTabla) return;
+
+        try {
+          await refrescarIndicesVivosInscritos({ render: true });
+          console.log("AUTO REFRESCO INDICES FOURBALL/MEDAL OK");
+        } catch (err) {
+          console.warn("No se pudieron refrescar índices automáticamente", err);
+        }
+      }, 30000);
     }
 
     function obtenerPrecioTorneo() {
@@ -1487,40 +1627,51 @@
     }
 
     function obtenerIndiceAAG(reg) {
+      const indiceFresco = toNumber(reg?.__indice_aag_fresco);
+      const fuenteFresca = reg?.__indice_aag_fuente || "";
+
+      if (indiceFresco != null) {
+        console.log("INDEX OFICIALIZACION FRESCO", {
+          jugador: reg.display_name,
+          matricula: obtenerMatriculaAAG(reg),
+          fuente: fuenteFresca,
+          index: indiceFresco
+        });
+        return indiceFresco;
+      }
+
       const jugadorAAG = obtenerJugadorAAGVivo(reg);
-      const desdeAAG = jugadorAAG?.current_index;
+      const desdeAAG = toNumber(jugadorAAG?.current_index);
+      const desdePlayer = toNumber(reg?.player?.current_index);
+      const desdeReg = toNumber(reg?.reported_index);
+      const desdeSlot = toNumber(extraerLineSlot(reg)?.manual_index);
 
       console.log("INDEX OFICIALIZACION", {
         jugador: reg.display_name,
         matricula: obtenerMatriculaAAG(reg),
         aag: jugadorAAG,
         indexAAG: desdeAAG,
-        indexPlayer: reg.player?.current_index,
-        indexReg: reg.reported_index,
-        indexSlot: extraerLineSlot(reg)?.manual_index
+        indexPlayer: desdePlayer,
+        indexReg: desdeReg,
+        indexSlot: desdeSlot
       });
 
-      // Si encuentra AAG, NO usar nada viejo.
-      if (desdeAAG != null) return toNumber(desdeAAG);
-
-      const desdePlayer = reg.player?.current_index;
-      const desdeReg = reg.reported_index;
-      const desdeSlot = extraerLineSlot(reg)?.manual_index;
-
-      // Para jugadores manuales SIN índice AAG vivo, la fuente más confiable
-      // es lo que se corrigió en la oficialización/facturación.
-      // Antes se leía primero players.current_index y por eso volvía el primer index cargado.
-      const valor = desdeSlot ?? desdeReg ?? desdePlayer;
+      // IMPORTANTE:
+      // En la práctica, la sincronización de AAG del sistema puede dejar actualizado
+      // players.current_index antes que aag_enrolleds. Por eso uso primero players
+      // cuando existe, y dejo aag_enrolleds como respaldo.
+      const valor = desdePlayer ?? desdeAAG ?? desdeSlot ?? desdeReg;
       return toNumber(valor);
     }
 
     function jugadorSinIndexAAG(reg) {
+      const indiceFresco = toNumber(reg?.__indice_aag_fresco);
       const jugadorAAG = obtenerJugadorAAGVivo(reg);
       const indexAAG = toNumber(jugadorAAG?.current_index);
       const indexPlayer = toNumber(reg?.player?.current_index);
 
-      // Solo se puede editar si NO trae index ni desde AAG ni desde players.
-      return indexAAG == null && indexPlayer == null;
+      // Solo se puede editar si NO trae index ni desde refresco vivo, ni desde AAG, ni desde players.
+      return indiceFresco == null && indexAAG == null && indexPlayer == null;
     }
 
     function obtenerIndexManualEditable(regId) {
@@ -1630,19 +1781,23 @@
 
       if ([slope, courseRating, par].some(v => v == null)) return null;
 
-      const valor = (idx * (slope / 113)) + (courseRating - par);
-      return roundHalfUp(valor);
+      // IMPORTANTE:
+      // Devuelve el Handicap de Cancha EXACTO, sin redondear.
+      // Medal redondea este valor.
+      // Americana aplica 85% sobre este valor exacto y recién después redondea.
+      return (idx * (slope / 113)) + (courseRating - par);
     }
 
     function calcularHcpMedal(indexJugador, categoria) {
-      const hcp = calcularHcpBasePorTee(indexJugador, categoria);
-      return hcp == null ? null : Math.min(hcp, 54);
+      const hcpBase = calcularHcpBasePorTee(indexJugador, categoria);
+      return hcpBase == null ? null : Math.min(roundHalfUp(hcpBase), 54);
     }
 
     function calcularHcpAmericana(indexJugador, categoria) {
       const hcpBase = calcularHcpBasePorTee(indexJugador, categoria);
       if (hcpBase == null) return null;
 
+      // Fourball Americana: 85% sobre Handicap de Cancha sin redondear.
       return Math.min(roundHalfUp(hcpBase * 0.85), 54);
     }
 
@@ -1670,12 +1825,98 @@
 
       if (aj1 == null || aj2 == null) return null;
 
+      // Referencia informativa: 3/8 sobre índices ajustados.
+      // NO se usa para el HCP de juego del Fourball Clásico.
       return (aj1 + aj2) * 0.375;
     }
 
+    function categoriaClasicoJugadorPorIndex(indexAjustado, reg = null) {
+      const idx = redondearIndiceUnDecimal(indexAjustado);
+      const genero = reg?.player?.gender || null;
+
+      return (
+        sugerirCategoria(idx, genero) ||
+        sugerirCategoriaSinGenero(idx) ||
+        null
+      );
+    }
+
+    function categoriaClasicoParejaPorHcp(hcpJuego, reg1 = null, reg2 = null) {
+      const hcp = toNumber(hcpJuego);
+      if (hcp == null) return null;
+
+      const genero1 = normalizarGenero(reg1?.player?.gender);
+      const genero2 = normalizarGenero(reg2?.player?.gender);
+      const generoPareja = genero1 && genero1 === genero2 ? genero1 : null;
+
+      return (
+        (generoPareja ? sugerirCategoria(hcp, generoPareja) : null) ||
+        sugerirCategoriaSinGenero(hcp) ||
+        null
+      );
+    }
+
+    function calcularDatosClasico(reg1, reg2) {
+      const idxBase1 = obtenerIndexBaseParaCalculo(reg1);
+      const idxBase2 = obtenerIndexBaseParaCalculo(reg2);
+      const [idxAjustado1, idxAjustado2] = ajustarPorBrechaMaxima(idxBase1, idxBase2, 5);
+
+      if (idxAjustado1 == null || idxAjustado2 == null) return null;
+
+      const categoriaJugador1 = categoriaClasicoJugadorPorIndex(idxAjustado1, reg1);
+      const categoriaJugador2 = categoriaClasicoJugadorPorIndex(idxAjustado2, reg2);
+
+      const hcpCancha1 = calcularHcpBasePorTee(idxAjustado1, categoriaJugador1);
+      const hcpCancha2 = calcularHcpBasePorTee(idxAjustado2, categoriaJugador2);
+
+      if (hcpCancha1 == null || hcpCancha2 == null) {
+        return {
+          idxBase1,
+          idxBase2,
+          idxAjustado1,
+          idxAjustado2,
+          categoriaJugador1,
+          categoriaJugador2,
+          hcpCancha1,
+          hcpCancha2,
+          hcpExacto: null,
+          playingHandicap: null,
+          categoriaPareja: null
+        };
+      }
+
+      const hcpExacto = (hcpCancha1 + hcpCancha2) * 0.375;
+      const playingHandicap = Math.min(roundHalfUp(hcpExacto), 54);
+      const categoriaPareja = categoriaClasicoParejaPorHcp(playingHandicap, reg1, reg2);
+
+      return {
+        idxBase1,
+        idxBase2,
+        idxAjustado1,
+        idxAjustado2,
+        categoriaJugador1,
+        categoriaJugador2,
+        hcpCancha1,
+        hcpCancha2,
+        hcpExacto,
+        playingHandicap,
+        categoriaPareja
+      };
+    }
+
     function calcularHcpClasico(indiceAAG1, indiceAAG2) {
-      const base = calcularIndiceManualClasico(indiceAAG1, indiceAAG2);
-      return base == null ? null : Math.min(roundHalfUp(base), 54);
+      const maxGap = 5;
+      const [aj1, aj2] = ajustarPorBrechaMaxima(indiceAAG1, indiceAAG2, maxGap);
+      if (aj1 == null || aj2 == null) return null;
+
+      const categoria1 = categoriaClasicoJugadorPorIndex(aj1, null);
+      const categoria2 = categoriaClasicoJugadorPorIndex(aj2, null);
+      const hcp1 = calcularHcpBasePorTee(aj1, categoria1);
+      const hcp2 = calcularHcpBasePorTee(aj2, categoria2);
+
+      if (hcp1 == null || hcp2 == null) return null;
+
+      return Math.min(roundHalfUp((hcp1 + hcp2) * 0.375), 54);
     }
 
     function calcularHcpDesdeCategoria(indiceManual, categoria) {
@@ -2067,9 +2308,12 @@
 
         rebuildIndexes();
 
+        await refrescarIndicesVivosInscritos({ render: false });
+
         renderTabla();
         actualizarResumen();
 
+        iniciarAutoRefrescoIndicesVivos();
         suscribirRealtimeOficializacion();
 
         if (!autoRefreshTimer) {
@@ -2120,7 +2364,7 @@
       const indiceAAG = obtenerIndiceAAG(reg);
       const indiceManualParaCategoria = calcularIndiceManualMedal(indiceAAG, { hole_segment: obtenerSegmentoReferencia(reg.player?.gender) });
       const categoriaSugerida = sugerirCategoria(redondearIndiceUnDecimal(indiceManualParaCategoria ?? indiceAAG), reg.player?.gender);
-      const categoriaSeleccionadaId = scorecard?.category_id || reg.category_id || categoriaSugerida?.id || "";
+      const categoriaSeleccionadaId = scorecard?.category_id || categoriaSugerida?.id || reg.category_id || "";
       const categoriaSeleccionada = getCategoriaById(categoriaSeleccionadaId);
       const indiceManual = jugadorSinIndexAAG(reg)
         ? calcularIndiceManualMedal(obtenerIndexBaseParaCalculo(reg), categoriaSeleccionada)
@@ -2257,20 +2501,14 @@
       let hcpTxt = "—";
 
       if (esMetodoClasico()) {
-        const genero1 = normalizarGenero(reg1.player?.gender);
-        const genero2 = normalizarGenero(reg2.player?.gender);
-        const generoPareja = genero1 === genero2 ? genero1 : null;
-        const manualSug = calcularIndiceManualClasico(idxBase1, idxBase2, { hole_segment: obtenerSegmentoReferencia(generoPareja) });
-        const categoriaSugerida = generoPareja ? sugerirCategoria(redondearIndiceUnDecimal(manualSug), generoPareja) : sugerirCategoriaSinGenero(redondearIndiceUnDecimal(manualSug));
-        const categoria = getCategoriaById(pairScore?.category_id || reg1.category_id || reg2.category_id || categoriaSugerida?.id || "");
-        const manualIndex = calcularIndiceManualClasico(idxBase1, idxBase2, categoria);
-        const hcp = calcularHcpDesdeCategoria(manualIndex, categoria);
+        const datosClasico = calcularDatosClasico(reg1, reg2);
+        const categoria = datosClasico?.categoriaPareja || null;
         catTxt = categoria?.name || "Revisar";
         teeTxt = categoria ? getTeeName(categoria.tee_id) : "—";
-        hcpTxt = hcp ?? "—";
+        hcpTxt = datosClasico?.playingHandicap ?? "—";
       } else {
-        const cat1 = getCategoriaById(pairScore?.category_id || reg1.category_id || sugerirCategoriaAmericanaDesdeAAG(idxBase1, reg1.player?.gender)?.id || "");
-        const cat2 = getCategoriaById(reg2.category_id || sugerirCategoriaAmericanaDesdeAAG(idxBase2, reg2.player?.gender)?.id || "");
+        const cat1 = getCategoriaById(pairScore?.category_id || sugerirCategoriaAmericanaDesdeAAG(idxBase1, reg1.player?.gender)?.id || reg1.category_id || "");
+        const cat2 = getCategoriaById(sugerirCategoriaAmericanaDesdeAAG(idxBase2, reg2.player?.gender)?.id || reg2.category_id || "");
         const hcp1 = calcularHcpAmericana(idxBase1, cat1)
         const hcp2 = calcularHcpAmericana(idxBase2, cat2)
         catTxt = `${cat1?.name || "Revisar"} / ${cat2?.name || "Revisar"}`;
@@ -2676,13 +2914,13 @@
       const idxBase2 = obtenerIndexBaseParaCalculo(reg2);
 
       if (esMetodoClasico()) {
-        const categoriaId = document.getElementById(`cat-pair-${key}`)?.value || null;
-        const categoria = getCategoriaById(categoriaId);
+        const datosClasico = calcularDatosClasico(reg1, reg2);
+        const categoria = datosClasico?.categoriaPareja || null;
         const teeEl = document.getElementById(`tee-pair-${key}`);
-        const indiceManual = calcularIndiceManualClasico(idxBase1, idxBase2, categoria);
-        const hcpJuego = calcularHcpDesdeCategoria(indiceManual, categoria);
+        const catEl = document.getElementById(`cat-pair-${key}`);
         const manualCell = document.querySelector(`#cat-pair-${key}`)?.closest("tr")?.children[5];
 
+        if (catEl && categoria?.id) catEl.value = categoria.id;
         if (teeEl) teeEl.value = categoria ? getTeeName(categoria.tee_id) : "";
         if (manualCell) {
           manualCell.innerHTML = `
@@ -2691,12 +2929,12 @@
               <div class="pair-divider"></div>
               ${renderInputIndexPareja(reg2)}
               <div class="pair-divider"></div>
-              <div style="font-weight:700;">Pareja: ${formatIndexManual(indiceManual) || "—"}</div>
+              <div style="font-weight:700;">HCP exacto: ${formatDecimal(datosClasico?.hcpExacto, 2) || "—"}</div>
             </div>
           `;
           activarInputsPareja(reg1, reg2);
         }
-        hcpCell.innerHTML = `<div class="stack-compact"><div>${hcpJuego ?? "—"}</div></div>`;
+        hcpCell.innerHTML = `<div class="stack-compact"><div>${datosClasico?.playingHandicap ?? "—"}</div></div>`;
         return;
       }
 
@@ -2889,15 +3127,15 @@
 
       if (esMetodoAmericana()) {
         const sugerida = categoriaSugeridaDesdeIndexManual(reg, indexBase);
-        const categoriaId = reg.category_id || score?.category_id || sugerida?.id || "";
+        const categoriaId = score?.category_id || sugerida?.id || reg.category_id || "";
         const categoria = getCategoriaById(categoriaId);
         const manualIndex = calcularIndiceManualAmericana(indexBase, categoria);
-        const hcp = calcularHcpDesdeCategoria(manualIndex, categoria);
+        const hcp = calcularHcpAmericana(manualIndex, categoria);
         return { categoriaId, categoria, officialIndex: indiceAAG, indexBase, manualIndex, hcp, sinIndex };
       }
 
       const sugerida = categoriaSugeridaDesdeIndexManual(reg, indexBase ?? indiceAAG);
-      const categoriaId = score?.category_id || reg.category_id || sugerida?.id || "";
+      const categoriaId = score?.category_id || sugerida?.id || reg.category_id || "";
       const categoria = getCategoriaById(categoriaId);
       const manualIndex = sinIndex ? indexBase : calcularIndiceManualMedal(indiceAAG, categoria);
       const hcp = calcularHcpDesdeCategoria(manualIndex, categoria);
@@ -2947,15 +3185,9 @@
       } else {
         const [reg1, reg2] = fila.jugadores;
         if (esMetodoClasico()) {
-          const score = pairSharedScorecard(reg1, reg2);
-          const idx1 = obtenerIndexBaseParaCalculo(reg1);
-          const idx2 = obtenerIndexBaseParaCalculo(reg2);
-          const manualSug = calcularIndiceManualClasico(idx1, idx2, { hole_segment: obtenerSegmentoReferencia(reg1.player?.gender) });
-          const sugerida = sugerirCategoriaSinGenero(redondearIndiceUnDecimal(manualSug));
-          const categoriaId = score?.category_id || reg1.category_id || reg2.category_id || sugerida?.id || "";
-          const categoria = getCategoriaById(categoriaId);
-          const manualIndex = calcularIndiceManualClasico(idx1, idx2, categoria);
-          const hcp = calcularHcpDesdeCategoria(manualIndex, categoria);
+          const datosClasico = calcularDatosClasico(reg1, reg2);
+          const categoria = datosClasico?.categoriaPareja || null;
+          const categoriaId = categoria?.id || "";
           jugadoresHtml = `
             <div class="fact-player-card">
               <div class="fact-section-title">Pareja: ${reg1.display_name} / ${reg2.display_name}</div>
@@ -2969,9 +3201,9 @@
                 <div class="field"><label>Index ${reg2.display_name || "Jugador 2"}</label><input id="m2Manual" value="${formatIndexManual(obtenerIndexBaseParaCalculo(reg2)) || ""}" ${jugadorSinIndexAAG(reg2) ? "" : "readonly"} inputmode="decimal"></div>
               </div>
               <div class="fact-grid three">
-                <div class="field"><label>Categoría pareja</label><select id="pairCat">${`<option value="">Seleccionar</option>` + optionTags(categorias, categoriaId)}</select></div>
-                <div class="field"><label>Index pareja</label><input id="pairManual" value="${formatIndexManual(manualIndex)}" readonly></div>
-                <div class="field"><label>HCP pareja</label><input id="pairHcp" value="${hcp ?? ""}" readonly></div>
+                <div class="field"><label>Categoría pareja</label><select id="pairCat" disabled>${`<option value="">Seleccionar</option>` + optionTags(categorias, categoriaId)}</select></div>
+                <div class="field"><label>HCP exacto</label><input id="pairManual" value="${formatDecimal(datosClasico?.hcpExacto, 2)}" readonly></div>
+                <div class="field"><label>HCP pareja</label><input id="pairHcp" value="${datosClasico?.playingHandicap ?? ""}" readonly></div>
               </div>
               <div class="field"><label>Tee</label><input id="pairTee" value="${categoria ? getTeeName(categoria.tee_id) : ""}" readonly></div>
             </div>`;
@@ -2996,7 +3228,6 @@
             <div class="field"><label>Concepto</label><input id="factConcepto" value="Green fee / derecho de torneo"></div>
             <div class="field"><label>Jugador cobrado</label><input value="${reg.display_name || ""}" readonly></div>
           </div>
-          <div class="check-row"><input id="factImprimirTarjeta" type="checkbox"><label for="factImprimirTarjeta">También imprimir tarjeta láser después de facturar</label></div>
         </div>
       `;
       activarCalculoModal();
@@ -3064,14 +3295,15 @@
         const fila = facturaActual?.fila;
         if (!fila || fila.tipo !== "pair") return;
         const [r1, r2] = fila.jugadores;
-        const cat = getCategoriaById(document.getElementById("pairCat")?.value || "");
-        const idx = calcularIndiceManualClasico(obtenerIndexBaseParaCalculo(r1), obtenerIndexBaseParaCalculo(r2), cat);
-        const hcp = calcularHcpDesdeCategoria(idx, cat);
+        const datosClasico = calcularDatosClasico(r1, r2);
+        const cat = datosClasico?.categoriaPareja || null;
+        const pairCatEl = document.getElementById("pairCat");
         const pairManualEl = document.getElementById("pairManual");
         const pairHcpEl = document.getElementById("pairHcp");
         const pairTeeEl = document.getElementById("pairTee");
-        if (pairManualEl) pairManualEl.value = formatIndexManual(idx) || "";
-        if (pairHcpEl) pairHcpEl.value = hcp ?? "";
+        if (pairCatEl && cat?.id) pairCatEl.value = cat.id;
+        if (pairManualEl) pairManualEl.value = formatDecimal(datosClasico?.hcpExacto, 2) || "";
+        if (pairHcpEl) pairHcpEl.value = datosClasico?.playingHandicap ?? "";
         if (pairTeeEl) pairTeeEl.value = cat ? getTeeName(cat.tee_id) : "";
       };
 
@@ -3123,7 +3355,9 @@
         teeId: categoria?.tee_id || null,
         officialIndex: sinIndex ? indexBase : indiceAAG,
         manualIndex,
-        playingHandicap: calcularHcpDesdeCategoria(manualIndex, categoria),
+        playingHandicap: esMetodoAmericana()
+          ? calcularHcpAmericana(manualIndex, categoria)
+          : calcularHcpDesdeCategoria(manualIndex, categoria),
         categoria
       };
     }
@@ -3175,10 +3409,11 @@
       const [reg1, reg2] = fila.jugadores;
       const line = extraerLinea(reg1) || extraerLinea(reg2);
       if (esMetodoClasico()) {
-        const categoriaId = document.getElementById("pairCat")?.value || null;
-        const categoria = getCategoriaById(categoriaId);
-        const manualIndex = calcularIndiceManualClasico(obtenerIndexBaseParaCalculo(reg1), obtenerIndexBaseParaCalculo(reg2), categoria);
-        const playingHandicap = calcularHcpDesdeCategoria(manualIndex, categoria);
+        const datosClasico = calcularDatosClasico(reg1, reg2);
+        const categoria = datosClasico?.categoriaPareja || null;
+        const categoriaId = categoria?.id || null;
+        const manualIndex = datosClasico?.hcpExacto ?? null;
+        const playingHandicap = datosClasico?.playingHandicap ?? null;
         if (!categoriaId || !categoria?.tee_id || manualIndex == null || playingHandicap == null) throw new Error("Revisá los datos de la pareja.");
         await upsertScorecardPareja(reg1, reg2, {
           category_id: categoriaId,
@@ -3242,11 +3477,11 @@
         </div>`;
     }
 
-    async function facturarDesdeModal({ imprimirCupon = true, guardarPago = true, guardarScorecard = true } = {}) {
+    async function facturarDesdeModal({ imprimirCupon = true, guardarPago = true, guardarScorecard = false } = {}) {
       const reg = getRegistrationById(facturaActual?.regId);
       if (!reg) return;
       try {
-        setEstado(`Facturando ${reg.display_name}...`);
+        setEstado(imprimirCupon ? `Asentando pago e imprimiendo cupón de ${reg.display_name}...` : `Guardando pago de ${reg.display_name}...`);
         guardarPrecioTorneoLocal();
         if (guardarScorecard) await guardarScorecardDesdeModal();
         const payloadPago = leerPagoModal(reg);
@@ -3256,10 +3491,9 @@
           const html = buildCuponFacturacionHTML(reg, payloadPago, numeroCupon);
           await window.imprimirTicketQZ(html);
         }
-        if (document.getElementById("factImprimirTarjeta")?.checked) await imprimirTarjetaDesdeModal(false);
         await cargarTodo();
         cerrarFacturacion();
-        setEstado(`Facturación lista: ${reg.display_name}`, "ok");
+        setEstado(imprimirCupon ? `Pago asentado y cupón impreso: ${reg.display_name}` : `Pago guardado: ${reg.display_name}`, "ok");
       } catch (error) {
         console.error(error);
         setEstado(error.message || "No se pudo facturar.", "error");
@@ -3271,12 +3505,20 @@
       const reg = getRegistrationById(facturaActual?.regId);
       const fila = facturaActual?.fila;
       if (!reg) return;
+
+      // IMPORTANTE:
+      // En Fourball la tarjeta se arma con los dos registros de la pareja.
+      // Por eso refresco índices vivos ANTES de guardar/printar desde el modal,
+      // sin redibujar la pantalla ni cerrar el modal.
+      await refrescarIndicesVivosInscritos({ render: false });
+
       await guardarScorecardDesdeModal();
+
       if (fila?.tipo === "pair") {
         const [r1, r2] = fila.jugadores;
-        imprimirTarjetaPareja(r1.id, r2.id);
+        await imprimirTarjetaPareja(r1.id, r2.id, false);
       } else {
-        imprimirTarjeta(reg.id);
+        await imprimirTarjeta(reg.id, false);
       }
       if (cerrar) cerrarFacturacion();
     }
@@ -3343,9 +3585,10 @@
       const idxBase2 = obtenerIndexBaseParaCalculo(reg2);
 
       if (esMetodoClasico()) {
-        const categoria = obtenerCategoriaSeleccionadaPair(reg1, reg2);
-        const manualIndex = calcularIndiceManualClasico(idxBase1, idxBase2, categoria);
-        const playingHandicap = calcularHcpDesdeCategoria(manualIndex, categoria);
+        const datosClasico = calcularDatosClasico(reg1, reg2);
+        const categoria = datosClasico?.categoriaPareja || null;
+        const manualIndex = datosClasico?.hcpExacto ?? null;
+        const playingHandicap = datosClasico?.playingHandicap ?? null;
 
         return {
           modo: "clasico",
@@ -3365,8 +3608,8 @@
       const categoria2 = obtenerCategoriaSeleccionadaAmericana(reg2);
       const manualIndex1 = obtenerManualAmericanaDesdePantalla(reg1, categoria1, prefix1);
       const manualIndex2 = obtenerManualAmericanaDesdePantalla(reg2, categoria2, prefix2);
-      const playingHandicap1 = calcularHcpDesdeCategoria(manualIndex1, categoria1);
-      const playingHandicap2 = calcularHcpDesdeCategoria(manualIndex2, categoria2);
+      const playingHandicap1 = calcularHcpAmericana(manualIndex1, categoria1);
+      const playingHandicap2 = calcularHcpAmericana(manualIndex2, categoria2);
 
       return {
         modo: "americana",
@@ -3613,6 +3856,13 @@
     }
 
     async function guardarOficializacionPair(regId1, regId2, silencioso = false) {
+      // Si se guarda una pareja desde pantalla/modal, refresco índices vivos
+      // antes de calcular HCP/categoría. En procesos masivos silenciosos ya se
+      // refresca una vez antes del lote para no repetir consultas.
+      if (!silencioso) {
+        await refrescarIndicesVivosInscritos({ render: false });
+      }
+
       const reg1 = getRegistrationById(regId1);
       const reg2 = getRegistrationById(regId2);
       if (!reg1 || !reg2) return;
@@ -3702,13 +3952,41 @@
       return errores;
     }
 
+    async function generarScorecardsEnSegundoPlano() {
+      try {
+        await refrescarIndicesVivosInscritos({ render: false });
+        const errores = validarAntesDeGuardarTodos();
+        if (errores.length > 0) {
+          console.warn("No se generaron algunas scorecards por datos incompletos:", errores);
+          setEstado("Impresión abierta. Hay scorecards para revisar antes de guardar.", "warn");
+          return;
+        }
+
+        for (const fila of construirFilasVista()) {
+          if (fila.tipo === "single") {
+            await guardarOficializacionSingle(fila.jugadores[0].id, true);
+          } else {
+            await guardarOficializacionPair(fila.jugadores[0].id, fila.jugadores[1].id, true);
+          }
+        }
+
+        setEstado("Tarjetas impresas y scorecards generadas con los datos actuales.", "ok");
+        await cargarTodo(true);
+      } catch (error) {
+        console.error(error);
+        setEstado(error.message || "La impresión salió, pero no se pudieron generar todas las scorecards.", "error");
+      }
+    }
+
     async function guardarTodosLosInscriptos() {
-      const textoOriginal = btnGuardarTodos.textContent || "Guardar todos";
+      const textoOriginal = btnGuardarTodos?.textContent || "Guardar todos";
 
       if (!registrations.length) {
         alert("No hay inscriptos para guardar.");
         return;
       }
+
+      await refrescarIndicesVivosInscritos({ render: true });
 
       const errores = validarAntesDeGuardarTodos();
       if (errores.length > 0) {
@@ -3717,8 +3995,10 @@
         return;
       }
 
-      btnGuardarTodos.disabled = true;
-      btnGuardarTodos.textContent = "Guardando...";
+      if (btnGuardarTodos) {
+        btnGuardarTodos.disabled = true;
+        btnGuardarTodos.textContent = "Guardando...";
+      }
       setEstado("Guardando oficialización general...");
 
       try {
@@ -3742,8 +4022,10 @@
         alert("Error al guardar:\n\n" + (error.message || JSON.stringify(error)));
 
       } finally {
-        btnGuardarTodos.disabled = false;
-        btnGuardarTodos.textContent = textoOriginal;
+        if (btnGuardarTodos) {
+          btnGuardarTodos.disabled = false;
+          btnGuardarTodos.textContent = textoOriginal;
+        }
       }
     }
 
@@ -3847,8 +4129,8 @@
         valorElemento(`cat-${reg.id}`) ||
         (String(facturaActual?.regId || "") === String(reg.id) ? valorElemento("m1Cat") : "") ||
         scorecard?.category_id ||
-        reg.category_id ||
         categoriaSugeridaSingle(reg)?.id ||
+        reg.category_id ||
         "";
 
       return categoriaPorId(catId);
@@ -3870,37 +4152,21 @@
     }
 
     function obtenerCategoriaSeleccionadaPair(reg1, reg2) {
-      const key = `${reg1.id}__PAIR__${reg2.id}`;
+      const datosClasico = calcularDatosClasico(reg1, reg2);
+      const categoria = datosClasico?.categoriaPareja || null;
 
-      const idxBase1 = obtenerIndexBaseParaCalculo(reg1);
-      const idxBase2 = obtenerIndexBaseParaCalculo(reg2);
-      const genero1 = normalizarGenero(reg1.player?.gender);
-      const genero2 = normalizarGenero(reg2.player?.gender);
-      const generoPareja = genero1 === genero2 ? genero1 : null;
-      const manualSug = calcularIndiceManualClasico(idxBase1, idxBase2, {
-        hole_segment: obtenerSegmentoReferencia(generoPareja)
-      });
+      // En Fourball Clásico la categoría/tee de salida se define por el HCP
+      // de juego final entero de la pareja, no por un index decimal intermedio.
+      if (categoria) return categoria;
 
-      const sugerida = generoPareja
-        ? sugerirCategoria(redondearIndiceUnDecimal(manualSug), generoPareja)
-        : sugerirCategoriaSinGenero(redondearIndiceUnDecimal(manualSug));
-
-      const usarModal =
-        modalActivoParaRegistro(reg1) &&
-        modalActivoParaRegistro(reg2) &&
-        facturaActual?.fila?.tipo === "pair";
-
-      const catId =
-        valorElemento(`cat-pair-${key}`) ||
-        (usarModal ? valorElemento("pairCat") : "") ||
+      const scoreCategoria =
         extraerScorecard(reg1)?.category_id ||
         extraerScorecard(reg2)?.category_id ||
         reg1.category_id ||
         reg2.category_id ||
-        sugerida?.id ||
         "";
 
-      return categoriaPorId(catId);
+      return categoriaPorId(scoreCategoria);
     }
 
     function obtenerCategoriaSeleccionadaAmericana(reg) {
@@ -3909,9 +4175,11 @@
       const catId =
         valorElemento(`cat-pair-${reg.id}`) ||
         (prefix ? valorElemento(`${prefix}Cat`) : "") ||
-        reg.category_id ||
-        extraerScorecard(reg)?.category_id ||
+        // Para Americana, cada jugador define su tee por su index base,
+        // y el HCP se calcula aplicando 85% sobre el HCP de cancha exacto.
         categoriaSugeridaAmericana(reg)?.id ||
+        extraerScorecard(reg)?.category_id ||
+        reg.category_id ||
         "";
 
       return categoriaPorId(catId);
@@ -4382,7 +4650,160 @@
       }, 150);
     }
 
-    function imprimirTodasLasTarjetas() {
+
+    function matriculasInscritosActuales() {
+      return [
+        ...new Set(
+          (registrations || [])
+            .map(reg => obtenerMatriculaAAG(reg))
+            .filter(Boolean)
+            .map(String)
+        )
+      ];
+    }
+
+    function aplicarIndiceFrescoARegistro(reg, indice, fuente = "desconocida") {
+      const idx = toNumber(indice);
+      if (!reg || idx == null) return;
+
+      reg.__indice_aag_fresco = idx;
+      reg.__indice_aag_fuente = fuente;
+
+      if (!reg.player) reg.player = {};
+      reg.player.current_index = idx;
+
+      // Lo dejo también en memoria local para que cualquier cálculo posterior
+      // que mire reported_index/manual_index no vuelva al dato viejo.
+      reg.reported_index = idx;
+
+      const slot = extraerLineSlot(reg);
+      if (slot) slot.manual_index = idx;
+
+      const score = extraerScorecard(reg);
+      if (score) score.official_index = idx;
+    }
+
+    async function refrescarIndicesVivosInscritos({ render = false } = {}) {
+      const matriculas = matriculasInscritosActuales();
+      if (!matriculas.length) return;
+
+      const mapAAG = new Map();
+      const mapPlayers = new Map();
+
+      const { data: aagData, error: aagError } = await supabase
+        .from("aag_enrolleds")
+        .select("enrollment_number, current_index, gender, club_name")
+        .in("enrollment_number", matriculas);
+
+      if (aagError) {
+        console.warn("No se pudieron refrescar índices desde aag_enrolleds", aagError);
+      } else {
+        (aagData || []).forEach(row => {
+          const mat = normalizarMatriculaAAG(row.enrollment_number);
+          if (mat) mapAAG.set(String(mat), row);
+        });
+
+        // Actualizo también el mapa AAG global para que obtenerJugadorAAGVivo()
+        // quede consistente con la consulta fresca.
+        mapAAG.forEach((row, mat) => aagEnrolledsMap.set(String(mat), row));
+      }
+
+      const linkedIds = [
+        ...new Set(
+          (registrations || [])
+            .map(reg => reg?.linked_player_id)
+            .filter(Boolean)
+            .map(String)
+        )
+      ];
+
+      if (linkedIds.length) {
+        const { data: playersPorId, error: playersIdError } = await supabase
+          .from("players")
+          .select("id, aag_member_number, current_index")
+          .in("id", linkedIds);
+
+        if (playersIdError) {
+          console.warn("No se pudieron refrescar índices desde players por id", playersIdError);
+        } else {
+          (playersPorId || []).forEach(row => {
+            if (row.id) mapPlayers.set(`id:${String(row.id)}`, row);
+            const mat = normalizarMatriculaAAG(row.aag_member_number);
+            if (mat) mapPlayers.set(`mat:${String(mat)}`, row);
+          });
+        }
+      }
+
+      const { data: playersPorMatricula, error: playersMatError } = await supabase
+        .from("players")
+        .select("id, aag_member_number, current_index")
+        .in("aag_member_number", matriculas);
+
+      if (playersMatError) {
+        console.warn("No se pudieron refrescar índices desde players por matrícula", playersMatError);
+      } else {
+        (playersPorMatricula || []).forEach(row => {
+          if (row.id) mapPlayers.set(`id:${String(row.id)}`, row);
+          const mat = normalizarMatriculaAAG(row.aag_member_number);
+          if (mat) mapPlayers.set(`mat:${String(mat)}`, row);
+        });
+      }
+
+      for (const reg of registrations || []) {
+        const mat = obtenerMatriculaAAG(reg);
+        if (!mat) continue;
+
+        const playerRow =
+          (reg.linked_player_id ? mapPlayers.get(`id:${String(reg.linked_player_id)}`) : null) ||
+          mapPlayers.get(`mat:${String(mat)}`) ||
+          null;
+
+        const aagRow = mapAAG.get(String(mat)) || null;
+
+        // Fuente principal: players.current_index.
+        // Fuente de respaldo: aag_enrolleds.current_index.
+        // Esto evita que una scorecard o inscripción vieja tape el índice actualizado.
+        const indicePlayer = toNumber(playerRow?.current_index);
+        const indiceAag = toNumber(aagRow?.current_index);
+        const indiceElegido = indicePlayer ?? indiceAag;
+
+        if (indiceElegido != null) {
+          aplicarIndiceFrescoARegistro(
+            reg,
+            indiceElegido,
+            indicePlayer != null ? "players.current_index" : "aag_enrolleds.current_index"
+          );
+        }
+      }
+
+      console.log("REFRESCO INDICES VIVOS", {
+        matriculas,
+        aag: Array.from(mapAAG.entries()).map(([mat, row]) => [mat, row.current_index]),
+        players: Array.from(mapPlayers.entries()).map(([key, row]) => [key, row.current_index])
+      });
+
+      if (render) {
+        rebuildIndexes();
+        renderTabla();
+        actualizarResumen();
+      }
+    }
+
+    async function actualizarDatosAntesDeImprimir() {
+      setEstado("Actualizando índices AAG antes de imprimir...", "warn");
+
+      // Primero refresco lo que ya está en pantalla.
+      await refrescarIndicesVivosInscritos({ render: false });
+
+      // Después recargo torneo/registrations/scorecards.
+      await cargarTodo();
+
+      // Y vuelvo a pisar la memoria local con el índice fresco.
+      // Esto es clave si una scorecard vieja trae official_index anterior.
+      await refrescarIndicesVivosInscritos({ render: true });
+    }
+
+    async function imprimirTodasLasTarjetas() {
 
       if (!registrations.length) {
         alert("No hay jugadores para imprimir.");
@@ -4394,6 +4815,8 @@
       );
 
       if (!confirmar) return;
+
+      await actualizarDatosAntesDeImprimir();
 
       const tarjetas = [];
 
@@ -4420,8 +4843,8 @@
             "";
 
           const index = formatIndexAAG(
-            score?.official_index ??
             obtenerIndiceAAG(reg) ??
+            score?.official_index ??
             score?.manual_index ??
             reg.reported_index
           );
@@ -4546,10 +4969,16 @@
           printRoot.innerHTML = "";
         }, 1000);
 
-      }, 250);
+        setTimeout(() => {
+          generarScorecardsEnSegundoPlano();
+        }, 400);
+
+      }, 80);
     }
 
-    function imprimirTarjeta(regId) {
+    async function imprimirTarjeta(regId, refrescarAntes = true) {
+      if (refrescarAntes) await actualizarDatosAntesDeImprimir();
+
       const reg = getRegistrationById(regId);
       if (!reg) return alert("No encontré el jugador.");
 
@@ -4565,8 +4994,8 @@
 
       const index =
         formatIndexAAG(
-          score?.official_index ??
           obtenerIndiceAAG(reg) ??
+          score?.official_index ??
           score?.manual_index ??
           reg.reported_index
         );
@@ -4588,7 +5017,9 @@
       }));
     }
 
-    function imprimirTarjetaPareja(regId1, regId2) {
+    async function imprimirTarjetaPareja(regId1, regId2, refrescarAntes = true) {
+      if (refrescarAntes) await actualizarDatosAntesDeImprimir();
+
       const reg1 = getRegistrationById(regId1);
       const reg2 = getRegistrationById(regId2);
       if (!reg1 || !reg2) return;
