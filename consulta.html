@@ -1145,8 +1145,9 @@
         let serieTabActiva = "acumulado";
 
         el("btnCargar").addEventListener("click", cargarInforme);
-        el("btnImprimir").addEventListener("click", () => {
+        el("btnImprimir").addEventListener("click", async () => {
             renderPrintReport();
+            await guardarResumenArchivado();
             window.print();
         });
 
@@ -1178,6 +1179,52 @@
             serieTabActiva = btn.dataset.serieTab || "acumulado";
             activarTabSerie(serieTabActiva);
         });
+
+        async function guardarResumenArchivado() {
+            if (!torneoActual) return;
+
+            const reportData = {
+                torneo: torneoActual,
+                configuracion: {
+                    topCategoria: Number(el("topCategoria")?.value || 2),
+                    topScratchCaballeros: Number(el("topScratch")?.value || 0),
+                    topScratchDamas: Number(el("topScratchDamas")?.value || 0)
+                },
+                approach: {
+                    hoyo3: el("approach3")?.value || "",
+                    hoyo5: el("approach5")?.value || "",
+                    hoyo11: el("approach11")?.value || "",
+                    hoyo13: el("approach13")?.value || ""
+                },
+                scorecards,
+                categorias,
+                serie: serieActual,
+                torneosSerie,
+                scorecardsSerie,
+                grilla: grillaBloquesActuales,
+                generado_en: new Date().toISOString()
+            };
+
+            const htmlSnapshot = el("printArea")?.innerHTML || "";
+
+            const { error } = await supabase
+                .from("tournament_archived_reports")
+                .upsert({
+                    tournament_id: torneoActual.id,
+                    report_type: "resumen_torneo",
+                    report_data: reportData,
+                    html_snapshot: htmlSnapshot,
+                    created_by: session.user.id,
+                    updated_at: new Date().toISOString()
+                }, {
+                    onConflict: "tournament_id,report_type"
+                });
+
+            if (error) {
+                console.error("Error guardando resumen archivado:", error);
+                alert("No se pudo guardar el resumen del torneo.");
+            }
+        }
 
         function setEstado(txt, tipo = "") { estado.textContent = txt; estado.className = `status ${tipo}`.trim(); }
         function fechaTexto(v) { if (!v) return "—"; const d = new Date(String(v).slice(0, 10) + "T00:00:00"); return d.toLocaleDateString("es-AR"); }

@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Archivos guardados - Villa María Golf</title>
+  <style>
+    :root {
+      --bg: #f6f1f1;
+      --card: #fff;
+      --line: #e5e7eb;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --green: #166534;
+      --blue: #0841bb;
+      --red: #b91c1c;
+      --gold: #e7b067;
+      --soft: #f9fafb;
+      --soft-green: #dcfce7;
+      --soft-amber: #fef3c7;
+      --soft-red: #fee2e2
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 18px
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: end;
+      flex-wrap: wrap;
+      margin-bottom: 14px
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      color: var(--green);
+      font-size: 28px
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 14px
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, .08);
+      margin-bottom: 16px
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap
+    }
+
+    .tab {
+      border: 1px solid #cbd5cf;
+      background: #edf2ef;
+      color: var(--green);
+      border-radius: 10px;
+      height: 38px;
+      padding: 0 14px;
+      font-weight: 800;
+      cursor: pointer
+    }
+
+    .tab.active {
+      background: var(--green);
+      color: white;
+      border-color: var(--green)
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr 180px 140px auto;
+      gap: 10px;
+      align-items: end
+    }
+
+    .toolbar.aag {
+      grid-template-columns: 1fr 180px auto
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em
+    }
+
+    select,
+    input {
+      width: 100%;
+      height: 38px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 7px 9px;
+      background: white;
+      font-size: 13px
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      height: 38px;
+      padding: 0 14px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: white
+    }
+
+    .btn-secondary {
+      background: var(--blue);
+      color: white
+    }
+
+    .btn-light {
+      background: #edf2ef;
+      color: var(--green);
+      border: 1px solid #cbd5cf
+    }
+
+    .btn-danger {
+      background: var(--red);
+      color: white
+    }
+
+    .status {
+      font-weight: 800
+    }
+
+    .status.ok {
+      color: var(--green)
+    }
+
+    .status.err {
+      color: var(--red)
+    }
+
+    .status.warn {
+      color: #92400e
+    }
+
+    .hidden {
+      display: none !important
+    }
+
+    .muted {
+      color: var(--muted)
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+      margin: 12px 0
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: var(--soft)
+    }
+
+    .stat .k {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 800
+    }
+
+    .stat .v {
+      font-size: 24px;
+      font-weight: 900;
+      margin-top: 4px;
+      color: var(--green)
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 7px;
+      font-size: 12px;
+      text-align: left;
+      vertical-align: top
+    }
+
+    th {
+      background: var(--green);
+      color: white;
+      text-transform: uppercase;
+      font-size: 11px
+    }
+
+    .num {
+      text-align: right;
+      white-space: nowrap
+    }
+
+    .center {
+      text-align: center
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px
+    }
+
+    .section-title {
+      font-size: 17px;
+      font-weight: 900;
+      color: var(--green);
+      margin: 14px 0 8px;
+      border-bottom: 2px solid #d1d5db;
+      padding-bottom: 4px
+    }
+
+    .pill {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 900
+    }
+
+    .pill.ok {
+      background: var(--soft-green);
+      color: var(--green)
+    }
+
+    .pill.warn {
+      background: var(--soft-amber);
+      color: #92400e
+    }
+
+    .pill.bad {
+      background: var(--soft-red);
+      color: #991b1b
+    }
+
+    .home-btn {
+      position: fixed;
+      top: 30px;
+      right: 27px;
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      background: #166534;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, .15);
+      z-index: 9999
+    }
+
+    .home-btn:hover {
+      transform: scale(1.05)
+    }
+
+    #printArea {
+      display: none
+    }
+
+    .preview-box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+      max-height: 650px;
+      overflow: auto
+    }
+
+    .report-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: #fff
+    }
+
+    .report-card.active {
+      border-color: var(--green);
+      box-shadow: 0 0 0 2px rgba(22, 101, 52, .12)
+    }
+
+    @media(max-width:850px) {
+
+      .toolbar,
+      .toolbar.aag {
+        grid-template-columns: 1fr
+      }
+
+      .stats {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .page {
+        padding: 12px
+      }
+    }
+
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 12mm
+      }
+
+      body {
+        background: white !important;
+        color: #111
+      }
+
+      .page,
+      .home-btn {
+        display: none !important
+      }
+
+      #printArea {
+        display: block !important
+      }
+
+      .print-page {
+        font-family: Arial, sans-serif;
+        font-size: 11px
+      }
+
+      .print-title {
+        font-size: 23px;
+        font-weight: 900;
+        color: #166534;
+        margin: 0 0 4px
+      }
+
+      .print-sub {
+        font-size: 12px;
+        margin-bottom: 12px;
+        color: #374151
+      }
+
+      .print-section {
+        font-size: 15px;
+        font-weight: 900;
+        margin: 14px 0 7px;
+        border-bottom: 2px solid #111;
+        padding-bottom: 3px
+      }
+
+      .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10px
+      }
+
+      .print-table th {
+        background: #e5e7eb !important;
+        color: #111 !important;
+        border: 1px solid #bbb;
+        padding: 5px;
+        text-align: left
+      }
+
+      .print-table td {
+        border: 1px solid #ddd;
+        padding: 5px
+      }
+
+      .num {
+        text-align: right
+      }
+
+      .center {
+        text-align: center
+      }
+    }
+
+    /* ===== ESTILOS ORIGINALES DEL RESUMEN ARCHIVADO =====
+       Necesarios para imprimir el html_snapshot tal cual salió del archivo original. */
+    @media print {
+      @page {
+        size: A4;
+        margin: 11mm
+      }
+
+      /* GRILLA PRINT MEJORADA */
+      .home-btn {
+        display: none !important;
+      }
+
+      .grid-table {
+        table-layout: fixed;
+        width: 100%;
+      }
+
+      .print-best-page .print-title {
+        font-size: 18px;
+      }
+
+      .print-best-page .print-date {
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+
+      .print-best-page .print-section-title {
+        font-size: 12px;
+        margin: 5px 0 3px;
+      }
+
+      .print-best-page .print-meta {
+        font-size: 8.5px;
+        margin: 2px 0 4px;
+      }
+
+      .print-best-page .print-series-table {
+        font-size: 7px;
+        margin-bottom: 5px;
+      }
+
+      .print-best-page .print-series-table th,
+      .print-best-page .print-series-table td {
+        padding: 1.2px 2px;
+        line-height: 1.05;
+      }
+
+      .print-winner.approach-print {
+        grid-template-columns: 70px minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .print-approach-title {
+        font-size: 20px;
+        font-weight: 900;
+        margin-top: 18px;
+        margin-bottom: 8px;
+      }
+
+      .print-approach-row {
+        font-size: 15px;
+        font-weight: 700;
+        padding: 4px 0;
+      }
+
+      .grid-table th:nth-child(1),
+      .grid-table td:nth-child(1) {
+        width: 70px;
+        /* hora más angosta */
+      }
+
+      .grid-table th:nth-child(n+2),
+      .grid-table td:nth-child(n+2) {
+        width: calc((100% - 70px) / 4);
+      }
+
+      .grid-table td {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 10px;
+      }
+
+      body {
+        background: #fff;
+        color: #111
+      }
+
+      .page,
+      .modal-back {
+        display: none !important
+      }
+
+      .print-only {
+        display: block !important
+      }
+
+      .print-page {
+        page-break-after: always;
+        break-after: page;
+        padding: 0;
+        font-family: Arial, sans-serif
+      }
+
+      .print-page:last-child {
+        page-break-after: auto;
+        break-after: auto
+      }
+
+      .print-title {
+        text-align: center;
+        font-size: 26px;
+        font-weight: 900;
+        text-transform: uppercase;
+        margin: 0 0 4px
+      }
+
+      .print-date {
+        text-align: center;
+        font-size: 16px;
+        margin: 0 0 16px;
+        color: #333
+      }
+
+      .print-meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 30px;
+
+        font-size: 13px;
+        line-height: 1.35;
+
+        margin: 10px 0 16px;
+      }
+
+      .print-meta-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+
+        border-bottom: 1px dotted #ccc;
+        padding-bottom: 2px;
+      }
+
+      .print-meta-label {
+        font-weight: 800;
+      }
+
+      .print-meta-value {
+        font-weight: 600;
+      }
+
+      .print-section-title {
+        font-size: 17px;
+        font-weight: 900;
+        margin: 14px 0 8px;
+        border-bottom: 2px solid #111;
+        padding-bottom: 4px
+      }
+
+      .print-category {
+        font-size: 14px;
+        font-weight: 900;
+        margin: 12px 0 4px
+      }
+
+      .print-winner {
+        display: grid;
+
+        grid-template-columns:
+          minmax(0, 2.8fr) 70px 55px 70px;
+
+        gap: 6px;
+
+        font-size: 13px;
+
+        padding: 4px 0;
+
+        border-bottom: 1px solid #ddd;
+        align-items: center;
+      }
+
+      .print-winner>div {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: clip
+      }
+
+      .print-grid-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10px;
+        table-layout: fixed;
+        margin-bottom: 8px;
+      }
+
+      .print-grid-table {
+        width: 100%;
+        border-collapse: collapse;
+        border-spacing: 0;
+        table-layout: fixed;
+        font-size: 9.5px;
+        margin-bottom: 10px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .print-grid-table col.col-hora {
+        width: 52px;
+      }
+
+      .print-grid-table col.col-jugador {
+        width: calc((100% - 52px) / 4);
+      }
+
+      .print-grid-table th,
+      .print-grid-table td {
+        border: 1px solid #111 !important;
+        padding: 3px 4px;
+        text-align: center;
+        vertical-align: middle;
+        font-weight: 700;
+        height: 20px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .print-grid-table th {
+        background: #e5e7eb !important;
+        color: #111 !important;
+      }
+
+      .print-grid-table td:first-child {
+        font-size: 8.5px;
+        font-weight: 900;
+      }
+
+      .print-series-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 10.5px;
+        margin: 6px 0 12px;
+      }
+
+      .print-series-table th,
+      .print-series-table td {
+        border: 1px solid #bbb;
+        padding: 4px 5px;
+        text-align: center;
+        vertical-align: middle;
+        overflow: hidden;
+        text-overflow: clip;
+      }
+
+      .print-series-page {
+        page-break-after: avoid;
+        break-after: page;
+        overflow: visible;
+      }
+
+      .print-series-page .print-title {
+        font-size: 21px;
+        margin-bottom: 2px;
+      }
+
+      .print-series-page .print-date {
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+
+      .print-series-page .print-section-title {
+        font-size: 13px;
+        margin: 7px 0 4px;
+        padding-bottom: 2px;
+      }
+
+      .print-series-page .print-meta {
+        font-size: 9px;
+        line-height: 1.25;
+        margin: 3px 0 5px;
+      }
+
+      .print-series-page .print-series-table {
+        font-size: 7.6px;
+        margin: 3px 0 6px;
+      }
+
+      .print-series-page .print-series-table th,
+      .print-series-page .print-series-table td {
+        padding: 2px 3px;
+        line-height: 1.12;
+        white-space: normal;
+        word-break: normal;
+        overflow: visible;
+      }
+
+      .print-series-table th {
+        background: #e5e7eb;
+        color: #111;
+        font-weight: 900;
+      }
+
+      .print-series-table .left {
+        text-align: left;
+      }
+
+      .print-series-table .comp {
+        font-weight: 900;
+        background: #f4f8f2;
+      }
+
+      .print-hole-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10px
+      }
+
+      .print-hole-table th,
+      .print-hole-table td {
+        border: 1px solid #ccc;
+        padding: 4px;
+        text-align: center
+      }
+
+      .print-hole-table th {
+        background: #e5e7eb;
+        color: #111
+      }
+
+      .print-rank-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 4px;
+        margin-top: 8px
+      }
+
+      .print-rank-cell {
+        border: 1px solid #ddd;
+        padding: 4px;
+        font-size: 10px
+      }
+    }
+
+    @media print {
+      #printArea {
+        display: block !important;
+      }
+
+      #printArea .print-only {
+        display: block !important;
+      }
+    }
+
+    .snapshot-shell {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      overflow: auto;
+      max-height: 650px
+    }
+
+    .snapshot-shell .print-page {
+      border: 1px dashed #d1d5db;
+      margin: 0 0 12px;
+      padding: 12px;
+      background: white
+    }
+  </style>
+</head>
+
+<body>
+  <div class="home-btn" id="btnHome" title="Volver al panel">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+        stroke-width="2" />
+    </svg>
+  </div>
+
+  <div class="page">
+    <div class="topbar">
+      <div>
+        <h1>Archivos guardados</h1>
+        <div class="sub">Consulta e impresión de reportes históricos: resultados, cambios de index y pagos.</div>
+      </div>
+      <button id="btnImprimir" class="btn-primary">Imprimir archivo seleccionado</button>
+    </div>
+
+    <div class="card">
+      <div class="tabs">
+        <button class="tab active" data-tab="resultados">Resultados torneo</button>
+        <button class="tab" data-tab="index">Actualización de index</button>
+        <button class="tab" data-tab="pagos">Reportes de pagos</button>
+      </div>
+    </div>
+
+    <div id="panelResultados" class="card">
+      <div class="toolbar">
+        <div class="field"><label>Reporte guardado</label><select id="selectResultado"></select></div>
+        <div class="field"><label>Desde</label><input id="resDesde" type="date"></div>
+        <div class="field"><label>Hasta</label><input id="resHasta" type="date"></div>
+        <button id="btnCargarResultados" class="btn-secondary">Buscar</button>
+      </div>
+      <div id="estadoResultados" class="status" style="margin-top:10px">Cargando...</div>
+      <div id="vistaResultados" class="preview-box hidden" style="margin-top:12px"></div>
+    </div>
+
+    <div id="panelIndex" class="card hidden">
+      <div class="toolbar aag">
+        <div class="field"><label>Historial AAG / Index</label><select id="selectIndex"></select></div>
+        <div class="field"><label>Filtrar modificados</label><select id="indexFiltro">
+            <option value="all">Todo</option>
+            <option value="updated">Solo index modificado</option>
+            <option value="added">Solo altas</option>
+            <option value="deactivated">Solo bajas</option>
+          </select></div>
+        <button id="btnCargarIndex" class="btn-secondary">Buscar</button>
+      </div>
+      <div id="estadoIndex" class="status" style="margin-top:10px">Cargando...</div>
+      <div id="vistaIndex" class="preview-box hidden" style="margin-top:12px"></div>
+    </div>
+
+    <div id="panelPagos" class="card hidden">
+      <div class="toolbar">
+        <div class="field"><label>Torneo / reporte de pagos</label><select id="selectPagos"></select></div>
+        <div class="field"><label>Desde</label><input id="pagosDesde" type="date"></div>
+        <div class="field"><label>Hasta</label><input id="pagosHasta" type="date"></div>
+        <button id="btnCargarPagos" class="btn-secondary">Buscar</button>
+      </div>
+      <div id="estadoPagos" class="status" style="margin-top:10px">Cargando...</div>
+      <div id="vistaPagos" class="preview-box hidden" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div id="printArea"></div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient("https://bnnfolhrqxgxjmobclrm.supabase.co", "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ", { global: { fetch: (url, options = {}) => { const h = new Headers(options.headers || {}); h.set("Cache-Control", "no-store"); h.set("Pragma", "no-cache"); return fetch(url, { ...options, cache: "no-store", headers: h }); } } });
+
+    const $ = id => document.getElementById(id);
+    const esc = v => String(v ?? "").replace(/[&<>'"]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[m]));
+    const n = v => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
+    const fechaTexto = v => { if (!v) return "—"; const s = String(v).slice(0, 10); const d = new Date(s + "T00:00:00"); return d.toLocaleDateString("es-AR"); };
+    const fechaHoraTexto = v => { if (!v) return "—"; const d = new Date(v); return Number.isNaN(d.getTime()) ? fechaTexto(v) : d.toLocaleString("es-AR"); };
+    const money = v => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2 }).format(Number(v || 0));
+    const fmtIndex = v => { const x = Number(v); return Number.isFinite(x) ? x.toFixed(1).replace(".", ",") : "—"; };
+    const PAYMENT_METHODS = { pending: "Pendiente", cash: "Efectivo", credit_card: "Tarjeta crédito", debit_card: "Tarjeta débito", transfer: "Transferencia", current_account: "Cuenta corriente", no_pay: "No paga" };
+
+    let usuario = null;
+    let activeTab = "resultados";
+    let ultimoPrintHtml = "";
+    let resultados = [];
+    let indexRows = [];
+    let pagosItems = [];
+
+    async function exigirAdmin() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = "login.html"; throw new Error("Sin sesión"); }
+      const { data: profile, error } = await supabase.from("profiles").select("role,active").eq("id", session.user.id).maybeSingle();
+      if (error || !profile || profile.active !== true || profile.role !== "admin") { alert("Acceso restringido"); window.location.href = "panel.html"; throw new Error("Sin permiso admin"); }
+      usuario = session.user;
+    }
+
+    function setStatus(id, txt, tipo = "") { $(id).textContent = txt; $(id).className = `status ${tipo}`.trim(); }
+    function show(id, visible) { $(id)?.classList.toggle("hidden", !visible); }
+
+    document.getElementById("btnHome")?.addEventListener("click", () => { window.location.href = "panel.html"; });
+    document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => activarTab(btn.dataset.tab)));
+    $("btnCargarResultados").addEventListener("click", cargarResultados);
+    $("selectResultado").addEventListener("change", renderResultadoSeleccionado);
+    $("btnCargarIndex").addEventListener("click", cargarIndex);
+    $("selectIndex").addEventListener("change", renderIndexSeleccionado);
+    $("indexFiltro").addEventListener("change", renderIndexSeleccionado);
+    $("btnCargarPagos").addEventListener("click", cargarPagos);
+    $("selectPagos").addEventListener("change", renderPagosSeleccionado);
+    $("btnImprimir").addEventListener("click", () => { if (!ultimoPrintHtml) { alert("Primero seleccioná un archivo para imprimir."); return; } $("printArea").innerHTML = ultimoPrintHtml; window.print(); });
+
+    function activarTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+      show("panelResultados", tab === "resultados"); show("panelIndex", tab === "index"); show("panelPagos", tab === "pagos");
+      ultimoPrintHtml = "";
+      if (tab === "resultados" && !resultados.length) cargarResultados();
+      if (tab === "index" && !indexRows.length) cargarIndex();
+      if (tab === "pagos" && !pagosItems.length) cargarPagos();
+    }
+
+    async function cargarResultados() {
+      try {
+        setStatus("estadoResultados", "Buscando reportes guardados..."); show("vistaResultados", false);
+        let q = supabase.from("tournament_archived_reports").select("id,tournament_id,report_type,report_data,html_snapshot,created_at,updated_at,tournaments(name,tournament_date)").order("updated_at", { ascending: false }).limit(200);
+        const desde = $("resDesde").value, hasta = $("resHasta").value;
+        if (desde) q = q.gte("created_at", desde + "T00:00:00");
+        if (hasta) q = q.lte("created_at", hasta + "T23:59:59");
+        const { data, error } = await q;
+        if (error) throw error;
+        resultados = data || [];
+        $("selectResultado").innerHTML = resultados.length ? resultados.map(r => `<option value="${r.id}">${esc(r.tournaments?.name || r.report_data?.torneo?.name || "Torneo")} · ${fechaTexto(r.tournaments?.tournament_date || r.report_data?.torneo?.tournament_date)} · guardado ${fechaHoraTexto(r.updated_at)}</option>`).join("") : "";
+        setStatus("estadoResultados", resultados.length ? `${resultados.length} reportes encontrados.` : "No hay reportes guardados de resultados.", resultados.length ? "ok" : "warn");
+        renderResultadoSeleccionado();
+      } catch (err) { console.error(err); setStatus("estadoResultados", "No se pudieron cargar los reportes. Revisá que exista tournament_archived_reports.", "err"); }
+    }
+
+    function renderResultadoSeleccionado() {
+      const id = $("selectResultado").value;
+      const r = resultados.find(x => String(x.id) === String(id));
+      if (!r) { show("vistaResultados", false); return; }
+
+      const data = r.report_data || {};
+      const torneo = data.torneo || r.tournaments || {};
+      const stats = armarStatsScorecards(data.scorecards || []);
+      const snapshot = String(r.html_snapshot || "").trim();
+
+      let html = `<div class="section-title">Resumen guardado</div><div class="stats">
+        <div class="stat"><div class="k">Torneo</div><div class="v" style="font-size:16px">${esc(torneo.name || "—")}</div></div>
+        <div class="stat"><div class="k">Fecha</div><div class="v">${fechaTexto(torneo.tournament_date)}</div></div>
+        <div class="stat"><div class="k">Tarjetas</div><div class="v">${stats.total}</div></div>
+        <div class="stat"><div class="k">Cargadas</div><div class="v">${stats.validas}</div></div>
+      </div>`;
+
+      if (snapshot) {
+        // IMPORTANTE: no rearmamos el resumen desde el JSON.
+        // Mostramos e imprimimos el html_snapshot guardado por el archivo original.
+        html += `
+          <div class="section-title">Vista original guardada</div>
+          <div class="muted" style="margin-bottom:8px">
+            Esta vista es el resumen exacto que quedó guardado al imprimir desde Consulta de Torneo Archivado.
+          </div>
+          <div class="snapshot-shell">${snapshot}</div>
+        `;
+        ultimoPrintHtml = snapshot;
+      } else {
+        html += `<div class="section-title">Vista reconstruida</div>
+          <div class="muted" style="margin-bottom:8px">
+            Este reporte no tiene html_snapshot guardado; se muestra una reconstrucción básica desde el JSON.
+          </div>`;
+        html += renderScorecardsSimple(data.scorecards || []);
+        ultimoPrintHtml = printResultado(data, r);
+      }
+
+      $("vistaResultados").innerHTML = html;
+      show("vistaResultados", true);
+    }
+
+    function armarStatsScorecards(cards) { const validas = cards.filter(s => ["valid", "cargada"].includes(String(s.card_status || ""))).length; return { total: cards.length, validas }; }
+    function renderScorecardsSimple(cards) { if (!cards.length) return `<p class="muted">Este reporte no tiene scorecards en el JSON.</p>`; return `<div class="section-title">Detalle de scorecards</div><div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Categoría</th><th>Gross</th><th>Neto</th><th>Estado</th></tr></thead><tbody>${cards.map(s => `<tr><td>${esc(s.display_name)}</td><td>${esc(s.category_name || "—")}</td><td>${esc(s.gross ?? "—")}</td><td>${esc(s.net ?? "—")}</td><td>${esc(s.card_status || "—")}</td></tr>`).join("")}</tbody></table></div>`; }
+    function printResultado(data, r) { const torneo = data.torneo || r.tournaments || {}; return `<div class="print-page"><div class="print-title">${esc(torneo.name || "Resumen de torneo")}</div><div class="print-sub">Fecha: ${fechaTexto(torneo.tournament_date)} · Guardado: ${fechaHoraTexto(r.updated_at || r.created_at)}</div>${renderScorecardsSimple(data.scorecards || []).replaceAll('class="section-title"', 'class="print-section"').replaceAll('class="table-wrap"', '').replaceAll('<table>', '<table class="print-table">')}</div>`; }
+
+    async function cargarIndex() {
+      try {
+        setStatus("estadoIndex", "Buscando historial de index..."); show("vistaIndex", false);
+        const { data, error } = await supabase.from("aag_sync_history").select("*").order("created_at", { ascending: false }).limit(200);
+        if (error) throw error;
+        indexRows = data || [];
+        $("selectIndex").innerHTML = indexRows.length ? indexRows.map(r => `<option value="${r.id}">${fechaHoraTexto(r.created_at)} · Cambios ${r.updated_count || 0} · Altas ${r.added_count || 0} · Bajas ${r.deactivated_count || 0}</option>`).join("") : "";
+        setStatus("estadoIndex", indexRows.length ? `${indexRows.length} actualizaciones encontradas.` : "No hay historial de index guardado.", indexRows.length ? "ok" : "warn");
+        renderIndexSeleccionado();
+      } catch (err) { console.error(err); setStatus("estadoIndex", "No se pudo cargar aag_sync_history.", "err"); }
+    }
+
+    function renderIndexSeleccionado() {
+      const row = indexRows.find(x => String(x.id) === String($("selectIndex").value));
+      if (!row) { show("vistaIndex", false); return; }
+      const data = row.data || {};
+      const filtro = $("indexFiltro").value;
+      let html = `<div class="stats">
+        <div class="stat"><div class="k">Fecha</div><div class="v" style="font-size:16px">${fechaHoraTexto(row.created_at)}</div></div>
+        <div class="stat"><div class="k">Altas</div><div class="v">${row.added_count || 0}</div></div>
+        <div class="stat"><div class="k">Modificados</div><div class="v">${row.updated_count || 0}</div></div>
+        <div class="stat"><div class="k">Bajas</div><div class="v">${row.deactivated_count || 0}</div></div>
+      </div>`;
+      if (filtro === "all" || filtro === "updated") html += renderIndexTable("Index modificado", data.updated || [], "updated");
+      if (filtro === "all" || filtro === "added") html += renderIndexTable("Altas", data.added || [], "added");
+      if (filtro === "all" || filtro === "deactivated") html += renderIndexTable("Bajas", data.deactivated || [], "deactivated");
+      $("vistaIndex").innerHTML = html; show("vistaIndex", true);
+      ultimoPrintHtml = `<div class="print-page"><div class="print-title">Actualización de index AAG</div><div class="print-sub">${fechaHoraTexto(row.created_at)} · Altas ${row.added_count || 0} · Modificados ${row.updated_count || 0} · Bajas ${row.deactivated_count || 0}</div>${html.replaceAll('class="section-title"', 'class="print-section"').replaceAll('class="table-wrap"', '').replaceAll('<table>', '<table class="print-table">')}</div>`;
+    }
+    function renderIndexTable(titulo, rows, tipo) { if (!rows.length) return `<div class="section-title">${titulo}</div><p class="muted">No hubo movimientos.</p>`; let head = tipo === "updated" ? `<th>Matrícula</th><th>Jugador</th><th>Index anterior</th><th>Index nuevo</th>` : tipo === "added" ? `<th>Matrícula</th><th>Jugador</th><th>Index</th><th>Club</th>` : `<th>Matrícula</th><th>Jugador</th><th>Index anterior</th><th>Motivo</th>`; return `<div class="section-title">${titulo}</div><div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${rows.map(p => tipo === "updated" ? `<tr><td>${esc(p.matricula)}</td><td>${esc(p.nombre)}</td><td><b>${fmtIndex(p.old_index)}</b></td><td><b>${fmtIndex(p.new_index)}</b></td></tr>` : tipo === "added" ? `<tr><td>${esc(p.matricula)}</td><td>${esc(p.nombre)}</td><td><b>${fmtIndex(p.index)}</b></td><td>${esc(p.club || "—")}</td></tr>` : `<tr><td>${esc(p.matricula)}</td><td>${esc(p.nombre)}</td><td><b>${fmtIndex(p.old_index)}</b></td><td>${esc(p.reason || "—")}</td></tr>`).join("")}</tbody></table></div>`; }
+
+    async function cargarPagos() {
+      try {
+        setStatus("estadoPagos", "Buscando pagos guardados en Supabase...");
+        show("vistaPagos", false);
+        pagosItems = [];
+
+        const desde = $("pagosDesde").value;
+        const hasta = $("pagosHasta").value;
+
+        /*
+          IMPORTANTE:
+          En oficialización los pagos se guardan en tournament_payments.
+          No buscamos primero tournament_payment_reports porque esa tabla puede existir pero estar vacía,
+          y entonces nunca cae al detalle real de jugadores pagados.
+        */
+        let q = supabase
+          .from("tournament_payments")
+          .select(`
+            id,
+            tournament_id,
+            registration_id,
+            linked_player_id,
+            display_name,
+            aag_member_number,
+            payment_method,
+            payment_date,
+            amount,
+            created_at,
+            updated_at,
+            tournaments (
+              id,
+              name,
+              tournament_date,
+              status
+            )
+          `)
+          .order("payment_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(3000);
+
+        const { data: pagos, error } = await q;
+        if (error) throw error;
+
+        const filtrados = (pagos || []).filter(p => {
+          const fechaTorneo = String(p.tournaments?.tournament_date || "").slice(0, 10);
+          if (desde && fechaTorneo && fechaTorneo < desde) return false;
+          if (hasta && fechaTorneo && fechaTorneo > hasta) return false;
+          return true;
+        });
+
+        const porTorneo = new Map();
+
+        for (const p of filtrados) {
+          const tid = String(p.tournament_id || "");
+          if (!tid) continue;
+
+          if (!porTorneo.has(tid)) {
+            porTorneo.set(tid, {
+              id: tid,
+              tournament_id: p.tournament_id,
+              tournaments: p.tournaments || { id: p.tournament_id, name: "Torneo", tournament_date: null },
+              source: "payments",
+              pagos_count: 0,
+              total: 0,
+              ultimo_movimiento: p.updated_at || p.created_at || p.payment_date || null
+            });
+          }
+
+          const item = porTorneo.get(tid);
+          item.pagos_count += 1;
+          item.total += Number(p.amount || 0);
+
+          const fechaMov = p.updated_at || p.created_at || p.payment_date || null;
+          if (fechaMov && (!item.ultimo_movimiento || String(fechaMov) > String(item.ultimo_movimiento))) {
+            item.ultimo_movimiento = fechaMov;
+          }
+        }
+
+        pagosItems = [...porTorneo.values()].sort((a, b) => {
+          const fa = String(a.tournaments?.tournament_date || "");
+          const fb = String(b.tournaments?.tournament_date || "");
+          return fb.localeCompare(fa) || String(b.ultimo_movimiento || "").localeCompare(String(a.ultimo_movimiento || ""));
+        });
+
+        $("selectPagos").innerHTML = pagosItems.length
+          ? pagosItems.map(p => `
+              <option value="${p.id}">
+                ${esc(p.tournaments?.name || "Torneo")} · ${fechaTexto(p.tournaments?.tournament_date)} · ${p.pagos_count} pagos · ${money(p.total)}
+              </option>
+            `).join("")
+          : "";
+
+        setStatus(
+          "estadoPagos",
+          pagosItems.length
+            ? `${pagosItems.length} torneos con pagos guardados encontrados en tournament_payments.`
+            : "No hay pagos guardados en tournament_payments para ese rango.",
+          pagosItems.length ? "ok" : "warn"
+        );
+
+        renderPagosSeleccionado();
+      } catch (err) {
+        console.error(err);
+        setStatus("estadoPagos", "No se pudieron cargar los pagos desde tournament_payments.", "err");
+      }
+    }
+
+    async function renderPagosSeleccionado() {
+      const item = pagosItems.find(x => String(x.id) === String($("selectPagos").value));
+      if (!item) { show("vistaPagos", false); return; }
+
+      try {
+        const data = await armarReportePagosDesdePagos(item.tournament_id, item.tournaments);
+        const html = renderPagosData(data);
+
+        $("vistaPagos").innerHTML = html;
+        show("vistaPagos", true);
+
+        ultimoPrintHtml = `
+          <div class="print-page">
+            <div class="print-title">Resumen de pagos</div>
+            <div class="print-sub">
+              Torneo: ${esc(data.torneo?.name || "—")} · 
+              Fecha: ${fechaTexto(data.torneo?.tournament_date)} · 
+              Generado: ${fechaHoraTexto(data.generated_at)}
+            </div>
+            ${html
+            .replaceAll('class="section-title"', 'class="print-section"')
+            .replaceAll('class="table-wrap"', '')
+            .replaceAll('<table>', '<table class="print-table">')}
+          </div>
+        `;
+      } catch (err) {
+        console.error(err);
+        setStatus("estadoPagos", "No se pudo armar el reporte de pagos seleccionado.", "err");
+      }
+    }
+
+    async function armarReportePagosDesdePagos(tournamentId, torneoInfo) {
+      const [{ data: pagos, error: errP }, { data: regs, error: errR }] = await Promise.all([
+        supabase
+          .from("tournament_payments")
+          .select("*")
+          .eq("tournament_id", tournamentId)
+          .order("display_name", { ascending: true }),
+
+        supabase
+          .from("registrations")
+          .select(`
+            id,
+            display_name,
+            aag_member_number,
+            participant_type,
+            linked_player_id,
+            registration_status,
+            player:players(aag_member_number)
+          `)
+          .eq("tournament_id", tournamentId)
+          .neq("registration_status", "cancelled")
+          .order("display_name", { ascending: true })
+      ]);
+
+      if (errP) throw errP;
+      if (errR) console.warn("No se pudieron cargar registrations; se usa solo tournament_payments.", errR);
+
+      const pagosMap = new Map((pagos || []).map(p => [String(p.registration_id || p.id), p]));
+      let detalle = [];
+
+      if (regs && regs.length) {
+        detalle = regs.map(reg => {
+          const p = pagosMap.get(String(reg.id)) || {};
+          const metodo = p.payment_method || "pending";
+          const importe = Number(p.amount || 0);
+
+          return {
+            jugador: p.display_name || reg.display_name || "Sin nombre",
+            matricula: p.aag_member_number || reg.aag_member_number || reg.player?.aag_member_number || "—",
+            fecha: p.payment_date || "",
+            metodo,
+            importe,
+            tiene_pago_guardado: !!p.id,
+            pagado: metodo !== "pending" && metodo !== "no_pay" && importe > 0
+          };
+        });
+      } else {
+        detalle = (pagos || []).map(p => {
+          const metodo = p.payment_method || "pending";
+          const importe = Number(p.amount || 0);
+
+          return {
+            jugador: p.display_name || "Sin nombre",
+            matricula: p.aag_member_number || "—",
+            fecha: p.payment_date || "",
+            metodo,
+            importe,
+            tiene_pago_guardado: true,
+            pagado: metodo !== "pending" && metodo !== "no_pay" && importe > 0
+          };
+        });
+      }
+
+      detalle.sort((a, b) => String(a.jugador || "").localeCompare(String(b.jugador || ""), "es"));
+
+      const resumen = {};
+      for (const key of Object.keys(PAYMENT_METHODS)) {
+        resumen[key] = { label: PAYMENT_METHODS[key], cantidad: 0, total: 0 };
+      }
+
+      detalle.forEach(d => {
+        const metodo = d.metodo || "pending";
+        if (!resumen[metodo]) resumen[metodo] = { label: PAYMENT_METHODS[metodo] || metodo, cantidad: 0, total: 0 };
+        resumen[metodo].cantidad++;
+        resumen[metodo].total += Number(d.importe || 0);
+      });
+
+      return {
+        torneo: torneoInfo,
+        generated_at: new Date().toISOString(),
+        resumen,
+        detalle,
+        total: detalle.reduce((a, d) => a + Number(d.importe || 0), 0),
+        movimientos: detalle.length,
+        pagos_guardados: (pagos || []).length,
+        jugadores_pagados: detalle.filter(d => d.pagado).length
+      };
+    }
+
+    function renderPagosData(data) {
+      const resumen = data.resumen || {}; const detalle = data.detalle || [];
+      return `<div class="stats"><div class="stat"><div class="k">Torneo</div><div class="v" style="font-size:16px">${esc(data.torneo?.name || "—")}</div></div><div class="stat"><div class="k">Fecha</div><div class="v">${fechaTexto(data.torneo?.tournament_date)}</div></div><div class="stat"><div class="k">Movimientos</div><div class="v">${data.movimientos ?? detalle.length}</div></div><div class="stat"><div class="k">Total</div><div class="v" style="font-size:18px">${money(data.total ?? detalle.reduce((a, d) => a + n(d.importe), 0))}</div></div></div>
+      <div class="section-title">Resumen por forma de pago</div><div class="table-wrap"><table><thead><tr><th>Forma de pago</th><th class="center">Movimientos</th><th class="num">Recaudado</th></tr></thead><tbody>${Object.values(resumen).map(r => `<tr><td>${esc(r.label)}</td><td class="center">${r.cantidad || 0}</td><td class="num">${money(r.total || 0)}</td></tr>`).join("")}</tbody></table></div>
+      <div class="section-title">Detalle jugador por jugador</div><div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Matrícula</th><th>Fecha pago</th><th>Forma de pago</th><th class="num">Importe</th></tr></thead><tbody>${detalle.map(d => `<tr><td>${esc(d.jugador)}</td><td>${esc(d.matricula)}</td><td>${fechaTexto(d.fecha)}</td><td>${esc(PAYMENT_METHODS[d.metodo] || d.metodo || "Pendiente")}</td><td class="num">${money(d.importe)}</td></tr>`).join("")}</tbody></table></div>`;
+    }
+
+    await exigirAdmin();
+    await cargarResultados();
+  </script>
+</body>
+
+</html>
