@@ -1668,6 +1668,18 @@
     return !!slot?.lock_expires_at && new Date(slot.lock_expires_at).getTime() > Date.now();
   }
 
+  function esReservaSocioActiva(slot) {
+    return String(slot?.notes || "") === "RESERVA_24H_SOCIO" && lockActive(slot);
+  }
+
+  function esReservaAdminActiva(slot) {
+    return String(slot?.notes || "") === "RESERVA_ADMIN";
+  }
+
+  function esReservaActiva(slot) {
+    return esReservaSocioActiva(slot) || esReservaAdminActiva(slot);
+  }
+
   function lockIsMine(slot) {
     if (!slot || !lockActive(slot)) return false;
 
@@ -1896,8 +1908,7 @@
     if (!slot) return false;
 
     const esReserva =
-      String(slot.notes || "") === "RESERVA_24H_SOCIO" &&
-      lockActive(slot);
+      esReservaActiva(slot);
 
     if (!esReserva) return false;
 
@@ -1928,14 +1939,23 @@
       );
     }
 
-    const { error } = await supabase
-      .from("line_slots")
-      .update({
-        locked_by_player_id: APP.esAdmin ? null : APP.miPlayerId,
-        locked_by_session: APP.esAdmin ? APP.sessionLockId : null,
+    const payload = APP.esAdmin
+      ? {
+        locked_by_player_id: null,
+        locked_by_session: null,
+        lock_expires_at: null,
+        notes: "RESERVA_ADMIN"
+      }
+      : {
+        locked_by_player_id: APP.miPlayerId,
+        locked_by_session: null,
         lock_expires_at: addHoursIso(24),
         notes: "RESERVA_24H_SOCIO"
-      })
+      };
+
+    const { error } = await supabase
+      .from("line_slots")
+      .update(payload)
       .eq("id", slotId);
 
     if (error) throw error;
@@ -2471,7 +2491,7 @@
     }
 
     const ids = slotsLinea
-      .filter((slot) => String(slot.notes || "") !== "RESERVA_24H_SOCIO")
+      .filter((slot) => !esReservaActiva(slot))
       .map((slot) => slot.id);
 
     if (!ids.length) throw new Error("No se encontraron slots para bloquear.");
@@ -3061,8 +3081,7 @@
 
         const isReserved =
           slot &&
-          String(slot.notes || "") === "RESERVA_24H_SOCIO" &&
-          lockActive(slot);
+          esReservaActiva(slot);
 
         const nameCompleto = slot && !isSlotEmpty(slot) && !isBlocked && !isReserved
           ? normalizeSlotName(slot)
@@ -3394,75 +3413,98 @@
   }
 
   async function createManualPlayer({ nombre, apellido, current_index, genero, pais }) {
-  const first_name = String(nombre || "").trim();
-  const last_name = String(apellido || "").trim();
+    const first_name = String(nombre || "").trim();
+    const last_name = String(apellido || "").trim();
 
-  if (!first_name) throw new Error("El nombre es obligatorio.");
-  if (!last_name) throw new Error("El apellido es obligatorio.");
-  if (!genero) throw new Error("El género es obligatorio.");
+    if (!first_name) throw new Error("El nombre es obligatorio.");
+    if (!last_name) throw new Error("El apellido es obligatorio.");
+    if (!genero) throw new Error("El género es obligatorio.");
 
-  const normalizar = (txt) =>
-    String(txt || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/,/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toUpperCase();
+    const normalizar = (txt) =>
+      String(txt || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/,/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
 
-  const full_name = `${last_name}, ${first_name}`;
+    const full_name = `${last_name}, ${first_name}`;
 
-  const firstNorm = normalizar(first_name);
-  const lastNorm = normalizar(last_name);
+    const firstNorm = normalizar(first_name);
+    const lastNorm = normalizar(last_name);
 
-  const search_text = normalizar(
-    `${last_name} ${first_name} ${first_name} ${last_name} ${full_name}`
-  );
-
-  // Buscar jugadores manuales existentes parecidos
-  const { data: existentes, error: buscarError } = await supabase
-    .from("players")
-    .select("*")
-    .is("aag_member_number", null)
-    .ilike("search_text", `%${lastNorm}%`)
-    .limit(50);
-
-  if (buscarError) throw buscarError;
-
-  const encontrado = (existentes || []).find((p) => {
-    const pFirst = normalizar(p.first_name);
-    const pLast = normalizar(p.last_name);
-    const pFull = normalizar(p.full_name);
-    const pSearch = normalizar(p.search_text);
-
-    return (
-      (pFirst === firstNorm && pLast === lastNorm) ||
-      pFull === normalizar(full_name) ||
-      pSearch.includes(`${lastNorm} ${firstNorm}`) ||
-      pSearch.includes(`${firstNorm} ${lastNorm}`)
+    const search_text = normalizar(
+      `${last_name} ${first_name} ${first_name} ${last_name} ${full_name}`
     );
-  });
 
-  if (encontrado) {
-    const updatePayload = {
-      first_name,
-      last_name,
-      gender: genero,
-      country: pais || encontrado.country || null,
-      source: encontrado.source || "manual",
-      is_club_member: encontrado.is_club_member ?? false,
-      is_aag_active: encontrado.is_aag_active ?? false,
-      search_text
-    };
+    // Buscar jugadores manuales existentes parecidos
+    const { data: existentes, error: buscarError } = await supabase
+      .from("players")
+      .select("*")
+      .is("aag_member_number", null)
+      .ilike("search_text", `%${lastNorm}%`)
+      .limit(50);
 
-    if (current_index !== null && current_index !== undefined) {
-      updatePayload.current_index = current_index;
+    if (buscarError) throw buscarError;
+
+    const encontrado = (existentes || []).find((p) => {
+      const pFirst = normalizar(p.first_name);
+      const pLast = normalizar(p.last_name);
+      const pFull = normalizar(p.full_name);
+      const pSearch = normalizar(p.search_text);
+
+      return (
+        (pFirst === firstNorm && pLast === lastNorm) ||
+        pFull === normalizar(full_name) ||
+        pSearch.includes(`${lastNorm} ${firstNorm}`) ||
+        pSearch.includes(`${firstNorm} ${lastNorm}`)
+      );
+    });
+
+    if (encontrado) {
+      const updatePayload = {
+        first_name,
+        last_name,
+        gender: genero,
+        country: pais || encontrado.country || null,
+        source: encontrado.source || "manual",
+        is_club_member: encontrado.is_club_member ?? false,
+        is_aag_active: encontrado.is_aag_active ?? false,
+        search_text
+      };
+
+      if (current_index !== null && current_index !== undefined) {
+        updatePayload.current_index = current_index;
+      }
+
+      const { data, error } = await supabase
+        .from("players")
+        .update(updatePayload)
+        .eq("id", encontrado.id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      searchCache.clear();
+      return data;
     }
 
     const { data, error } = await supabase
       .from("players")
-      .update(updatePayload)
-      .eq("id", encontrado.id)
+      .insert({
+        first_name,
+        last_name,
+        current_index,
+        gender: genero,
+        country: pais || null,
+        is_club_member: false,
+        is_aag_active: false,
+        source: "manual",
+        aag_member_number: null,
+        search_text
+      })
       .select("*")
       .single();
 
@@ -3471,29 +3513,6 @@
     searchCache.clear();
     return data;
   }
-
-  const { data, error } = await supabase
-    .from("players")
-    .insert({
-      first_name,
-      last_name,
-      current_index,
-      gender: genero,
-      country: pais || null,
-      is_club_member: false,
-      is_aag_active: false,
-      source: "manual",
-      aag_member_number: null,
-      search_text
-    })
-    .select("*")
-    .single();
-
-  if (error) throw error;
-
-  searchCache.clear();
-  return data;
-}
 
   async function occupySlotWithPlayer(slotId, jugador, registrationFallbackType = "aag_match") {
     setStatus("Guardando jugador...");
