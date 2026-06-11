@@ -232,6 +232,65 @@
             transform: scale(1.05);
         }
 
+
+        .assoc-panel {
+            margin-top: 16px;
+            border: 2px solid #f59e0b;
+            background: #fffbeb;
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .assoc-title {
+            font-weight: 800;
+            color: #92400e;
+            margin-bottom: 8px;
+        }
+
+        .assoc-item {
+            background: #fff;
+            border: 1px solid #fde68a;
+            border-radius: 14px;
+            padding: 14px;
+            margin-top: 12px;
+        }
+
+        .assoc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 12px 0;
+        }
+
+        .assoc-box {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 12px;
+            background: #f9fafb;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .assoc-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        .btn-danger {
+            background: #b91c1c;
+        }
+
+        @media (max-width: 760px) {
+            .assoc-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 760px) {
             body {
                 padding: 16px;
@@ -414,6 +473,7 @@
         <div class="inner-card">
             <h2>Última sincronización AAG</h2>
             <div id="detalleSync">Sin datos todavía.</div>
+            <div id="asociacionesAAG"></div>
         </div>
 
         <hr style="margin:24px 0;">
@@ -611,6 +671,350 @@
             }
 
             return map;
+        }
+
+
+
+        function nombreClaveJugador(p) {
+            const apellido = normalizarTexto(p.last_name || "");
+            const nombre = normalizarTexto(p.first_name || "");
+
+            if (apellido || nombre) {
+                return `${apellido}|${nombre}`;
+            }
+
+            const full = normalizarTexto(p.full_name || "").replace(/,/g, " ").replace(/\s+/g, " ").trim();
+            const partes = full.split(" ").filter(Boolean);
+
+            if (partes.length >= 2) {
+                return `${partes[0]}|${partes.slice(1).join(" ")}`;
+            }
+
+            return full;
+        }
+
+        function generoClave(gender) {
+            return generoTexto(gender) === "Dama" ? "female" : "male";
+        }
+
+        async function getPlayersSinMatricula() {
+            return await selectAllRows({
+                table: "players",
+                select: `
+                    id,
+                    first_name,
+                    last_name,
+                    full_name,
+                    gender,
+                    current_index,
+                    aag_member_number,
+                    country,
+                    club_name,
+                    option_club_id,
+                    is_club_member,
+                    is_aag_active,
+                    source,
+                    search_text
+                `,
+                orderBy: "full_name",
+                filters: q => q.is("aag_member_number", null)
+            });
+        }
+
+        async function getAagVMGCSnapshot() {
+            return await selectAllRows({
+                table: "aag_enrolleds",
+                select: `
+                    enrollment_number,
+                    first_name,
+                    last_name,
+                    full_name,
+                    gender,
+                    current_index,
+                    option_club_id,
+                    club_name,
+                    search_text
+                `,
+                orderBy: "enrollment_number",
+                filters: q => q.eq("option_club_id", VMGC_CLUB_ID)
+            });
+        }
+
+        async function contarUsoJugador(playerId) {
+            const tablas = [
+                { table: "registrations", col: "linked_player_id" },
+                { table: "scorecards", col: "linked_player_id" },
+                { table: "tournament_payments", col: "linked_player_id" }
+            ];
+
+            const out = {};
+
+            for (const t of tablas) {
+                const { count, error } = await supabase
+                    .from(t.table)
+                    .select("id", { count: "exact", head: true })
+                    .eq(t.col, playerId);
+
+                if (error) {
+                    console.warn(`No se pudo contar ${t.table}:`, error);
+                    out[t.table] = null;
+                } else {
+                    out[t.table] = count || 0;
+                }
+            }
+
+            return out;
+        }
+
+        async function detectarPosiblesAsociacionesAAG() {
+            resultado.textContent = "Buscando posibles jugadores manuales para asociar antes de sincronizar...";
+
+            const beforeMap = await getPlayersSnapshot();
+            const playersConMatricula = new Set([...beforeMap.keys()].map(String));
+            // Jugadores creados a mano suelen venir así:
+            // source = "manual", aag_member_number = null, is_aag_active = false.
+            // Por eso NO hay que filtrar por is_aag_active, porque justamente
+            // quedarían afuera los jugadores manuales que queremos asociar.
+            const manuales = (await getPlayersSinMatricula())
+                .filter(p => nombreClaveJugador(p) && !mismaMatricula(p.aag_member_number));
+            const aagVMGC = await getAagVMGCSnapshot();
+
+            const manualesPorClave = new Map();
+
+            for (const p of manuales) {
+                const clave = `${nombreClaveJugador(p)}|${generoClave(p.gender)}`;
+                if (!manualesPorClave.has(clave)) manualesPorClave.set(clave, []);
+                manualesPorClave.get(clave).push(p);
+            }
+
+            const pendientes = [];
+
+            for (const aag of aagVMGC) {
+                const matricula = mismaMatricula(aag.enrollment_number);
+                if (!matricula || playersConMatricula.has(matricula)) continue;
+
+                const clave = `${nombreClaveJugador(aag)}|${generoClave(aag.gender)}`;
+                const candidatos = manualesPorClave.get(clave) || [];
+
+                if (!candidatos.length) continue;
+
+                pendientes.push({
+                    aag: {
+                        ...aag,
+                        aag_member_number: matricula
+                    },
+                    candidatos: candidatos.slice(0, 5)
+                });
+            }
+
+            for (const item of pendientes) {
+                for (const candidato of item.candidatos) {
+                    candidato.usos = await contarUsoJugador(candidato.id);
+                }
+            }
+
+            return pendientes;
+        }
+
+        function renderAsociacionesPendientes(pendientes) {
+            const box = document.getElementById("asociacionesAAG");
+            if (!box) return;
+
+            if (!pendientes.length) {
+                box.innerHTML = "";
+                return;
+            }
+
+            box.innerHTML = `
+                <div class="assoc-panel">
+                    <div class="assoc-title">Antes de sincronizar, revisá estas posibles asociaciones AAG</div>
+                    <p class="muted">Encontré jugadores manuales sin matrícula que tienen el mismo nombre, apellido y género que jugadores nuevos del padrón AAG. Si corresponde, asociá el jugador viejo para conservar torneos, pagos y tarjetas.</p>
+
+                    ${pendientes.map((item, idx) => `
+                        <div class="assoc-item" data-assoc-idx="${idx}">
+                            <b>Caso ${idx + 1}: ${escapeHtml(nombreDesdePlayer(item.aag))}</b>
+                            <div class="assoc-grid">
+                                <div class="assoc-box">
+                                    <b>Nuevo dato AAG</b><br>
+                                    Matrícula: <b>${escapeHtml(item.aag.aag_member_number)}</b><br>
+                                    Index: <b>${escapeHtml(formatIndex(item.aag.current_index))}</b><br>
+                                    Género: <b>${escapeHtml(generoTexto(item.aag.gender))}</b><br>
+                                    Club: <b>${escapeHtml(item.aag.club_name || "Villa María Golf Club")}</b>
+                                </div>
+                                <div class="assoc-box">
+                                    <b>Jugador/es manual/es encontrado/s</b><br>
+                                    ${item.candidatos.map((c, cidx) => `
+                                        <div style="margin-top:8px; padding-top:8px; border-top:1px solid #e5e7eb;">
+                                            <b>${escapeHtml(nombreDesdePlayer(c))}</b><br>
+                                            Index actual: ${escapeHtml(formatIndex(c.current_index))}<br>
+                                            Torneos/inscripciones: ${c.usos?.registrations ?? "—"} ·
+                                            Tarjetas: ${c.usos?.scorecards ?? "—"} ·
+                                            Pagos: ${c.usos?.tournament_payments ?? "—"}<br>
+                                            <button data-assoc-action="link" data-assoc-idx="${idx}" data-candidato-idx="${cidx}" style="margin-top:8px; padding:8px 10px; font-size:13px;">Asociar a este</button>
+                                        </div>
+                                    `).join("")}
+                                </div>
+                            </div>
+                            <div class="assoc-actions">
+                                <button class="btn-secondary" data-assoc-action="skip" data-assoc-idx="${idx}">Crear jugador nuevo / ignorar este caso</button>
+                            </div>
+                        </div>
+                    `).join("")}
+
+                    <p class="muted" style="margin-top:12px;">Cuando resuelvas todos los casos, la sincronización sigue automáticamente.</p>
+                </div>
+            `;
+
+            box.querySelectorAll("[data-assoc-action]").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    const idx = Number(btn.dataset.assocIdx);
+                    const action = btn.dataset.assocAction;
+                    const item = pendientes[idx];
+
+                    if (!item) return;
+
+                    try {
+                        btn.disabled = true;
+
+                        if (action === "link") {
+                            const cidx = Number(btn.dataset.candidatoIdx);
+                            const candidato = item.candidatos[cidx];
+                            if (!candidato) return;
+
+                            const ok = confirm(`¿Asociar ${nombreDesdePlayer(candidato)} con la matrícula AAG ${item.aag.aag_member_number}?`);
+                            if (!ok) {
+                                btn.disabled = false;
+                                return;
+                            }
+
+                            await asociarPlayerManualConAAG(candidato, item.aag);
+                        }
+
+                        pendientes.splice(idx, 1);
+
+                        if (pendientes.length) {
+                            renderAsociacionesPendientes(pendientes);
+                        } else {
+                            renderAsociacionesPendientes([]);
+                            await ejecutarSyncAAG();
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        alert(`Error al asociar: ${error.message || error}`);
+                        btn.disabled = false;
+                    }
+                });
+            });
+        }
+
+        async function asociarPlayerManualConAAG(playerManual, aag) {
+            const matricula = mismaMatricula(aag.aag_member_number || aag.enrollment_number);
+
+            const payload = {
+                aag_member_number: matricula,
+                first_name: aag.first_name || playerManual.first_name || null,
+                last_name: aag.last_name || playerManual.last_name || null,
+                gender: aag.gender || playerManual.gender || null,
+                current_index: aag.current_index ?? playerManual.current_index ?? null,
+                country: "Argentina",
+                club_name: aag.club_name || "Villa María Golf Club",
+                option_club_id: Number(aag.option_club_id) || VMGC_CLUB_ID,
+                is_club_member: Number(aag.option_club_id) === VMGC_CLUB_ID,
+                is_aag_active: true,
+                source: "aag",
+                index_updated_at: new Date().toISOString()
+            };
+
+            const { error } = await supabase
+                .from("players")
+                .update(payload)
+                .eq("id", playerManual.id);
+
+            if (error) throw error;
+        }
+
+        async function iniciarSyncConRevisionAAG() {
+            btnSync.disabled = true;
+
+            try {
+                const pendientes = await detectarPosiblesAsociacionesAAG();
+
+                if (pendientes.length) {
+                    resultado.innerHTML = `<span class="err">Sincronización pausada</span>\n\nHay ${pendientes.length} posible/s jugador/es para asociar antes de crear duplicados.`;
+                    renderAsociacionesPendientes(pendientes);
+                    return;
+                }
+
+                renderAsociacionesPendientes([]);
+                await ejecutarSyncAAG();
+            } catch (err) {
+                console.error(err);
+                resultado.innerHTML = `<span class="err">Error</span>\n\n${escapeHtml(err.message || err)}`;
+            } finally {
+                btnSync.disabled = false;
+            }
+        }
+
+        async function ejecutarSyncAAG() {
+            btnSync.disabled = true;
+            resultado.textContent = "Tomando foto previa de players VMGC 408...";
+
+            try {
+                const beforeMap = await getPlayersSnapshot();
+
+                resultado.textContent = "Sincronizando con AAG... puede tardar un poco.";
+
+                const res = await fetch(FUNCTION_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": currentSession?.access_token ? `Bearer ${currentSession.access_token}` : undefined,
+                        "apikey": SUPABASE_KEY
+                    },
+                    body: JSON.stringify({
+                        action: "sync_vmgc",
+                        club_id: VMGC_CLUB_ID,
+                        detail_changes: true
+                    })
+                });
+
+                const text = await res.text();
+                let data = {};
+
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (_) {
+                    data = { raw_response: text };
+                }
+
+                if (!res.ok || data.ok === false) {
+                    throw new Error(data.error || data.message || text || "Error desconocido");
+                }
+
+                resultado.textContent = "Leyendo players actualizados y armando detalle...";
+
+                const afterMap = await getPlayersSnapshot();
+                const changes = armarCambiosSync(beforeMap, afterMap, data);
+
+                await guardarHistorialSync(changes, data);
+
+                resultado.innerHTML =
+                    `<span class="ok">Sincronización correcta</span>\n\n` +
+                    `Club: Villa María Golf Club (${VMGC_CLUB_ID})\n` +
+                    `Altas: ${changes.added.length}\n` +
+                    `Cambios de index: ${changes.updated.length}\n` +
+                    `Dejaron de ser miembros: ${changes.deactivated.length}`;
+
+                renderDetalleSync(changes);
+
+                ultimoReporteSync = changes;
+                btnImprimirSync.disabled = false;
+            } catch (err) {
+                console.error(err);
+                resultado.innerHTML = `<span class="err">Error</span>\n\n${escapeHtml(err.message || err)}`;
+            } finally {
+                btnSync.disabled = false;
+            }
         }
 
         function armarCambiosSync(beforeMap, afterMap, workerData = {}) {
@@ -842,69 +1246,7 @@
             }, 100);
         }
 
-        btnSync.addEventListener("click", async () => {
-            btnSync.disabled = true;
-            resultado.textContent = "Tomando foto previa de players VMGC 408...";
-
-            try {
-                const beforeMap = await getPlayersSnapshot();
-
-                resultado.textContent = "Sincronizando con AAG... puede tardar un poco.";
-
-                const res = await fetch(FUNCTION_URL, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": currentSession?.access_token ? `Bearer ${currentSession.access_token}` : undefined,
-                        "apikey": SUPABASE_KEY
-                    },
-                    body: JSON.stringify({
-                        action: "sync_vmgc",
-                        club_id: VMGC_CLUB_ID,
-                        detail_changes: true
-                    })
-                });
-
-                const text = await res.text();
-                let data = {};
-
-                try {
-                    data = text ? JSON.parse(text) : {};
-                } catch (_) {
-                    data = { raw_response: text };
-                }
-
-                if (!res.ok || data.ok === false) {
-                    throw new Error(data.error || data.message || text || "Error desconocido");
-                }
-
-                resultado.textContent = "Leyendo players actualizados y armando detalle...";
-
-                const afterMap = await getPlayersSnapshot();
-                const changes = armarCambiosSync(beforeMap, afterMap, data);
-
-                await guardarHistorialSync(changes, data);
-
-                resultado.innerHTML =
-                    `<span class="ok">Sincronización correcta</span>\n\n` +
-                    `Club: Villa María Golf Club (${VMGC_CLUB_ID})\n` +
-                    `Altas: ${changes.added.length}\n` +
-                    `Cambios de index: ${changes.updated.length}\n` +
-                    `Dejaron de ser miembros: ${changes.deactivated.length}`;
-
-                renderDetalleSync(changes);
-
-                ultimoReporteSync = changes;
-                btnImprimirSync.disabled = false;
-
-            } catch (err) {
-                console.error(err);
-                resultado.innerHTML =
-                    `<span class="err">Error</span>\n\n${escapeHtml(err.message || err)}`;
-            } finally {
-                btnSync.disabled = false;
-            }
-        });
+        btnSync.addEventListener("click", iniciarSyncConRevisionAAG);
 
         async function buscarJugadores() {
             const qRaw = buscadorJugador.value.trim();
