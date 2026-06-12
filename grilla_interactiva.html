@@ -1598,7 +1598,10 @@
 
   function isSlotEmpty(slot) {
     const participantType = String(slot?.participant_type || "").toLowerCase();
+
     if (participantType === "blocked") return false;
+    if (esReservaActiva(slot)) return false;
+
     return normalizeSlotName(slot) === "Libre";
   }
 
@@ -1691,14 +1694,23 @@
   }
 
   function lockIsOther(slot) {
-    if (!slot?.locked_by_player_id && !slot?.locked_by_session) return false;
-    if (!lockActive(slot)) return false;
+    if (!slot) return false;
 
-    // Reserva 24 hs del socio: también la tiene que ver el admin como reservado.
+    // Reserva indefinida de Admin:
+    // para el member siempre debe verse como reservado.
+    if (String(slot.notes || "") === "RESERVA_ADMIN") {
+      return !APP.esAdmin;
+    }
+
+    // Reserva 24 hs socio
     if (String(slot.notes || "") === "RESERVA_24H_SOCIO") {
+      if (!lockActive(slot)) return false;
       if (APP.miPlayerId && String(slot.locked_by_player_id || "") === String(APP.miPlayerId)) return false;
       return true;
     }
+
+    if (!slot?.locked_by_player_id && !slot?.locked_by_session) return false;
+    if (!lockActive(slot)) return false;
 
     if (APP.miPlayerId && String(slot.locked_by_player_id || "") === String(APP.miPlayerId)) {
       return false;
@@ -1740,6 +1752,7 @@
       country: jugador.country || null,
       manual_index: jugador.current_index ?? null,
       needs_admin_review: !jugador.aag_member_number,
+      notes: null,
       locked_by_session: null,
       locked_by_player_id: null,
       lock_expires_at: null,
@@ -1941,9 +1954,18 @@
 
     const payload = APP.esAdmin
       ? {
+        display_name: "Reservado",
+        participant_type: "admin",
+        created_by_player_id: null,
+        linked_player_id: null,
+        aag_member_number: null,
+        club_name: null,
+        country: null,
+        manual_index: null,
+        needs_admin_review: false,
         locked_by_player_id: null,
-        locked_by_session: null,
-        lock_expires_at: null,
+        locked_by_session: "RESERVA_ADMIN",
+        lock_expires_at: "2099-12-31T23:59:59.000Z",
         notes: "RESERVA_ADMIN"
       }
       : {
@@ -1952,7 +1974,6 @@
         lock_expires_at: addHoursIso(24),
         notes: "RESERVA_24H_SOCIO"
       };
-
     const { error } = await supabase
       .from("line_slots")
       .update(payload)
@@ -1970,12 +1991,7 @@
 
     const { error } = await supabase
       .from("line_slots")
-      .update({
-        locked_by_player_id: null,
-        locked_by_session: null,
-        lock_expires_at: null,
-        notes: null
-      })
+      .update(buildSlotResetPayload())
       .eq("id", slotId);
 
     if (error) throw error;
@@ -2838,6 +2854,28 @@
   function renderOccupiedSlot(line, slot, cssLockClass) {
     const participantType = String(slot?.participant_type || "");
 
+    if (esReservaActiva(slot)) {
+      if (APP.esAdmin) {
+        return `
+      <td class="slot-cell slot-empty slot-locked-other" data-slot-id="${slot.id}" data-libre="0">
+        <div class="slot-box">
+          <button class="slot-inline-manual-btn" type="button" data-release-reserve-slot="${slot.id}">
+            Liberar reserva
+          </button>
+        </div>
+      </td>
+    `;
+      }
+
+      return `
+    <td class="slot-cell slot-empty slot-locked-other" data-libre="0">
+      <div class="slot-box">
+        <span class="slot-libre-link" style="text-decoration:none; cursor:not-allowed;">Reservado</span>
+      </div>
+    </td>
+  `;
+    }
+
     const indicator = participantType === "self"
       ? `<div class="slot-indicator slot-indicator-self"></div>`
       : participantType === "guest"
@@ -3334,6 +3372,41 @@
 
   function renderMobileOccupiedSlot(line, slot, cssLockClass = "") {
     const participantType = String(slot?.participant_type || "");
+
+    if (esReservaActiva(slot)) {
+      if (APP.esAdmin) {
+        return `
+      <div class="mobile-slot mobile-slot-empty slot-locked-other" data-slot-id="${slot.id}" data-libre="0">
+        <div class="mobile-slot-top">
+          <div class="mobile-slot-num">Lugar ${safeText(slot.slot_number)}</div>
+        </div>
+
+        <div class="mobile-slot-name mobile-slot-empty">Reservado</div>
+
+        <div class="mobile-actions">
+          <button class="mobile-btn-soft" type="button" data-release-reserve-slot="${slot.id}">
+            Liberar reserva
+          </button>
+        </div>
+      </div>
+    `;
+      }
+
+      return `
+    <div class="mobile-slot mobile-slot-empty slot-locked-other" data-libre="0">
+      <div class="mobile-slot-top">
+        <div class="mobile-slot-num">Lugar ${safeText(slot.slot_number)}</div>
+      </div>
+
+      <div class="mobile-slot-name mobile-slot-empty">Reservado</div>
+
+      <div class="mobile-actions">
+        <span class="helper-text">No disponible</span>
+      </div>
+    </div>
+  `;
+    }
+
     const typeClass = getSlotCssType(slot);
     const textoCompleto = participantType === "blocked" ? "Bloqueado" : normalizeSlotName(slot);
     const texto = participantType === "blocked" ? "Bloqueado" : formatNombreCorto(textoCompleto);
@@ -4256,11 +4329,10 @@
         try {
           const slot = await fetchSlotById(slotId);
 
-          // 👉 si es reserva 24 hs, admin libera con un click
+          // 👉 si es reserva, admin la libera directamente con confirmación
           if (
             APP.esAdmin &&
-            String(slot?.notes || "") === "RESERVA_24H_SOCIO" &&
-            lockActive(slot)
+            esReservaActiva(slot)
           ) {
             const ok = confirm("¿Querés volver a habilitar este lugar reservado?");
             if (!ok) return;
