@@ -2855,7 +2855,10 @@
     const participantType = String(slot?.participant_type || "");
 
     if (esReservaActiva(slot)) {
-      if (APP.esAdmin) {
+      const esReservaAdmin = String(slot.notes || "") === "RESERVA_ADMIN";
+      const puedeLiberar = APP.esAdmin || (!esReservaAdmin && esReservaMia(slot));
+
+      if (puedeLiberar) {
         return `
       <td class="slot-cell slot-empty slot-locked-other" data-slot-id="${slot.id}" data-libre="0">
         <div class="slot-box">
@@ -3374,15 +3377,13 @@
     const participantType = String(slot?.participant_type || "");
 
     if (esReservaActiva(slot)) {
-      if (APP.esAdmin) {
+      const esReservaAdmin = String(slot.notes || "") === "RESERVA_ADMIN";
+      const puedeLiberar = APP.esAdmin || (!esReservaAdmin && esReservaMia(slot));
+
+      if (puedeLiberar) {
         return `
       <div class="mobile-slot mobile-slot-empty slot-locked-other" data-slot-id="${slot.id}" data-libre="0">
-        <div class="mobile-slot-top">
-          <div class="mobile-slot-num">Lugar ${safeText(slot.slot_number)}</div>
-        </div>
-
         <div class="mobile-slot-name mobile-slot-empty">Reservado</div>
-
         <div class="mobile-actions">
           <button class="mobile-btn-soft" type="button" data-release-reserve-slot="${slot.id}">
             Liberar reserva
@@ -3394,12 +3395,7 @@
 
       return `
     <div class="mobile-slot mobile-slot-empty slot-locked-other" data-libre="0">
-      <div class="mobile-slot-top">
-        <div class="mobile-slot-num">Lugar ${safeText(slot.slot_number)}</div>
-      </div>
-
       <div class="mobile-slot-name mobile-slot-empty">Reservado</div>
-
       <div class="mobile-actions">
         <span class="helper-text">No disponible</span>
       </div>
