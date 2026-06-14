@@ -637,7 +637,7 @@
         <div class="hcp-modal-box" role="dialog" aria-modal="true">
             <button id="hcpModalClose" class="hcp-modal-close" type="button">×</button>
             <div id="hcpModalContent"></div>
-            <div class="hcp-modal-timer">Se cierra automáticamente en 5 segundos</div>
+            <div class="hcp-modal-timer">Se cierra automáticamente en 15 segundos</div>
         </div>
     </div>
 
@@ -842,7 +842,7 @@
 
             hcpModalTimer = setTimeout(() => {
                 cerrarHcpModal();
-            }, 5000);
+            }, 15000);
         }
 
         async function calcularHcpPorTee(jugador) {
