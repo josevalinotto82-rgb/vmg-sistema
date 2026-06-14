@@ -554,6 +554,92 @@
       margin-left: 4px;
     }
 
+    .fact-sugerido-label {
+      display: inline-block;
+      background: #dcfce7;
+      color: #166534;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 900;
+      margin-left: 4px;
+    }
+
+    .fact-usado-label {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 900;
+      margin-left: 4px;
+    }
+
+    .fact-aviso-mensual {
+      border: 1px solid #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+      border-radius: 12px;
+      padding: 9px 10px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .fact-aviso-mensual.usado {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+
+    .fact-table tbody tr.marca-no-paga-lista td,
+    .fact-table tbody tr.marca-no-paga-sugerido-lista td {
+      background: #f0fdf4 !important;
+    }
+
+    .fact-table tbody tr.marca-no-paga-usado-lista td {
+      background: #eff6ff !important;
+    }
+
+    .fact-player-line {
+      border-radius: 10px;
+      padding: 5px 7px;
+      margin: -2px 0;
+    }
+
+    .fact-player-line.marca-no-paga-lista,
+    .fact-player-line.marca-no-paga-sugerido-lista {
+      background: #f0fdf4;
+      border-left: 4px solid #22c55e;
+    }
+
+    .fact-player-line.marca-no-paga-usado-lista {
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
+    }
+
+    .fact-no-paga-label {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 900;
+      margin-left: 4px;
+      white-space: nowrap;
+    }
+
+    .fact-no-paga-label.ok {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .fact-no-paga-label.usado {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
     .fact-main {
       font-size: 13px;
       font-weight: 800;
@@ -1127,12 +1213,25 @@
 
     let aagEnrolledsMap = new Map();
     let pagosMap = new Map();
+    let noPagaMensualMap = new Map();
 
     let filasVistaCache = null;
     let autoCategoriaDesdeIndexManual = false;
 
     let usuarioEditandoTabla = false;
     let facturaActual = null;
+
+    function hayBusquedaJugadorActiva() {
+      return (document.getElementById("buscadorJugadores")?.value || "").trim().length > 0;
+    }
+
+    function hayFacturacionAbierta() {
+      return document.getElementById("factModal")?.classList.contains("open") === true;
+    }
+
+    function hayGestionJugadorActiva() {
+      return hayBusquedaJugadorActiva() || hayFacturacionAbierta();
+    }
 
 
     torneoSelect.addEventListener("change", cargarTodo);
@@ -1367,12 +1466,14 @@
     }
 
     function programarRecargaOficializacion() {
-      if (usuarioEditandoTabla) return;
+      // Si la secretaria está buscando o facturando un jugador, no recargo toda la tabla.
+      // Antes esto borraba visualmente el filtro y volvía a mostrar el listado completo.
+      if (usuarioEditandoTabla || hayGestionJugadorActiva()) return;
 
       clearTimeout(realtimeReloadTimer);
 
       realtimeReloadTimer = setTimeout(() => {
-        if (usuarioEditandoTabla) return;
+        if (usuarioEditandoTabla || hayGestionJugadorActiva()) return;
         cargarTodo();
       }, 500);
     }
@@ -1458,7 +1559,7 @@
       clearTimeout(realtimeReloadTimer);
 
       realtimeReloadTimer = setTimeout(async () => {
-        if (hayEdicionManualActiva() || usuarioEditandoTabla) return;
+        if (hayEdicionManualActiva() || usuarioEditandoTabla || hayGestionJugadorActiva()) return;
 
         try {
           await refrescarIndicesVivosInscritos({ render: true });
@@ -1474,7 +1575,7 @@
 
       indexRefreshTimer = setInterval(async () => {
         if (!torneoActual?.id) return;
-        if (hayEdicionManualActiva() || usuarioEditandoTabla) return;
+        if (hayEdicionManualActiva() || usuarioEditandoTabla || hayGestionJugadorActiva()) return;
 
         try {
           await refrescarIndicesVivosInscritos({ render: true });
@@ -2094,6 +2195,136 @@
       return !esSocioVMGC(reg);
     }
 
+    function claveJugadorMensual(reg) {
+      const playerId = reg?.linked_player_id ? String(reg.linked_player_id) : "";
+      if (playerId) return `player:${playerId}`;
+
+      const matricula = normalizarMatriculaAAG(getAagMemberNumber(reg));
+      if (matricula) return `aag:${matricula}`;
+
+      return `nombre:${String(reg?.display_name || "").toLowerCase().trim()}`;
+    }
+
+    function rangoMesTorneo(fechaISO) {
+      const d = new Date(`${fechaISO}T00:00:00`);
+      const anio = d.getFullYear();
+      const mes = d.getMonth();
+      const inicio = new Date(anio, mes, 1);
+      const fin = new Date(anio, mes + 1, 0);
+      const fmt = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+      return { inicio: fmt(inicio), fin: fmt(fin) };
+    }
+
+    async function cargarSugerenciasNoPagaMensual() {
+      noPagaMensualMap = new Map();
+
+      if (!torneoActual?.id || !torneoActual?.tournament_date || !registrations.length) return;
+
+      const socios = registrations.filter(esSocioVMGC);
+      if (!socios.length) return;
+
+      const { inicio, fin } = rangoMesTorneo(torneoActual.tournament_date);
+
+      const { data: torneosMes, error: torneosMesError } = await supabase
+        .from("tournaments")
+        .select("id, name, tournament_date")
+        .gte("tournament_date", inicio)
+        .lte("tournament_date", fin);
+
+      if (torneosMesError) {
+        console.warn("No se pudieron revisar torneos del mes para No paga.", torneosMesError);
+        return;
+      }
+
+      const idsTorneosMes = (torneosMes || [])
+        .map(t => t.id)
+        .filter(id => String(id) !== String(torneoActual.id));
+
+      const torneosMesMap = new Map((torneosMes || []).map(t => [String(t.id), t]));
+      let pagosNoPagaMes = [];
+
+      if (idsTorneosMes.length) {
+        const { data, error } = await supabase
+          .from("tournament_payments")
+          .select("tournament_id, registration_id, linked_player_id, display_name, aag_member_number, payment_method, payment_date, amount")
+          .in("tournament_id", idsTorneosMes)
+          .eq("payment_method", "no_pay");
+
+        if (error) {
+          console.warn("No se pudieron revisar pagos No paga del mes.", error);
+        } else {
+          pagosNoPagaMes = data || [];
+        }
+      }
+
+      const pagosUsadosPorClave = new Map();
+
+      for (const pago of pagosNoPagaMes) {
+        const clave = pago.linked_player_id
+          ? `player:${pago.linked_player_id}`
+          : (normalizarMatriculaAAG(pago.aag_member_number)
+            ? `aag:${normalizarMatriculaAAG(pago.aag_member_number)}`
+            : `nombre:${String(pago.display_name || "").toLowerCase().trim()}`);
+
+        if (!pagosUsadosPorClave.has(clave)) {
+          pagosUsadosPorClave.set(clave, {
+            pago,
+            torneo: torneosMesMap.get(String(pago.tournament_id)) || null
+          });
+        }
+      }
+
+      for (const reg of socios) {
+        const clave = claveJugadorMensual(reg);
+        const usado = pagosUsadosPorClave.get(clave) || null;
+
+        noPagaMensualMap.set(String(reg.id), {
+          sugerirNoPaga: !usado,
+          yaUsoNoPaga: !!usado,
+          detalle: usado
+        });
+      }
+    }
+
+    function obtenerSugerenciaNoPaga(reg) {
+      return noPagaMensualMap.get(String(reg?.id || "")) || null;
+    }
+
+
+    function etiquetaNoPagaLista(reg) {
+      const pago = pagosMap.get(String(reg?.id || ""));
+      if (pago?.payment_method === "no_pay") {
+        return `<span class="fact-no-paga-label ok">No paga</span>`;
+      }
+
+      const sugerencia = obtenerSugerenciaNoPaga(reg);
+      if (!sugerencia) return "";
+
+      if (sugerencia.sugerirNoPaga) {
+        return `<span class="fact-no-paga-label ok">1° TORNEO</span>`;
+      }
+
+      if (sugerencia.yaUsoNoPaga) {
+        const torneo = sugerencia.detalle?.torneo;
+        const fecha = torneo?.tournament_date ? fechaTexto(torneo.tournament_date) : "";
+        const detalle = fecha ? ` title="Ya usó el No paga mensual el ${fecha}"` : "";
+        return `<span class="fact-no-paga-label usado"${detalle}>YA USÓ BENEFICIO</span>`;
+      }
+
+      return "";
+    }
+
+    function claseNoPagaLista(reg) {
+      const pago = pagosMap.get(String(reg?.id || ""));
+      if (pago?.payment_method === "no_pay") return "marca-no-paga-lista";
+
+      const sugerencia = obtenerSugerenciaNoPaga(reg);
+      if (sugerencia?.sugerirNoPaga) return "marca-no-paga-sugerido-lista";
+      if (sugerencia?.yaUsoNoPaga) return "marca-no-paga-usado-lista";
+
+      return "";
+    }
+
     async function cargarTodo(esAutoRefresh = false) {
       const activo = document.activeElement;
 
@@ -2306,6 +2537,8 @@
 
         pagosMap = new Map(((pagosRes.error ? [] : pagosRes.data) || []).map(p => [String(p.registration_id), p]));
 
+        await cargarSugerenciasNoPagaMensual();
+
         rebuildIndexes();
 
         await refrescarIndicesVivosInscritos({ render: false });
@@ -2329,14 +2562,10 @@
                 tablaWrap.contains(activo)
               );
 
-            // también bloquear si hay texto escrito en el buscador
-            const buscandoJugador =
-              document.getElementById("buscadorJugadores")?.value?.trim()?.length > 0;
-
             if (
               torneoActual?.id &&
               !usuarioEscribiendo &&
-              !buscandoJugador &&
+              !hayGestionJugadorActiva() &&
               !usuarioEditandoTabla
             ) {
               cargarTodo(true);
@@ -2377,13 +2606,15 @@
         : `<span class="unpaid">Sin facturar</span>`;
 
       const claseInvitado = esInvitado(reg) ? "fila-invitado" : "";
+      const claseNoPaga = claseNoPagaLista(reg);
+      const etiquetaNoPaga = etiquetaNoPagaLista(reg);
 
       return `
-        <tr class="${claseInvitado}" data-open-fact="${reg.id}">
+        <tr class="${[claseInvitado, claseNoPaga].filter(Boolean).join(" ")}" data-open-fact="${reg.id}">
           <td class="col-center">${horario}</td>
           <td class="col-center">${reg.aag_member_number || reg.player?.aag_member_number || "—"}</td>
           <td class="col-left">
-            <div class="fact-main">${reg.display_name || "Sin nombre"}</div>
+            <div class="fact-main">${reg.display_name || "Sin nombre"} ${etiquetaNoPaga}</div>
             <div class="fact-sub">${reg.club_name || "—"} ${esInvitado(reg) ? '· <span class="fact-invitado-label">Invitado</span>' : "· Socio"}</div>
           </td>
           <td class="col-center">${formatIndexAAG(indiceAAG) || "—"}</td>
@@ -2518,10 +2749,18 @@
 
       const estadoPago1 = pago1?.payment_method && pago1.payment_method !== "pending" ? `<span class="paid">${money(pago1.amount)}</span>` : `<span class="unpaid">Pend.</span>`;
       const estadoPago2 = pago2?.payment_method && pago2.payment_method !== "pending" ? `<span class="paid">${money(pago2.amount)}</span>` : `<span class="unpaid">Pend.</span>`;
-      const claseJugador1 = esInvitado(reg1) ? " fact-player-invitado" : "";
-      const claseJugador2 = esInvitado(reg2) ? " fact-player-invitado" : "";
+      const claseJugador1 = [
+        esInvitado(reg1) ? "fact-player-invitado" : "",
+        claseNoPagaLista(reg1)
+      ].filter(Boolean).join(" ");
+      const claseJugador2 = [
+        esInvitado(reg2) ? "fact-player-invitado" : "",
+        claseNoPagaLista(reg2)
+      ].filter(Boolean).join(" ");
       const tipoJugador1 = esInvitado(reg1) ? `<span class="fact-invitado-label">Invitado</span>` : "Socio";
       const tipoJugador2 = esInvitado(reg2) ? `<span class="fact-invitado-label">Invitado</span>` : "Socio";
+      const etiquetaNoPaga1 = etiquetaNoPagaLista(reg1);
+      const etiquetaNoPaga2 = etiquetaNoPagaLista(reg2);
       const claseFilaPareja = (esInvitado(reg1) || esInvitado(reg2)) ? "fila-invitado" : "";
 
       return `
@@ -2529,13 +2768,13 @@
           <td class="col-center">${horario}<div class="fact-sub"><span class="pair-badge">Fourball</span></div></td>
           <td class="col-center"><div>${reg1.aag_member_number || reg1.player?.aag_member_number || "—"}</div><div class="pair-divider"></div><div>${reg2.aag_member_number || reg2.player?.aag_member_number || "—"}</div></td>
           <td class="col-left">
-            <div class="${`fact-player-line${claseJugador1}`}">
-              <div class="fact-main">${reg1.display_name || "Sin nombre"}</div>
+            <div class="${["fact-player-line", claseJugador1].filter(Boolean).join(" ")}">
+              <div class="fact-main">${reg1.display_name || "Sin nombre"} ${etiquetaNoPaga1}</div>
               <div class="fact-sub">${reg1.club_name || "—"} · ${tipoJugador1}</div>
             </div>
             <div class="pair-divider" style="margin:6px 0"></div>
-            <div class="${`fact-player-line${claseJugador2}`}">
-              <div class="fact-main">${reg2.display_name || "Sin nombre"}</div>
+            <div class="${["fact-player-line", claseJugador2].filter(Boolean).join(" ")}">
+              <div class="fact-main">${reg2.display_name || "Sin nombre"} ${etiquetaNoPaga2}</div>
               <div class="fact-sub">${reg2.club_name || "—"} · ${tipoJugador2}</div>
             </div>
           </td>
@@ -2820,6 +3059,10 @@
 
       html += `</tbody></table>`;
       tablaWrap.innerHTML = html;
+
+      // Si había una búsqueda escrita, la vuelvo a aplicar después de redibujar la tabla.
+      // Esto evita que un refresco de índices muestre todo el listado otra vez.
+      filtrarTablaJugadores();
     }
     function limpiarTextoBusqueda(valor) {
       return String(valor || "")
@@ -3174,8 +3417,10 @@
     function renderModalFacturacion(reg, fila) {
       const line = extraerLinea(reg);
       const pago = pagosMap.get(String(reg.id)) || {};
-      const importeBase = pago.amount != null ? Number(pago.amount) : precioSugeridoParaReg(reg);
-      const metodo = pago.payment_method || "cash";
+      const sugerenciaNoPaga = obtenerSugerenciaNoPaga(reg);
+      const tienePagoGuardado = !!pago.payment_method;
+      const metodo = pago.payment_method || (sugerenciaNoPaga?.sugerirNoPaga ? "no_pay" : "cash");
+      const importeBase = pago.amount != null ? Number(pago.amount) : (metodo === "no_pay" ? 0 : precioSugeridoParaReg(reg));
       document.getElementById("factModalTitle").textContent = `Facturar: ${reg.display_name || "Sin nombre"}`;
       document.getElementById("factModalSub").textContent = `${torneoActual?.name || ""} · ${horaTexto(line?.line_time) || "Sin hora"} ${hoyoSalidaTexto(line) ? "· " + hoyoSalidaTexto(line) : ""}`;
 
@@ -3217,6 +3462,16 @@
           <div class="fact-section-title">Datos deportivos</div>
           ${jugadoresHtml}
         </div>
+        ${sugerenciaNoPaga?.sugerirNoPaga && !tienePagoGuardado ? `
+          <div class="fact-aviso-mensual">
+            Sugerencia automática: socio VMGC 1er Torneo del més. No cobrar salvo excepción.
+          </div>
+        ` : ""}
+        ${sugerenciaNoPaga?.yaUsoNoPaga && !tienePagoGuardado ? `
+          <div class="fact-aviso-mensual usado">
+            Atención: socio VMGC ya usó beneficio mensual${sugerenciaNoPaga.detalle?.torneo?.name ? ` en ${sugerenciaNoPaga.detalle.torneo.name}` : ""}. Cobrar salvo excepción.
+          </div>
+        ` : ""}
         <div class="fact-section">
           <div class="fact-section-title">Facturación</div>
           <div class="fact-grid three">
@@ -3306,6 +3561,19 @@
         if (pairHcpEl) pairHcpEl.value = datosClasico?.playingHandicap ?? "";
         if (pairTeeEl) pairTeeEl.value = cat ? getTeeName(cat.tee_id) : "";
       };
+
+      const factMetodo = document.getElementById("factMetodo");
+      const factImporte = document.getElementById("factImporte");
+      if (factMetodo && factImporte) {
+        factMetodo.addEventListener("change", () => {
+          if (factMetodo.value === "no_pay" || factMetodo.value === "pending") {
+            factImporte.value = "0";
+          } else {
+            const regActual = getRegistrationById(facturaActual?.regId);
+            factImporte.value = String(Math.round(precioSugeridoParaReg(regActual) || 0));
+          }
+        });
+      }
 
       document.getElementById("pairCat")?.addEventListener("change", recalcPairClasico);
       ["m1Manual", "m2Manual"].forEach(id => {
@@ -3485,15 +3753,21 @@
         guardarPrecioTorneoLocal();
         if (guardarScorecard) await guardarScorecardDesdeModal();
         const payloadPago = leerPagoModal(reg);
+        const debeImprimirCupon = imprimirCupon && payloadPago.payment_method !== "no_pay";
         if (guardarPago) await guardarPagoModal(reg, payloadPago);
-        if (imprimirCupon) {
+        if (debeImprimirCupon) {
           const numeroCupon = await obtenerNumeroCupon();
           const html = buildCuponFacturacionHTML(reg, payloadPago, numeroCupon);
           await window.imprimirTicketQZ(html);
         }
         await cargarTodo();
         cerrarFacturacion();
-        setEstado(imprimirCupon ? `Pago asentado y cupón impreso: ${reg.display_name}` : `Pago guardado: ${reg.display_name}`, "ok");
+        setEstado(
+          debeImprimirCupon
+            ? `Pago asentado y cupón impreso: ${reg.display_name}`
+            : `Pago asentado sin imprimir cupón: ${reg.display_name}`,
+          "ok"
+        );
       } catch (error) {
         console.error(error);
         setEstado(error.message || "No se pudo facturar.", "error");
@@ -4432,6 +4706,34 @@
       font-size: 10px;
       font-weight: 900;
       margin-left: 4px;
+    }
+
+    .fact-sugerido-label {
+      display: inline-block;
+      background: #dcfce7;
+      color: #166534;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 900;
+      margin-left: 4px;
+    }
+
+    .fact-aviso-mensual {
+      border: 1px solid #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+      border-radius: 12px;
+      padding: 9px 10px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .fact-aviso-mensual.usado {
+      border-color: #fed7aa;
+      background: #fff7ed;
+      color: #9a3412;
     }
     .fact-main { font-size: 13px; font-weight: 800; }
     .fact-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
