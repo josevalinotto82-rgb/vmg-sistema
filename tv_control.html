@@ -128,6 +128,13 @@
         <label class="check"><input type="checkbox" id="showLogoMedia"> Escudo / logo</label>
         <label class="check"><input type="checkbox" id="showQr"> QR</label>
       </div>
+
+      <div style="margin-top:12px;">
+        <label class="check" style="background:#fff7ed;border-color:#fed7aa;">
+          <input type="checkbox" id="modoUnaCategoria">
+          Modo una categoría: ocultar multimedia y mostrar 10 puestos completos
+        </label>
+      </div>
     </section>
 
     <section class="card">
@@ -187,6 +194,28 @@
       return `${String(f.getDate()).padStart(2,"0")}/${String(f.getMonth()+1).padStart(2,"0")}/${f.getFullYear()}`;
     }
 
+    function aplicarModoUnaCategoria() {
+      const activo = $("modoUnaCategoria")?.checked;
+      ["showPhotos", "showSponsors", "showLogoMedia", "showQr"].forEach(id => {
+        const el = $(id);
+        if (!el) return;
+        if (activo) el.checked = false;
+        el.disabled = !!activo;
+        el.closest("label")?.style.setProperty("opacity", activo ? ".55" : "1");
+      });
+    }
+
+    function sincronizarModoUnaCategoriaDesdeMultimedia() {
+      const todosApagados =
+        !$("showPhotos").checked &&
+        !$("showSponsors").checked &&
+        !$("showLogoMedia").checked &&
+        !$("showQr").checked;
+
+      $("modoUnaCategoria").checked = todosApagados;
+      aplicarModoUnaCategoria();
+    }
+
     async function cargarTorneos() {
       const { data, error } = await supabase
         .from("tournaments")
@@ -217,6 +246,7 @@
       $("showSponsors").checked = data.show_sponsors ?? true;
       $("showLogoMedia").checked = data.show_logo_media ?? true;
       $("showQr").checked = data.show_qr ?? true;
+      sincronizarModoUnaCategoriaDesdeMultimedia();
       $("musicEnabled").checked = data.music_enabled ?? true;
       $("mediaSeconds").value = data.media_rotation_seconds ?? 9;
       $("leaderSeconds").value = data.leaderboard_rotation_seconds ?? 14;
@@ -224,6 +254,8 @@
     }
 
     async function guardarSettings() {
+      aplicarModoUnaCategoria();
+
       const payload = {
         tournament_id: $("torneoSelect").value || null,
         show_scratch_male: $("showScratchMale").checked,
@@ -264,6 +296,15 @@
         console.error(err);
         mostrarEstado(err?.message || "No se pudo cargar la configuración", true);
       }
+
+      $("modoUnaCategoria").addEventListener("change", aplicarModoUnaCategoria);
+
+      ["showPhotos", "showSponsors", "showLogoMedia", "showQr"].forEach(id => {
+        $(id).addEventListener("change", () => {
+          if ($(id).checked) $("modoUnaCategoria").checked = false;
+          aplicarModoUnaCategoria();
+        });
+      });
 
       $("btnGuardar").addEventListener("click", async () => {
         try { await guardarSettings(); }
