@@ -857,6 +857,208 @@
         grid-template-columns: minmax(260px, 1fr) 120px 120px 130px;
       }
     }
+
+
+    /* ===== MODAL RESUMEN IMPRESIÓN / SCORECARDS ===== */
+    .print-summary-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, .62);
+      z-index: 12000;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .print-summary-backdrop.open {
+      display: flex;
+    }
+
+    .print-summary-box {
+      width: min(620px, 100%);
+      max-height: 88vh;
+      overflow: hidden;
+      background: #ffffff;
+      border-radius: 22px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .30);
+      border: 1px solid rgba(22, 101, 52, .18);
+      animation: resumenPrintIn .16s ease-out;
+    }
+
+    @keyframes resumenPrintIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .print-summary-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px 20px;
+      background: linear-gradient(135deg, #166534, #0f4f29);
+      color: white;
+    }
+
+    .print-summary-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .print-summary-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, .18);
+      border: 1px solid rgba(255, 255, 255, .28);
+      font-size: 24px;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .print-summary-head h2 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.15;
+    }
+
+    .print-summary-sub {
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: .92;
+    }
+
+    .print-summary-close {
+      border: none;
+      background: rgba(255, 255, 255, .16);
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+
+    .print-summary-body {
+      padding: 18px 20px;
+      overflow: auto;
+      max-height: calc(88vh - 150px);
+    }
+
+    .print-summary-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .print-summary-metric {
+      border: 1px solid #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+      border-radius: 15px;
+      padding: 12px;
+    }
+
+    .print-summary-metric .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      font-weight: 800;
+      opacity: .78;
+    }
+
+    .print-summary-metric .value {
+      font-size: 24px;
+      font-weight: 900;
+      margin-top: 3px;
+    }
+
+    .print-summary-warning {
+      border: 1px solid #fde68a;
+      background: #fffbeb;
+      color: #92400e;
+      border-radius: 16px;
+      padding: 13px 14px;
+      margin-top: 12px;
+    }
+
+    .print-summary-warning strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .print-summary-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .print-summary-list li {
+      background: white;
+      border: 1px solid #f3d58a;
+      border-radius: 12px;
+      padding: 9px 10px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .print-summary-list b {
+      color: #111827;
+    }
+
+    .print-summary-ok {
+      border: 1px solid #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+      border-radius: 16px;
+      padding: 13px 14px;
+      font-weight: 800;
+      margin-top: 12px;
+    }
+
+    .print-summary-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 14px 20px 18px;
+      border-top: 1px solid #e5e7eb;
+      background: #fafafa;
+    }
+
+    .btn-warn {
+      background: #f59e0b;
+      color: white;
+    }
+
+    @media (max-width: 640px) {
+      .print-summary-metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .print-summary-actions .btn {
+        width: 100%;
+      }
+    }
+
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
@@ -1040,6 +1242,33 @@
     </div>
   </div>
 
+
+  <div id="printSummaryModal" class="print-summary-backdrop" aria-hidden="true">
+    <div class="print-summary-box" role="dialog" aria-modal="true" aria-labelledby="printSummaryTitle">
+      <div class="print-summary-head">
+        <div class="print-summary-title">
+          <div class="print-summary-icon" id="printSummaryIcon">✓</div>
+          <div>
+            <h2 id="printSummaryTitle">Impresión finalizada</h2>
+            <div class="print-summary-sub" id="printSummarySub">Resumen de tarjetas y scorecards</div>
+          </div>
+        </div>
+        <button class="print-summary-close" id="btnCerrarPrintSummary" type="button">×</button>
+      </div>
+
+      <div class="print-summary-body" id="printSummaryBody"></div>
+
+      <div class="print-summary-actions">
+        <button class="btn btn-warn" id="btnVerPendientesPrintSummary" type="button" style="display:none;">
+          Ver pendientes
+        </button>
+        <button class="btn btn-primary" id="btnOkPrintSummary" type="button">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="print-root"></div>
 
   <script type="module">
@@ -1220,6 +1449,8 @@
 
     let usuarioEditandoTabla = false;
     let facturaActual = null;
+    let filtroPendientesScorecardIds = null;
+    let ultimosPendientesScorecard = [];
 
     function hayBusquedaJugadorActiva() {
       return (document.getElementById("buscadorJugadores")?.value || "").trim().length > 0;
@@ -1239,12 +1470,23 @@
     btnResumenPagos.addEventListener("click", imprimirResumenPagos);
     btnGuardarTodos?.addEventListener("click", guardarTodosLosInscriptos);
     btnImprimirTodasTarjetas.addEventListener("click", imprimirTodasLasTarjetas);
-    document.getElementById("btnLimpiarBusqueda")?.addEventListener("click", () => { const b = document.getElementById("buscadorJugadores"); if (b) b.value = ""; filtrarTablaJugadores(); b?.focus(); });
+    document.getElementById("btnLimpiarBusqueda")?.addEventListener("click", () => { const b = document.getElementById("buscadorJugadores"); if (b) b.value = ""; filtroPendientesScorecardIds = null; filtrarTablaJugadores(); b?.focus(); });
     document.getElementById("btnCerrarFactModal")?.addEventListener("click", cerrarFacturacion);
     document.getElementById("factModal")?.addEventListener("click", (e) => { if (e.target?.id === "factModal") cerrarFacturacion(); });
     document.getElementById("btnModalFacturar")?.addEventListener("click", () => facturarDesdeModal({ imprimirCupon: true, guardarPago: true, guardarScorecard: false }));
     document.getElementById("btnModalCupon")?.addEventListener("click", () => facturarDesdeModal({ imprimirCupon: false, guardarPago: true, guardarScorecard: false }));
     document.getElementById("btnModalTarjeta")?.addEventListener("click", imprimirTarjetaDesdeModal);
+    document.getElementById("btnCerrarPrintSummary")?.addEventListener("click", cerrarModalResumenImpresion);
+    document.getElementById("btnOkPrintSummary")?.addEventListener("click", cerrarModalResumenImpresion);
+    document.getElementById("btnVerPendientesPrintSummary")?.addEventListener("click", verPendientesScorecards);
+    document.getElementById("printSummaryModal")?.addEventListener("click", (e) => {
+      if (e.target?.id === "printSummaryModal") cerrarModalResumenImpresion();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && document.getElementById("printSummaryModal")?.classList.contains("open")) {
+        cerrarModalResumenImpresion();
+      }
+    });
 
     tablaWrap.addEventListener("click", manejarClickTabla);
     tablaWrap.addEventListener("change", manejarCambioTabla);
@@ -1265,7 +1507,10 @@
 
     document
       .getElementById("buscadorJugadores")
-      ?.addEventListener("input", filtrarTablaJugadores);
+      ?.addEventListener("input", () => {
+        filtroPendientesScorecardIds = null;
+        filtrarTablaJugadores();
+      });
 
     torneoPrecio.addEventListener("focus", () => {
 
@@ -2610,7 +2855,7 @@
       const etiquetaNoPaga = etiquetaNoPagaLista(reg);
 
       return `
-        <tr class="${[claseInvitado, claseNoPaga].filter(Boolean).join(" ")}" data-open-fact="${reg.id}">
+        <tr class="${[claseInvitado, claseNoPaga].filter(Boolean).join(" ")}" data-open-fact="${reg.id}" data-reg-ids="${reg.id}">
           <td class="col-center">${horario}</td>
           <td class="col-center">${reg.aag_member_number || reg.player?.aag_member_number || "—"}</td>
           <td class="col-left">
@@ -2764,7 +3009,7 @@
       const claseFilaPareja = (esInvitado(reg1) || esInvitado(reg2)) ? "fila-invitado" : "";
 
       return `
-        <tr class="${claseFilaPareja}" data-pair-row="${key}">
+        <tr class="${claseFilaPareja}" data-pair-row="${key}" data-reg-ids="${reg1.id},${reg2.id}">
           <td class="col-center">${horario}<div class="fact-sub"><span class="pair-badge">Fourball</span></div></td>
           <td class="col-center"><div>${reg1.aag_member_number || reg1.player?.aag_member_number || "—"}</div><div class="pair-divider"></div><div>${reg2.aag_member_number || reg2.player?.aag_member_number || "—"}</div></td>
           <td class="col-left">
@@ -3089,12 +3334,26 @@
 
         const contenido = limpiarTextoBusqueda(fila.innerText);
 
-        const coincide =
-          palabras.length === 0
+        const coincideTexto =
+          filtroPendientesScorecardIds
             ? true
-            : palabras.every((palabra) =>
-              contenido.includes(palabra)
-            );
+            : (palabras.length === 0
+              ? true
+              : palabras.every((palabra) =>
+                contenido.includes(palabra)
+              ));
+
+        const idsFila = String(fila.dataset.regIds || "")
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean);
+
+        const coincidePendiente =
+          !filtroPendientesScorecardIds
+            ? true
+            : idsFila.some((id) => filtroPendientesScorecardIds.has(String(id)));
+
+        const coincide = coincideTexto && coincidePendiente;
 
         fila.style.display = coincide
           ? ""
@@ -4226,26 +4485,238 @@
       return errores;
     }
 
-    async function generarScorecardsEnSegundoPlano() {
-      try {
-        await refrescarIndicesVivosInscritos({ render: false });
-        const errores = validarAntesDeGuardarTodos();
-        if (errores.length > 0) {
-          console.warn("No se generaron algunas scorecards por datos incompletos:", errores);
-          setEstado("Impresión abierta. Hay scorecards para revisar antes de guardar.", "warn");
-          return;
+    
+    function escapeHTML(valor) {
+      return String(valor ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function mostrarModalResumenImpresion({
+      titulo = "Impresión finalizada",
+      subtitulo = "Resumen de tarjetas y scorecards",
+      tarjetas = 0,
+      scorecards = 0,
+      pendientes = [],
+      mensajeOk = "Proceso finalizado correctamente.",
+      icono = "✓"
+    } = {}) {
+      ultimosPendientesScorecard = pendientes || [];
+
+      const modal = document.getElementById("printSummaryModal");
+      const title = document.getElementById("printSummaryTitle");
+      const sub = document.getElementById("printSummarySub");
+      const body = document.getElementById("printSummaryBody");
+      const icon = document.getElementById("printSummaryIcon");
+      const btnPendientes = document.getElementById("btnVerPendientesPrintSummary");
+
+      if (!modal || !title || !sub || !body || !icon) return;
+
+      title.textContent = titulo;
+      sub.textContent = subtitulo;
+      icon.textContent = icono;
+
+      const listaPendientes = (pendientes || []).map((p) => `
+        <li>
+          <b>${escapeHTML(p.nombre || "Jugador sin nombre")}</b><br>
+          Asignar ${escapeHTML((p.motivos || []).join(", "))}
+        </li>
+      `).join("");
+
+      body.innerHTML = `
+        <div class="print-summary-metrics">
+          <div class="print-summary-metric">
+            <div class="label">Tarjetas impresas</div>
+            <div class="value">${Number(tarjetas || 0)}</div>
+          </div>
+          <div class="print-summary-metric">
+            <div class="label">Scorecards generadas</div>
+            <div class="value">${Number(scorecards || 0)}</div>
+          </div>
+        </div>
+
+        ${(pendientes || []).length ? `
+          <div class="print-summary-warning">
+            <strong>⚠️ Jugadores pendientes de completar</strong>
+            <ul class="print-summary-list">${listaPendientes}</ul>
+            <div style="margin-top:10px; font-size:12px; line-height:1.4;">
+              Asignales el index de juego, tee/categoría/HCP si corresponde, y después imprimí esas tarjetas de modo manual.
+            </div>
+          </div>
+        ` : `
+          <div class="print-summary-ok">${escapeHTML(mensajeOk)}</div>
+        `}
+      `;
+
+      if (btnPendientes) {
+        btnPendientes.style.display = (pendientes || []).length ? "" : "none";
+      }
+
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+    }
+
+    function cerrarModalResumenImpresion() {
+      const modal = document.getElementById("printSummaryModal");
+      modal?.classList.remove("open");
+      modal?.setAttribute("aria-hidden", "true");
+    }
+
+    function verPendientesScorecards() {
+      const ids = new Set();
+
+      for (const pendiente of ultimosPendientesScorecard || []) {
+        for (const id of pendiente.ids || []) {
+          ids.add(String(id));
+        }
+      }
+
+      if (!ids.size) return;
+
+      filtroPendientesScorecardIds = ids;
+
+      const buscador = document.getElementById("buscadorJugadores");
+      if (buscador) {
+        buscador.value = "PENDIENTES DE INDEX / TEE / CATEGORÍA";
+      }
+
+      cerrarModalResumenImpresion();
+      filtrarTablaJugadores();
+      tablaWrap?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setEstado(`Mostrando ${ids.size} jugador(es) pendiente(s) de completar.`, "warn");
+    }
+
+    function analizarFilasParaScorecards() {
+      const validas = [];
+      const pendientes = [];
+
+      const agregarPendiente = (nombre, motivos, ids = []) => {
+        const limpios = [...new Set((motivos || []).filter(Boolean))];
+        pendientes.push({
+          nombre,
+          motivos: limpios,
+          ids: ids.map((id) => String(id)).filter(Boolean)
+        });
+      };
+
+      for (const fila of construirFilasVista()) {
+        if (fila.tipo === "single") {
+          const reg = fila.jugadores[0];
+          const datos = obtenerDatosFilaSingle(reg.id);
+          const motivos = [];
+
+          if (!datos?.categoriaId) motivos.push("categoría");
+          if (!datos?.teeId) motivos.push("tee");
+          if (datos?.manualIndex == null) motivos.push("index de juego");
+          if (datos?.playingHandicap == null) motivos.push("HCP de juego");
+
+          if (motivos.length) {
+            agregarPendiente(reg.display_name || "Jugador sin nombre", motivos, [reg.id]);
+          } else {
+            validas.push(fila);
+          }
         }
 
-        for (const fila of construirFilasVista()) {
+        if (fila.tipo === "pair") {
+          const [reg1, reg2] = fila.jugadores;
+          const datos = obtenerDatosFilaPair(reg1, reg2);
+          const motivos = [];
+
+          if (datos?.modo === "clasico") {
+            if (!datos.categoriaId) motivos.push("categoría de pareja");
+            if (!datos.teeId) motivos.push("tee de pareja");
+            if (datos.manualIndex == null) motivos.push("index de juego de pareja");
+            if (datos.playingHandicap == null) motivos.push("HCP de juego de pareja");
+          } else if (datos?.modo === "americana") {
+            if (!datos.categoriaId1) motivos.push(`categoría de ${reg1.display_name}`);
+            if (!datos.categoriaId2) motivos.push(`categoría de ${reg2.display_name}`);
+            if (!datos.teeId1) motivos.push(`tee de ${reg1.display_name}`);
+            if (!datos.teeId2) motivos.push(`tee de ${reg2.display_name}`);
+            if (datos.manualIndex1 == null) motivos.push(`index de juego de ${reg1.display_name}`);
+            if (datos.manualIndex2 == null) motivos.push(`index de juego de ${reg2.display_name}`);
+            if (datos.playingHandicap1 == null) motivos.push(`HCP de juego de ${reg1.display_name}`);
+            if (datos.playingHandicap2 == null) motivos.push(`HCP de juego de ${reg2.display_name}`);
+          } else {
+            motivos.push("datos de pareja");
+          }
+
+          if (motivos.length) {
+            agregarPendiente(
+              `${reg1.display_name || "Jugador 1"} / ${reg2.display_name || "Jugador 2"}`,
+              motivos,
+              [reg1.id, reg2.id]
+            );
+          } else {
+            validas.push(fila);
+          }
+        }
+      }
+
+      return { validas, pendientes };
+    }
+
+    function textoAvisoPendientesScorecard(pendientes) {
+      if (!pendientes?.length) return "";
+
+      return pendientes
+        .map((p) => `• ${p.nombre}: asignar ${p.motivos.join(", ")}`)
+        .join("\n");
+    }
+
+async function generarScorecardsEnSegundoPlano() {
+      try {
+        await refrescarIndicesVivosInscritos({ render: false });
+
+        const { validas, pendientes } = analizarFilasParaScorecards();
+
+        let generadas = 0;
+
+        for (const fila of validas) {
           if (fila.tipo === "single") {
             await guardarOficializacionSingle(fila.jugadores[0].id, true);
           } else {
             await guardarOficializacionPair(fila.jugadores[0].id, fila.jugadores[1].id, true);
           }
+
+          generadas++;
         }
 
-        setEstado("Tarjetas impresas y scorecards generadas con los datos actuales.", "ok");
+        if (pendientes.length > 0) {
+          const aviso = textoAvisoPendientesScorecard(pendientes);
+
+          console.warn("Scorecards pendientes por datos incompletos:", pendientes);
+
+          setEstado(
+            `Se generaron ${generadas} scorecard(s). Hay ${pendientes.length} fila(s) para completar manualmente.`,
+            "warn"
+          );
+
+          mostrarModalResumenImpresion({
+            titulo: "Impresión finalizada",
+            subtitulo: "Se imprimieron las tarjetas completas y quedaron pendientes para revisar",
+            tarjetas: validas.length,
+            scorecards: generadas,
+            pendientes,
+            icono: "✓"
+          });
+        } else {
+          setEstado("Tarjetas impresas y scorecards generadas con los datos actuales.", "ok");
+          mostrarModalResumenImpresion({
+            titulo: "Impresión finalizada",
+            subtitulo: "Todas las tarjetas quedaron listas",
+            tarjetas: validas.length,
+            scorecards: generadas,
+            pendientes: [],
+            mensajeOk: "No quedaron jugadores pendientes de index, tee, categoría ni HCP.",
+            icono: "✓"
+          });
+        }
+
         await cargarTodo(true);
+
       } catch (error) {
         console.error(error);
         setEstado(error.message || "La impresión salió, pero no se pudieron generar todas las scorecards.", "error");
@@ -4824,6 +5295,208 @@
       .modal-actions .btn { width: 100%; }
     }
 
+
+
+    /* ===== MODAL RESUMEN IMPRESIÓN / SCORECARDS ===== */
+    .print-summary-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, .62);
+      z-index: 12000;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .print-summary-backdrop.open {
+      display: flex;
+    }
+
+    .print-summary-box {
+      width: min(620px, 100%);
+      max-height: 88vh;
+      overflow: hidden;
+      background: #ffffff;
+      border-radius: 22px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .30);
+      border: 1px solid rgba(22, 101, 52, .18);
+      animation: resumenPrintIn .16s ease-out;
+    }
+
+    @keyframes resumenPrintIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .print-summary-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px 20px;
+      background: linear-gradient(135deg, #166534, #0f4f29);
+      color: white;
+    }
+
+    .print-summary-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .print-summary-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, .18);
+      border: 1px solid rgba(255, 255, 255, .28);
+      font-size: 24px;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .print-summary-head h2 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.15;
+    }
+
+    .print-summary-sub {
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: .92;
+    }
+
+    .print-summary-close {
+      border: none;
+      background: rgba(255, 255, 255, .16);
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+
+    .print-summary-body {
+      padding: 18px 20px;
+      overflow: auto;
+      max-height: calc(88vh - 150px);
+    }
+
+    .print-summary-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .print-summary-metric {
+      border: 1px solid #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+      border-radius: 15px;
+      padding: 12px;
+    }
+
+    .print-summary-metric .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      font-weight: 800;
+      opacity: .78;
+    }
+
+    .print-summary-metric .value {
+      font-size: 24px;
+      font-weight: 900;
+      margin-top: 3px;
+    }
+
+    .print-summary-warning {
+      border: 1px solid #fde68a;
+      background: #fffbeb;
+      color: #92400e;
+      border-radius: 16px;
+      padding: 13px 14px;
+      margin-top: 12px;
+    }
+
+    .print-summary-warning strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .print-summary-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .print-summary-list li {
+      background: white;
+      border: 1px solid #f3d58a;
+      border-radius: 12px;
+      padding: 9px 10px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .print-summary-list b {
+      color: #111827;
+    }
+
+    .print-summary-ok {
+      border: 1px solid #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+      border-radius: 16px;
+      padding: 13px 14px;
+      font-weight: 800;
+      margin-top: 12px;
+    }
+
+    .print-summary-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 14px 20px 18px;
+      border-top: 1px solid #e5e7eb;
+      background: #fafafa;
+    }
+
+    .btn-warn {
+      background: #f59e0b;
+      color: white;
+    }
+
+    @media (max-width: 640px) {
+      .print-summary-metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .print-summary-actions .btn {
+        width: 100%;
+      }
+    }
+
   </style>
   `;
     }
@@ -5125,9 +5798,16 @@
 
       await actualizarDatosAntesDeImprimir();
 
+      const { validas, pendientes } = analizarFilasParaScorecards();
+
+      if (pendientes.length > 0) {
+        console.warn("Tarjetas no incluidas en la tanda general por datos incompletos:", pendientes);
+        setEstado(`Se imprimirán sólo las tarjetas completas. Hay ${pendientes.length} fila(s) pendiente(s).`, "warn");
+      }
+
       const tarjetas = [];
 
-      for (const fila of construirFilasVista()) {
+      for (const fila of validas) {
 
         if (fila.tipo === "single") {
           const reg = fila.jugadores[0];
@@ -5263,7 +5943,14 @@
       }
 
       if (!tarjetas.length) {
-        alert("No hay tarjetas para imprimir.");
+        mostrarModalResumenImpresion({
+          titulo: "No hay tarjetas completas",
+          subtitulo: "Faltan datos para poder imprimir la tanda general",
+          tarjetas: 0,
+          scorecards: 0,
+          pendientes,
+          icono: "!"
+        });
         return;
       }
 
