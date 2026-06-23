@@ -656,7 +656,10 @@
                     is_aag_active,
                     source,
                     search_text,
-                    index_updated_at
+                    index_updated_at,
+                    born_date,
+                    doc_number,
+                    lowest_handicap_index
                 `,
                 orderBy: "aag_member_number",
                 filters: q => q.not("aag_member_number", "is", null)
@@ -714,7 +717,10 @@
                     is_club_member,
                     is_aag_active,
                     source,
-                    search_text
+                    search_text,
+                    born_date,
+                    doc_number,
+                    lowest_handicap_index
                 `,
                 orderBy: "full_name",
                 filters: q => q.is("aag_member_number", null)
@@ -733,7 +739,10 @@
                     current_index,
                     option_club_id,
                     club_name,
-                    search_text
+                    search_text,
+                    born_date,
+                    doc_number,
+                    lowest_handicap_index
                 `,
                 orderBy: "enrollment_number",
                 filters: q => q.eq("option_club_id", VMGC_CLUB_ID)
@@ -916,6 +925,11 @@
                 last_name: aag.last_name || playerManual.last_name || null,
                 gender: aag.gender || playerManual.gender || null,
                 current_index: aag.current_index ?? playerManual.current_index ?? null,
+
+                born_date: aag.born_date || playerManual.born_date || null,
+                doc_number: aag.doc_number || playerManual.doc_number || null,
+                lowest_handicap_index: aag.lowest_handicap_index ?? playerManual.lowest_handicap_index ?? null,
+
                 country: "Argentina",
                 club_name: aag.club_name || "Villa María Golf Club",
                 option_club_id: Number(aag.option_club_id) || VMGC_CLUB_ID,
@@ -1279,7 +1293,10 @@
                         is_aag_active,
                         option_club_id,
                         source,
-                        search_text
+                        search_text,
+                        born_date,
+                        doc_number,
+                        lowest_handicap_index
                     `)
                     .ilike("search_text", `%${q}%`)
                     .limit(15);
@@ -1325,7 +1342,10 @@
                         current_index,
                         option_club_id,
                         club_name,
-                        search_text
+                        search_text,
+                        born_date,
+                        doc_number,
+                        lowest_handicap_index
                     `)
                     .ilike("search_text", `%${q}%`)
                     .limit(15);
@@ -1396,7 +1416,10 @@
                             club_city: clubInfo.city || "",
                             club_province: clubInfo.province || "",
                             country: "Argentina",
-                            is_club_member: Number(p.option_club_id) === VMGC_CLUB_ID
+                            is_club_member: Number(p.option_club_id) === VMGC_CLUB_ID,
+                            born_date: p.born_date || null,
+                            doc_number: p.doc_number || null,
+                            lowest_handicap_index: p.lowest_handicap_index ?? null
                         };
                     });
 
@@ -1482,6 +1505,9 @@
 
                     Matrícula AAG: <b>${escapeHtml(p.aag_member_number || "—")}</b><br>
                     Index actual: <b>${escapeHtml(formatIndex(p.current_index))}</b><br>
+                    Fecha nacimiento: <b>${escapeHtml(p.born_date || "—")}</b><br>
+                    DNI / Documento: <b>${escapeHtml(p.doc_number || "—")}</b><br>
+                    Lowest Index: <b>${escapeHtml(formatIndex(p.lowest_handicap_index))}</b><br>
                     Género: <b>${escapeHtml(generoTexto(p.gender))}</b><br>
                     Club: <b>${escapeHtml(p.club_name || "—")}</b><br>
                     Club ID: <b>${escapeHtml(p.option_club_id || "—")}</b><br>

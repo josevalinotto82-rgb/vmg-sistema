@@ -4340,6 +4340,8 @@
 
           // 👉 si está bloqueado
           if (slot?.participant_type === "blocked") {
+            if (!APP.esAdmin) return;
+
             await supabase
               .from("line_slots")
               .update(buildSlotResetPayload())
