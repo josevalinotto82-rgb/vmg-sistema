@@ -891,6 +891,7 @@
         opacity: 0;
         transform: translateY(10px) scale(.98);
       }
+
       to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -1058,7 +1059,6 @@
         width: 100%;
       }
     }
-
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
@@ -1159,12 +1159,12 @@
       <div id="estado" class="status-text">Conectando...</div>
 
       <div class="actions-top">
-        <button id="btnGuardarTodos" class="btn btn-primary" type="button" style="display:none;">
-          Guardar scorecards
+        <button id="btnGenerarScorecards" class="btn btn-primary" type="button">
+          Crear Tarjetas
         </button>
 
         <button id="btnImprimirTodasTarjetas" class="btn btn-secondary" type="button">
-          Imprimir tarjetas
+          Imprimir Tarjetas
         </button>
       </div>
     </div>
@@ -1419,7 +1419,7 @@
 
     const btnOficializarTorneo = document.getElementById("btnOficializarTorneo");
     const btnResumenPagos = document.getElementById("btnResumenPagos");
-    const btnGuardarTodos = document.getElementById("btnGuardarTodos");
+    const btnGenerarScorecards = document.getElementById("btnGenerarScorecards");
     const btnImprimirTodasTarjetas = document.getElementById("btnImprimirTodasTarjetas");
 
     configurarSucursalPorAdmin(adminActual);
@@ -1468,7 +1468,7 @@
     torneoSelect.addEventListener("change", cargarTodo);
     btnOficializarTorneo.addEventListener("click", oficializarTorneo);
     btnResumenPagos.addEventListener("click", imprimirResumenPagos);
-    btnGuardarTodos?.addEventListener("click", guardarTodosLosInscriptos);
+    btnGenerarScorecards?.addEventListener("click", generarTodasLasScorecards);
     btnImprimirTodasTarjetas.addEventListener("click", imprimirTodasLasTarjetas);
     document.getElementById("btnLimpiarBusqueda")?.addEventListener("click", () => { const b = document.getElementById("buscadorJugadores"); if (b) b.value = ""; filtroPendientesScorecardIds = null; filtrarTablaJugadores(); b?.focus(); });
     document.getElementById("btnCerrarFactModal")?.addEventListener("click", cerrarFacturacion);
@@ -2866,7 +2866,7 @@
           <td class="col-center">${categoriaSeleccionada?.name || "Revisar"}</td>
           <td class="col-center">${categoriaSeleccionada ? getTeeName(categoriaSeleccionada.tee_id) : "—"}</td>
           <td class="col-center">${hcpJuego ?? "—"}</td>
-          <td class="col-center">${scorecard?.id ? "Scorecard OK" : "Pendiente"}</td>
+          <td class="col-center">${scorecard?.id ? "Tarjeta creada" : "Pendiente"}</td>
           <td class="col-center">${estadoPago}</td>
           <td class="col-center"><button class="btn btn-primary" data-open-fact="${reg.id}" type="button">Facturar</button></td>
         </tr>
@@ -3289,7 +3289,7 @@
               <th class="col-center">Categoría</th>
               <th class="col-center">Tee</th>
               <th class="col-center">HCP</th>
-              <th class="col-center">Scorecard</th>
+              <th class="col-center">Tarjeta</th>
               <th class="col-center">Pago</th>
               <th class="col-center">Abrir</th>
             </tr>
@@ -4485,7 +4485,7 @@
       return errores;
     }
 
-    
+
     function escapeHTML(valor) {
       return String(valor ?? "")
         .replace(/&/g, "&amp;")
@@ -4666,7 +4666,7 @@
         .join("\n");
     }
 
-async function generarScorecardsEnSegundoPlano() {
+    async function generarScorecardsEnSegundoPlano() {
       try {
         await refrescarIndicesVivosInscritos({ render: false });
 
@@ -5781,6 +5781,82 @@ async function generarScorecardsEnSegundoPlano() {
       // Y vuelvo a pisar la memoria local con el índice fresco.
       // Esto es clave si una scorecard vieja trae official_index anterior.
       await refrescarIndicesVivosInscritos({ render: true });
+    }
+
+    async function generarTodasLasScorecards() {
+      const textoOriginal = btnGenerarScorecards?.textContent || "Generar scorecards";
+
+      if (!registrations.length) {
+        alert("No hay inscriptos para generar scorecards.");
+        return;
+      }
+
+      if (btnGenerarScorecards) {
+        btnGenerarScorecards.disabled = true;
+        btnGenerarScorecards.textContent = "Generando...";
+      }
+
+      try {
+        setEstado("Generando scorecards sin imprimir tarjetas...");
+
+        await refrescarIndicesVivosInscritos({ render: true });
+
+        const { validas, pendientes } = analizarFilasParaScorecards();
+
+        let generadas = 0;
+
+        for (const fila of validas) {
+          if (fila.tipo === "single") {
+            await guardarOficializacionSingle(fila.jugadores[0].id, true);
+          } else {
+            await guardarOficializacionPair(fila.jugadores[0].id, fila.jugadores[1].id, true);
+          }
+
+          generadas++;
+        }
+
+        if (pendientes.length > 0) {
+          console.warn("Scorecards pendientes por datos incompletos:", pendientes);
+
+          setEstado(
+            `Se generaron ${generadas} scorecard(s). Hay ${pendientes.length} fila(s) para completar manualmente.`,
+            "warn"
+          );
+
+          mostrarModalResumenImpresion({
+            titulo: "Scorecards generadas",
+            subtitulo: "Se generaron las scorecards posibles y quedaron pendientes para revisar",
+            tarjetas: 0,
+            scorecards: generadas,
+            pendientes,
+            icono: "✓"
+          });
+        } else {
+          setEstado("Todas las scorecards fueron generadas correctamente.", "ok");
+
+          mostrarModalResumenImpresion({
+            titulo: "Scorecards generadas",
+            subtitulo: "Todas las scorecards quedaron listas",
+            tarjetas: 0,
+            scorecards: generadas,
+            pendientes: [],
+            mensajeOk: "No quedaron jugadores pendientes de index, tee, categoría ni HCP.",
+            icono: "✓"
+          });
+        }
+
+        await cargarTodo(true);
+
+      } catch (error) {
+        console.error(error);
+        setEstado(error.message || "No se pudieron generar todas las scorecards.", "error");
+        alert(error.message || "No se pudieron generar todas las scorecards.");
+      } finally {
+        if (btnGenerarScorecards) {
+          btnGenerarScorecards.disabled = false;
+          btnGenerarScorecards.textContent = textoOriginal;
+        }
+      }
     }
 
     async function imprimirTodasLasTarjetas() {

@@ -3855,6 +3855,35 @@
     await occupySlotWithPair(slotId, jugadorBase, jugadorNuevo);
   }
 
+  function getFechaLimiteBajaMember() {
+    if (!state.torneo?.tournament_date) return null;
+
+    const [year, month, day] = String(state.torneo.tournament_date)
+      .split("-")
+      .map(Number);
+
+    if (!year || !month || !day) return null;
+
+    // Día anterior al torneo a las 12:00 del mediodía
+    const limite = new Date(year, month - 1, day, 12, 0, 0, 0);
+    limite.setDate(limite.getDate() - 1);
+
+    return limite;
+  }
+
+  function bajaMemberBloqueadaPorHorario() {
+    if (APP.esAdmin) return false;
+
+    const limite = getFechaLimiteBajaMember();
+    if (!limite) return false;
+
+    return new Date() >= limite;
+  }
+
+  function mensajeBajaFueraDeHorario() {
+    return "Fuera de tiempo, para darte de baja infomalo a Administración.";
+  }
+
   async function releaseSlot(slotId) {
     if (!slotId) return;
     setStatus("Liberando lugar...");
@@ -3864,6 +3893,10 @@
     const loCreeYo = !!slot.created_by_player_id && slot.created_by_player_id === APP.miPlayerId;
     const puedeBorrar = APP.esAdmin || esMio || loCreeYo;
     if (!puedeBorrar) throw new Error("No tenés permiso para borrar este jugador.");
+
+    if (!APP.esAdmin && bajaMemberBloqueadaPorHorario()) {
+      throw new Error(mensajeBajaFueraDeHorario());
+    }
 
     let slotsALiberar = [slot.id];
     if (requiresPartner()) {
@@ -4352,6 +4385,11 @@
           }
 
           // 👉 slot ocupado normal
+          if (!APP.esAdmin && bajaMemberBloqueadaPorHorario()) {
+            alert(mensajeBajaFueraDeHorario());
+            return;
+          }
+
           const texto = occupiedSlot.dataset.texto || "";
           const ok = confirm(`¿Querés liberar el lugar ocupado por "${texto}"?`);
           if (!ok) return;
