@@ -276,6 +276,10 @@
             <button id="btnRefreshAAG">
                 Ver Estado AAG
             </button>
+
+            <button id="btnAutoExportDryRun">
+                Probar Auto Export
+            </button>
         </div>
 
         <details style="margin-top:10px;">
@@ -628,6 +632,38 @@
             estado.className = tipo;
             estado.textContent = txt;
         }
+
+        document.getElementById("btnAutoExportDryRun")
+            .addEventListener("click", async () => {
+
+                const out = document.getElementById("resultadoEnvio");
+
+                try {
+
+                    out.textContent = "Simulando exportación automática...";
+
+                    const res = await fetch(FUNCTION_URL, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            action: "auto_export_aag",
+                            dry_run: true
+                        })
+                    });
+
+                    const json = await res.json();
+
+                    out.textContent =
+                        JSON.stringify(json, null, 2);
+
+                } catch (err) {
+
+                    out.textContent =
+                        "Error: " + (err.message || err);
+                }
+            });
 
 
 

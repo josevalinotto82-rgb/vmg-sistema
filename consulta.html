@@ -794,6 +794,32 @@
                 text-overflow: clip
             }
 
+            .print-winner-premio {
+                display: grid;
+                grid-template-columns: 90px minmax(0, 1fr) 120px;
+                gap: 10px;
+                align-items: center;
+                border-bottom: 1px solid #ddd;
+                padding: 6px 0;
+            }
+
+            .print-winner-premio .pos {
+                font-size: 14px;
+                font-weight: 900;
+            }
+
+            .print-winner-premio .name {
+                font-size: 16px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            .print-winner-premio .score-big {
+                font-size: 16px;
+                font-weight: 900;
+                text-align: right;
+            }
+
             .print-grid-table {
                 width: 100%;
                 border-collapse: collapse;
@@ -1424,7 +1450,7 @@
                 const { data, error } = await supabase
                     .from("tournaments")
                     .select("id,name,tournament_date,status,start_type,series_id,series_round_number,game_modes(name,participation_type)")
-                    .eq("status", "archived")
+                    .in("status", ["officialized", "archived"])
                     .order("tournament_date", { ascending: false });
                 if (error) throw error;
                 if (!data?.length) { torneoSelect.innerHTML = ""; setEstado("No hay torneos archivados.", "warn"); return; }
@@ -2515,26 +2541,57 @@
             html += renderPrintApproach();
             html += `<div class="print-section-title">Ganadores por Categoría</div>`;
 
+            function puestoTexto(pos) {
+                return `${pos}° puesto`;
+            }
+
+            function renderGanadorLinea(s, pos, campo) {
+                const valor = campo === "gross" ? fmt(s.gross, 0) : fmt(s.net, 0);
+                const label = campo === "gross" ? "GROSS" : "NETO";
+
+                return `
+        <div class="print-winner-premio">
+            <div class="pos">${puestoTexto(pos)}</div>
+            <div class="name">${esc(s.display_name || "Sin nombre")}</div>
+            <div class="score-big">${label}: ${valor}</div>
+        </div>
+    `;
+            }
+
             function renderPrintScratch(titulo, items) {
                 if (!items.length) return "";
-                let out = `<div class="print-category">${esc(titulo)} · Index -6 a 9:</div>`;
-                items.forEach(s => {
-                    out += `<div class="print-winner scratch-print"><div>${esc(s.display_name)}</div><div>Gross: ${fmt(s.gross, 0)}</div></div>`;
-                });
+
+                let out = `<div class="print-category">${esc(titulo)}</div>`;
+
+                items
+                    .slice()
+                    .sort((a, b) => compareScore(a, b, "gross"))
+                    .slice(0, topScratchCab || topScratchDam || 2)
+                    .reverse()
+                    .forEach((s, idx, arr) => {
+                        const pos = arr.length - idx;
+                        out += renderGanadorLinea(s, pos, "gross");
+                    });
+
                 return out;
             }
 
             function renderPrintCategoria(cat, items) {
-                const meta = categoriaMetaPorNombre(cat);
-                const rango = meta && (meta.index_min != null || meta.index_max != null) ? ` ${fmt(meta.index_min, 1)} a ${fmt(meta.index_max, 1)}` : "";
-                let out = `<div class="print-category">${esc(cat)}${rango}:</div>`;
-                items
+                const ganadores = items
                     .slice()
                     .sort((a, b) => compareScore(a, b, "net"))
                     .slice(0, top)
-                    .forEach(s => {
-                        out += `<div class="print-winner"><div>${esc(s.display_name)}</div><div>Gross: ${fmt(s.gross, 0)}</div><div>HCP: ${fmt(s.playing_handicap, 0)}</div><div>Neto: ${fmt(s.net, 0)}</div></div>`;
-                    });
+                    .reverse();
+
+                if (!ganadores.length) return "";
+
+                let out = `<div class="print-category">${esc(cat)}</div>`;
+
+                ganadores.forEach((s, idx, arr) => {
+                    const pos = arr.length - idx;
+                    out += renderGanadorLinea(s, pos, "net");
+                });
+
                 return out;
             }
 
@@ -2571,10 +2628,32 @@
                 })
                 .sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"));
 
-            html += renderPrintScratch("Scratch Caballeros", scratchCab);
-            categoriasCab.forEach(([cat, items]) => html += renderPrintCategoria(cat, items));
+            const ordenDeseadoCategorias = [
+                "damas rojas",
+                "caballeros blancas b",
+                "caballeros blancas a",
+                "caballeros amarillas",
+                "caballeros negras"
+            ];
+
+            function claveCat(cat) {
+                return normalizarTextoClave(cat).toLowerCase();
+            }
+
+            const todasCategorias = [...categoriasDam, ...categoriasCab];
+
+            ordenDeseadoCategorias.forEach(nombreBuscado => {
+                const encontrada = todasCategorias.find(([cat]) =>
+                    claveCat(cat).includes(nombreBuscado)
+                );
+
+                if (encontrada) {
+                    html += renderPrintCategoria(encontrada[0], encontrada[1]);
+                }
+            });
+
             html += renderPrintScratch("Scratch Damas", scratchDam);
-            categoriasDam.forEach(([cat, items]) => html += renderPrintCategoria(cat, items));
+            html += renderPrintScratch("Scratch Caballeros", scratchCab);
 
             html += `</div>`;
 
