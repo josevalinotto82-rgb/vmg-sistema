@@ -93,7 +93,7 @@
         .approach-toolbar {
             margin-top: 14px;
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(6, 1fr);
             gap: 12px;
         }
 
@@ -1078,6 +1078,18 @@
                     <input id="approach13" placeholder="Buscar jugador...">
                     <div class="approach-suggestions" data-for="approach13"></div>
                 </div>
+
+                <div class="approach-field">
+                    <label>Long Drive</label>
+                    <input id="longDrive" placeholder="Buscar jugador...">
+                    <div class="approach-suggestions" data-for="longDrive"></div>
+                </div>
+
+                <div class="approach-field">
+                    <label>Precisión Drive</label>
+                    <input id="precisionDrive" placeholder="Buscar jugador...">
+                    <div class="approach-suggestions" data-for="precisionDrive"></div>
+                </div>
             </div>
 
             <div style="margin-top:12px" id="estado" class="status">Conectando...</div>
@@ -1216,12 +1228,9 @@
                     topScratchCaballeros: Number(el("topScratch")?.value || 0),
                     topScratchDamas: Number(el("topScratchDamas")?.value || 0)
                 },
-                approach: {
-                    hoyo3: el("approach3")?.value || "",
-                    hoyo5: el("approach5")?.value || "",
-                    hoyo11: el("approach11")?.value || "",
-                    hoyo13: el("approach13")?.value || ""
-                },
+
+                special_prizes: getSpecialPrizesJson(),
+
                 scorecards,
                 categorias,
                 serie: serieActual,
@@ -1470,10 +1479,12 @@
 
                 const { data: torneo, error: errorTorneo } = await supabase
                     .from("tournaments")
-                    .select("id,name,tournament_date,status,start_type,hole_count,series_id,series_round_number,game_modes(name,participation_type)")
+                    .select("id,name,tournament_date,status,start_type,hole_count,series_id,series_round_number,special_prizes,game_modes(name,participation_type)")
                     .eq("id", tournamentId).single();
                 if (errorTorneo) throw errorTorneo;
                 torneoActual = torneo;
+
+                cargarPremiosEspecialesGuardados();
 
                 const { data: cards, error: errorCards } = await supabase
                     .from("scorecards")
@@ -2329,51 +2340,213 @@
         }
 
         function renderPrintSeriesPage() {
+            if (!serieActual) return "";
+
             const acumulado = calcularAcumuladoSerie();
             const field = acumulado.field || getSerieScoringField();
-            const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
             const tituloSerie = serieActual?.name || "Competencia de varias fechas";
 
             let html = "";
 
-            // HOJA 1: ACUMULADO
-            html += `<div class="print-page print-series-page">`;
-            html += `<div class="print-title">${esc(tituloSerie)}</div>`;
-            html += `<div class="print-date">Acumulado serie · ${esc(torneoActual.name || "")}</div>`;
-            html += `<div class="print-meta">Orden por <b>${labelScore}</b>. Exige completar <b>${acumulado.required || "todas las"}</b> fechas.</div>`;
-            html += renderPrintTablaSeriePorCategorias({
+            html += renderPrintPremiosSeriePage({
+                titulo: "Ganadores por categoría jugando todas las fechas",
+                subtitulo: `${tituloSerie} · ${esc(torneoActual.name || "")}`,
                 tipo: "acumulado",
                 items: acumulado.completos,
                 field,
                 required: acumulado.required
             });
-            html += `</div>`;
 
-            // HOJA 2: MEJOR 18 + MEJOR 36 JUNTOS
-            const mejor18 = calcularMejor18Serie();
-            const mejor36 = calcularMejor36Serie();
-
-            html += `<div class="print-page print-series-page print-best-page">`;
-            html += `<div class="print-title">${esc(tituloSerie)}</div>`;
-            html += `<div class="print-date">Mejor 18 y Mejor 36 hoyos · ${esc(torneoActual.name || "")}</div>`;
+            html += renderPrintPremiosSeriePage({
+                titulo: "Ganadores por categoría con los mejores 36 hoyos",
+                subtitulo: `${tituloSerie} · ${esc(torneoActual.name || "")}`,
+                tipo: "mejor36",
+                items: calcularMejor36Serie(),
+                field
+            });
 
             if (serieActual.best18_enabled !== false) {
-                html += `<div class="print-section-title">Mejor 18 hoyos</div>`;
-                html += `<div class="print-meta">Entra cualquier jugador con al menos una tarjeta válida.</div>`;
-                html += renderPrintTablaSeriePorCategorias({
+                html += renderPrintPremiosSeriePage({
+                    titulo: "Ganadores por categoría con los mejores 18 hoyos",
+                    subtitulo: `${tituloSerie} · ${esc(torneoActual.name || "")}`,
                     tipo: "mejor18",
-                    items: mejor18,
+                    items: calcularMejor18Serie(),
                     field
                 });
             }
 
-            html += `<div class="print-section-title">Mejor 36 hoyos</div>`;
-            html += `<div class="print-meta">Se toman las mejores 2 tarjetas válidas de cada jugador.</div>`;
-            html += renderPrintTablaSeriePorCategorias({
-                tipo: "mejor36",
-                items: mejor36,
-                field
+            return html;
+        }
+
+        function itemSerieId(item) {
+            return String(item.key || item.id || item.linked_player_id || item.aag_member_number || item.display_name || "");
+        }
+
+        function ordenCategoriaPremiosSerie(nombre) {
+            const t = String(nombre || "").toLowerCase();
+
+            if (t.includes("scratch")) return 9000;
+
+            if (t.includes("roja") || t.includes("damas")) return 10;
+
+            if (t.includes("blanca") && t.includes("b")) return 20;
+            if (t.includes("blancas b")) return 20;
+
+            if (t.includes("blanca") && t.includes("a")) return 30;
+            if (t.includes("blancas a")) return 30;
+
+            if (t.includes("amarilla")) return 40;
+            if (t.includes("negra")) return 50;
+
+            return 500 + ordenCategoria(nombre);
+        }
+
+        function labelScoreSerie(tipo, esScratch = false) {
+            if (esScratch) {
+                if (tipo === "mejor18") return "GROSS";
+                if (tipo === "mejor36") return "GROSS 36";
+                return "GROSS ACUMULADO";
+            }
+
+            if (tipo === "mejor18") return "NETO";
+            if (tipo === "mejor36") return "NETO 36";
+            return "NETO ACUMULADO";
+        }
+
+        function valorPremioSerie(item, tipo, esScratch = false) {
+            if (esScratch) {
+                return scoreScratchSerie(item, tipo);
+            }
+
+            return n(item.score);
+        }
+
+        function detallePremioSerie(item, tipo) {
+            if (tipo === "mejor18") {
+                return `Fecha ${item.round_number || "?"} · ${fechaTexto(item.tournament_date)}`;
+            }
+
+            if (tipo === "mejor36") {
+                return (item.best_rounds || [])
+                    .map(r => `F${r.round_number || "?"}: ${r.score ?? "—"}`)
+                    .join(" · ");
+            }
+
+            return (item.rounds || [])
+                .map(r => `F${r.round_number || "?"}: ${r.score ?? "—"}`)
+                .join(" · ");
+        }
+
+        function renderPrintFilaPremioSerie(item, pos, tipo, esScratch = false) {
+            const label = labelScoreSerie(tipo, esScratch);
+            const valor = valorPremioSerie(item, tipo, esScratch);
+            const detalle = detallePremioSerie(item, tipo);
+
+            return `
+        <div class="print-winner-premio">
+            <div class="pos">${pos}° puesto</div>
+            <div>
+                <div class="name">${esc(item.display_name || "")}</div>
+                ${detalle ? `<div style="font-size:11px;font-weight:700;color:#444;margin-top:2px">${esc(detalle)}</div>` : ""}
+            </div>
+            <div class="score-big">${label}: ${fmt(valor, 0)}</div>
+        </div>
+    `;
+        }
+
+        function renderPrintPremiosSerieCategoria(titulo, items, tipo, esScratch = false) {
+            if (!items.length) return "";
+
+            const seleccionados = items.slice();
+            const invertidos = seleccionados.slice().reverse();
+
+            let html = `<div class="print-category">${esc(titulo)}</div>`;
+
+            invertidos.forEach(item => {
+                const posReal = seleccionados.findIndex(x => itemSerieId(x) === itemSerieId(item)) + 1;
+                html += renderPrintFilaPremioSerie(item, posReal, tipo, esScratch);
             });
+
+            return html;
+        }
+
+        function renderPrintPremiosSeriePage({ titulo, subtitulo, tipo, items, field, required = null }) {
+            const topCategoria = Math.max(1, Number(el("topCategoria")?.value || 2));
+            const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
+
+            const ordenarCategoria = (a, b) =>
+                n(a.score) - n(b.score) ||
+                (n(a.total_gross ?? a.gross) ?? 9999) - (n(b.total_gross ?? b.gross) ?? 9999) ||
+                String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+
+            const ordenarScratch = (a, b) =>
+                (scoreScratchSerie(a, tipo) ?? 9999) - (scoreScratchSerie(b, tipo) ?? 9999) ||
+                String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+
+            const scratchDam = topScratchDam > 0
+                ? items
+                    .filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "female")
+                    .slice()
+                    .sort(ordenarScratch)
+                    .slice(0, topScratchDam)
+                : [];
+
+            const scratchCab = topScratchCab > 0
+                ? items
+                    .filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "male")
+                    .slice()
+                    .sort(ordenarScratch)
+                    .slice(0, topScratchCab)
+                : [];
+
+            const scratchIds = new Set([
+                ...scratchDam.map(itemSerieId),
+                ...scratchCab.map(itemSerieId)
+            ]);
+
+            const grupos = new Map();
+
+            items
+                .filter(x => !scratchIds.has(itemSerieId(x)))
+                .forEach(item => {
+                    const cat = item.category_name || "Sin categoría";
+                    if (esCategoriaScratch(cat)) return;
+                    if (!grupos.has(cat)) grupos.set(cat, []);
+                    grupos.get(cat).push(item);
+                });
+
+            const categoriasOrdenadas = [...grupos.entries()]
+                .sort((a, b) =>
+                    ordenCategoriaPremiosSerie(a[0]) - ordenCategoriaPremiosSerie(b[0]) ||
+                    a[0].localeCompare(b[0], "es")
+                );
+
+            let html = `
+        <div class="print-page print-series-page">
+            <div class="print-title">${esc(titulo)}</div>
+            <div class="print-date">${subtitulo}</div>
+    `;
+
+            if (tipo === "acumulado") {
+                html += `<div class="print-meta">Se toman únicamente jugadores que completaron ${required || "todas las"} fechas.</div>`;
+            }
+
+            categoriasOrdenadas.forEach(([cat, catItems]) => {
+                const ganadores = catItems
+                    .slice()
+                    .sort(ordenarCategoria)
+                    .slice(0, topCategoria);
+
+                html += renderPrintPremiosSerieCategoria(cat, ganadores, tipo, false);
+            });
+
+            html += renderPrintPremiosSerieCategoria("Scratch Damas", scratchDam, tipo, true);
+            html += renderPrintPremiosSerieCategoria("Scratch Caballeros", scratchCab, tipo, true);
+
+            if (!categoriasOrdenadas.length && !scratchDam.length && !scratchCab.length) {
+                html += `<div class="print-section-title">No hay tarjetas válidas para mostrar.</div>`;
+            }
 
             html += `</div>`;
 
@@ -2381,6 +2554,52 @@
         }
 
         let jugadoresApproach = [];
+
+        function getSpecialPrizesJson() {
+            return {
+                approach: {
+                    "3": el("approach3")?.value?.trim() || "",
+                    "5": el("approach5")?.value?.trim() || "",
+                    "11": el("approach11")?.value?.trim() || "",
+                    "13": el("approach13")?.value?.trim() || ""
+                },
+                long_drive: el("longDrive")?.value?.trim() || "",
+                precision_drive: el("precisionDrive")?.value?.trim() || ""
+            };
+        }
+
+        function cargarPremiosEspecialesGuardados() {
+            const data = torneoActual?.special_prizes || {};
+            const approach = data.approach || {};
+
+            if (el("approach3")) el("approach3").value = approach["3"] || "";
+            if (el("approach5")) el("approach5").value = approach["5"] || "";
+            if (el("approach11")) el("approach11").value = approach["11"] || "";
+            if (el("approach13")) el("approach13").value = approach["13"] || "";
+
+            if (el("longDrive")) el("longDrive").value = data.long_drive || "";
+            if (el("precisionDrive")) el("precisionDrive").value = data.precision_drive || "";
+        }
+
+        async function guardarPremiosEspeciales() {
+            if (!torneoActual?.id) return;
+
+            const special_prizes = getSpecialPrizesJson();
+
+            const { error } = await supabase
+                .from("tournaments")
+                .update({ special_prizes })
+                .eq("id", torneoActual.id);
+
+            if (error) {
+                console.error("Error guardando premios especiales:", error);
+                setEstado("No se pudieron guardar los premios especiales.", "error");
+                return;
+            }
+
+            torneoActual.special_prizes = special_prizes;
+            setEstado("Premios especiales guardados correctamente.", "ok");
+        }
 
         function cargarListaJugadoresApproach() {
             jugadoresApproach = [...new Set(
@@ -2393,6 +2612,8 @@
             configurarBuscadorApproach("approach5");
             configurarBuscadorApproach("approach11");
             configurarBuscadorApproach("approach13");
+            configurarBuscadorApproach("longDrive");
+            configurarBuscadorApproach("precisionDrive");
         }
 
         function configurarBuscadorApproach(inputId) {
@@ -2423,10 +2644,10 @@
                 }
 
                 box.innerHTML = matches.map(nombre => `
-            <div class="approach-suggestion" data-nombre="${esc(nombre)}">
-                ${esc(nombre)}
-            </div>
-        `).join("");
+                    <div class="approach-suggestion" data-nombre="${esc(nombre)}">
+                        ${esc(nombre)}
+                    </div>
+                `).join("");
 
                 box.style.display = "block";
             });
@@ -2437,6 +2658,13 @@
 
                 input.value = item.dataset.nombre || "";
                 box.style.display = "none";
+                guardarPremiosEspeciales();
+                renderTodo();
+            });
+
+            input.addEventListener("change", () => {
+                guardarPremiosEspeciales();
+                renderTodo();
             });
 
             input.addEventListener("focus", () => {
@@ -2456,15 +2684,33 @@
         }
 
         function renderPrintApproach() {
-            const items = getApproachGanadores().filter(x => x.ganador);
+            const especiales = getSpecialPrizesJson();
+
+            const items = [
+                ...getApproachGanadores()
+                    .filter(x => x.ganador)
+                    .map(x => ({
+                        label: `Approach Hoyo ${x.hoyo}`,
+                        ganador: x.ganador
+                    })),
+                {
+                    label: "Long Drive",
+                    ganador: especiales.long_drive || ""
+                },
+                {
+                    label: "Precisión Drive",
+                    ganador: especiales.precision_drive || ""
+                }
+            ].filter(x => x.ganador);
+
             if (!items.length) return "";
 
-            let html = `<div class="print-approach-title">Premios Approach</div>`;
+            let html = `<div class="print-approach-title">Premios Especiales</div>`;
 
             items.forEach(x => {
                 html += `
                     <div class="print-winner approach-print print-approach-row">
-                        <div>Hoyo ${x.hoyo}</div>
+                        <div>${esc(x.label)}</div>
                         <div>${esc(x.ganador)}</div>
                     </div>
                 `;
