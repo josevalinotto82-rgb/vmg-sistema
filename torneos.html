@@ -953,6 +953,16 @@
             return nombre.includes("americana") || nombre.includes("american");
         }
 
+        function esFourball() {
+            const nombre = nombreModalidad();
+            return nombre.includes("fourball") || nombre.includes("four ball") || esAmericana();
+        }
+
+        function categoriaPublicaFourball(j) {
+            const genero = generoJugador(j);
+            return genero === "female" ? "Damas" : "Caballeros";
+        }
+
         function normalizarGenero(valor) {
             const g = normalizarTexto(valor);
             if (["male", "m", "masculino", "hombre", "caballero", "caballeros"].includes(g)) return "male";
@@ -1936,6 +1946,24 @@
 
                 if (genero === "male") scratchCaballerosAgregado = true;
                 if (genero === "female") scratchDamasAgregado = true;
+            }
+
+            if (esFourball()) {
+                const listaCaballeros = jugadores
+                    .filter(j => categoriaPublicaFourball(j) === "Caballeros")
+                    .slice()
+                    .sort(compararJugadores);
+
+                const listaDamas = jugadores
+                    .filter(j => categoriaPublicaFourball(j) === "Damas")
+                    .slice()
+                    .sort(compararJugadores);
+
+                renderTablaCategoria("Caballeros", listaCaballeros, false);
+                renderTablaCategoria("Damas", listaDamas, false);
+
+                document.getElementById("contenido").innerHTML = html;
+                return;
             }
 
             console.log("CATEGORIAS ANTES DE ORDENAR:", categorias.map(c => c.name));

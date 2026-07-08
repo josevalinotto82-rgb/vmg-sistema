@@ -654,8 +654,13 @@
             }
 
             .print-winner.approach-print {
-                grid-template-columns: 70px minmax(0, 1fr);
+                grid-template-columns: 130px minmax(0, 1fr);
                 gap: 8px;
+            }
+
+            .print-winner.approach-print>div:first-child {
+                white-space: nowrap;
+                overflow: visible;
             }
 
             .print-approach-title {
@@ -1384,27 +1389,30 @@
             const grupos = {};
 
             validas.forEach(sc => {
-                const cat = sc.category_name || "Sin categoría";
+                const cat = esFourball()
+                    ? categoriaFourballDesdeScorecard(sc)
+                    : (sc.category_name || "Sin categoría");
 
                 if (!grupos[cat]) grupos[cat] = [];
-
                 grupos[cat].push(sc);
             });
 
             let html = `
-    <div class="print-page">
-        <div class="print-title">${esc(torneoActual.name)}</div>
-        <div class="print-date">
-            Informe completo de jugadores · ${fechaTexto(torneoActual.tournament_date)}
-        </div>
+        <div class="print-page">
+            <div class="print-title">${esc(torneoActual.name)}</div>
+            <div class="print-date">
+                Informe completo de jugadores · ${fechaTexto(torneoActual.tournament_date)}
+            </div>
     `;
 
-            const categoriasOrdenadas = Object.keys(grupos)
-                .sort((a, b) => ordenCategoria(a) - ordenCategoria(b));
+            const categoriasOrdenadas = esFourball()
+                ? ["Caballeros", "Damas"].filter(cat => grupos[cat]?.length)
+                : Object.keys(grupos).sort((a, b) => ordenCategoria(a) - ordenCategoria(b));
 
             categoriasOrdenadas.forEach(cat => {
 
                 const jugadores = grupos[cat]
+                    .slice()
                     .sort((a, b) => compareScore(a, b, "net"));
 
                 html += `
@@ -1427,7 +1435,6 @@
         `;
 
                 jugadores.forEach((j, idx) => {
-
                     html += `
                 <tr>
                     <td><b>${idx + 1}</b></td>
@@ -1978,8 +1985,79 @@
             return 500 + (min ?? 999);
         }
 
+        function esFourball() {
+            const nombre = String(torneoActual?.game_modes?.name || "").toLowerCase();
+            return nombre.includes("fourball") || nombre.includes("four ball");
+        }
+
+        function categoriaFourballDesdeScorecard(sc) {
+            const genero = normalizarGenero(sc.player_gender);
+            return genero === "female" ? "Damas" : "Caballeros";
+        }
+
         function renderGanadoresCategorias() {
             const topCategoria = Math.max(1, Number(el("topCategoria")?.value || 3));
+
+            const validasBase = scorecards.filter(s =>
+                (s.card_status === "valid" || s.card_status === "cargada") &&
+                n(s.net) != null
+            );
+
+            // =========================
+            // FOURBALL: solo Caballeros / Damas, sin Scratch
+            // =========================
+            if (esFourball()) {
+                const grupos = new Map();
+
+                for (const s of validasBase) {
+                    const key = categoriaFourballDesdeScorecard(s);
+                    if (!grupos.has(key)) grupos.set(key, []);
+                    grupos.get(key).push(s);
+                }
+
+                const orden = ["Caballeros", "Damas"];
+                let html = "";
+
+                orden.forEach(cat => {
+                    const items = grupos.get(cat) || [];
+                    const gan = items
+                        .slice()
+                        .sort((a, b) => compareScore(a, b, "net"))
+                        .slice(0, topCategoria);
+
+                    html += `
+                <div class="winner-card">
+                    <div class="winner-head">${esc(cat)}</div>
+                    <div class="podium">
+            `;
+
+                    gan.forEach((s, i) => {
+                        html += podiumRow(
+                            s,
+                            i,
+                            `Neto ${fmt(s.net, 0)}`,
+                            `Gross ${fmt(s.gross, 0)} · HCP ${fmt(s.playing_handicap, 0)}`
+                        );
+                    });
+
+                    if (!gan.length) {
+                        html += `<div class="small">Sin tarjetas válidas.</div>`;
+                    }
+
+                    html += `
+                    </div>
+                </div>
+            `;
+                });
+
+                el("ganadoresCategorias").innerHTML =
+                    html || `<div class="small">No hay resultados por categoría para mostrar.</div>`;
+                return;
+            }
+
+            // =========================
+            // RESTO DE MODALIDADES: comportamiento actual
+            // =========================
             const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
             const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
 
@@ -1991,55 +2069,41 @@
                 ? obtenerScratchItems("female").slice(0, topScratchDam)
                 : [];
 
-            const scratchWinnerIds = new Set([
+            const scratchIds = new Set([
                 ...scratchCab.map(s => String(s.id)),
                 ...scratchDam.map(s => String(s.id))
             ]);
 
-            const validas = scorecards.filter(s => {
+            const validas = validasBase.filter(s => {
                 const catName = String(s.category_name || "").toLowerCase();
-                return (s.card_status === "valid" || s.card_status === "cargada") &&
-                    s.category_name &&
-                    n(s.net) != null &&
+                return s.category_name &&
                     !catName.includes("scratch") &&
                     !catName.includes("scrach") &&
-                    !scratchWinnerIds.has(String(s.id));
+                    !scratchIds.has(String(s.id));
             });
 
             const grupos = new Map();
-
             for (const s of validas) {
                 const key = s.category_name || "Sin categoría";
                 if (!grupos.has(key)) grupos.set(key, []);
                 grupos.get(key).push(s);
             }
 
-            const categoriasCab = [...grupos.entries()]
-                .filter(([cat]) => {
-                    const meta = categoriaMetaPorNombre(cat);
-                    const texto = String(cat || "").toLowerCase();
-                    return normalizarGenero(meta?.gender || cat) !== "female" &&
-                        !texto.includes("dama");
-                })
-                .sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"));
+            const categoriasCab = [];
+            const categoriasDam = [];
 
-            const categoriasDam = [...grupos.entries()]
-                .filter(([cat]) => {
+            [...grupos.entries()]
+                .sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"))
+                .forEach(([cat, items]) => {
                     const meta = categoriaMetaPorNombre(cat);
-                    const texto = String(cat || "").toLowerCase();
-                    return normalizarGenero(meta?.gender || cat) === "female" ||
-                        texto.includes("dama");
-                })
-                .sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"));
+                    const gen = normalizarGenero(meta?.gender || items[0]?.player_gender || cat);
 
-            let html = "";
+                    if (gen === "female") categoriasDam.push([cat, items]);
+                    else categoriasCab.push([cat, items]);
+                });
 
             function renderBloqueScratch(titulo, items) {
-                if (!items.length) return "";
-
-                let out = `<div class="winner-card">
-            <div class="winner-head">${titulo} · Index -6 a 9 · Gross</div>
-            <div class="podium">`;
+                let out = `<div class="winner-card"><div class="winner-head">${esc(titulo)}</div><div class="podium">`;
 
                 items.forEach((s, i) => {
                     out += podiumRow(
@@ -2050,6 +2114,7 @@
                     );
                 });
 
+                if (!items.length) out += `<div class="small">Sin jugadores scratch.</div>`;
                 out += `</div></div>`;
                 return out;
             }
@@ -2081,24 +2146,24 @@
                 });
 
                 if (!gan.length) out += `<div class="small">Sin tarjetas válidas.</div>`;
-
                 out += `</div></div>`;
                 return out;
             }
 
-            html += renderBloqueScratch("Scratch Caballeros", scratchCab);
+            let html = "";
 
+            html += renderBloqueScratch("Scratch Caballeros", scratchCab);
             categoriasCab.forEach(([cat, items]) => {
                 html += renderBloqueCategoria(cat, items);
             });
 
             html += renderBloqueScratch("Scratch Damas", scratchDam);
-
             categoriasDam.forEach(([cat, items]) => {
                 html += renderBloqueCategoria(cat, items);
             });
 
-            el("ganadoresCategorias").innerHTML = html || `<div class="small">No hay resultados por categoría para mostrar.</div>`;
+            el("ganadoresCategorias").innerHTML =
+                html || `<div class="small">No hay resultados por categoría para mostrar.</div>`;
         }
 
         function obtenerScratchItems(generoFiltro = "all") {
@@ -2786,6 +2851,44 @@
             `;
             html += renderPrintApproach();
             html += `<div class="print-section-title">Ganadores por Categoría</div>`;
+
+            if (esFourball()) {
+                const gruposFourball = new Map();
+
+                scorecards
+                    .filter(s =>
+                        (s.card_status === "valid" || s.card_status === "cargada") &&
+                        n(s.net) != null
+                    )
+                    .forEach(s => {
+                        const cat = categoriaFourballDesdeScorecard(s);
+                        if (!gruposFourball.has(cat)) gruposFourball.set(cat, []);
+                        gruposFourball.get(cat).push(s);
+                    });
+
+                ["Caballeros", "Damas"].forEach(cat => {
+                    const items = gruposFourball.get(cat) || [];
+                    html += renderPrintCategoria(cat, items);
+                });
+
+                html += `</div>`;
+
+                if (serieActual) {
+                    html += renderPrintSeriesPage();
+                }
+
+                html += `<div class="print-page"><div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">Grilla de anotados</div>${renderPrintGrilla()}</div>`;
+
+                const stats = calcularStatsTee(validas);
+                html += `<div class="print-page"><div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">Resumen general hoyo por hoyo</div>`;
+                html += `<div class="print-section-title">Ranking de hoyos · Peor a mejor</div>${renderPrintRanking(stats)}`;
+                html += `<div class="print-section-title">Detalle por hoyo</div><table class="print-hole-table"><thead><tr><th>Hoyo</th><th>Par</th><th>HCP</th><th>Prom.</th><th>Vs Par</th><th>Águilas</th><th>Birdies</th><th>Par</th><th>Bogey</th><th>Doble+</th></tr></thead><tbody>`;
+                stats.forEach(r => html += `<tr><td>H${r.hole}</td><td>${r.par}</td><td>${r.hcp}</td><td>${fmt(r.avg, 2)}</td><td>${fmt(r.avgVsPar, 2)}</td><td>${r.eagle}</td><td>${r.birdie}</td><td>${r.parCount}</td><td>${r.bogey}</td><td>${r.doublePlus}</td></tr>`);
+                html += `</tbody></table></div>`;
+
+                el("printArea").innerHTML = html;
+                return;
+            }
 
             function puestoTexto(pos) {
                 return `${pos}° puesto`;
