@@ -4618,24 +4618,119 @@ Gracias.
           if (!APP.esAdmin) return;
           if (!dom.shareExportWrap) return;
 
-          // 1. generar HTML limpio
-          dom.shareExportWrap.innerHTML = renderShareGrid();
+          const boton = dom.btnExportarWhatsapp;
+          const textoOriginal = boton.textContent;
 
-          const node = dom.shareExportWrap.firstElementChild;
+          try {
+            boton.disabled = true;
+            boton.textContent = "Generando imagen...";
 
-          // 2. convertir a imagen
-          const canvas = await html2canvas(node, {
-            backgroundColor: "#ffffff",
-            scale: 2
-          });
+            dom.shareExportWrap.innerHTML = renderShareGrid();
 
-          // 3. descargar
-          const url = canvas.toDataURL("image/png");
+            const node = dom.shareExportWrap.firstElementChild;
 
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = "grilla-whatsapp.png";
-          link.click();
+            if (!node) {
+              throw new Error("No se pudo generar la grilla.");
+            }
+
+            await new Promise(resolve =>
+              requestAnimationFrame(() =>
+                requestAnimationFrame(resolve)
+              )
+            );
+
+            const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+            const canvas = await html2canvas(node, {
+              backgroundColor: "#ffffff",
+              scale: esIOS ? 1.5 : 2,
+              useCORS: true,
+              logging: false,
+              windowWidth: node.scrollWidth,
+              windowHeight: node.scrollHeight
+            });
+
+            const blob = await new Promise((resolve, reject) => {
+              canvas.toBlob((resultado) => {
+                if (resultado) {
+                  resolve(resultado);
+                } else {
+                  reject(new Error("No se pudo generar la imagen PNG."));
+                }
+              }, "image/png");
+            });
+
+            const nombreArchivo = "grilla-whatsapp.png";
+            const archivo = new File(
+              [blob],
+              nombreArchivo,
+              { type: "image/png" }
+            );
+
+            // iPhone / iPad / móviles compatibles:
+            // abrir directamente el menú Compartir.
+            let compartido = false;
+
+            if (
+              navigator.share &&
+              navigator.canShare &&
+              navigator.canShare({ files: [archivo] })
+            ) {
+              try {
+                await navigator.share({
+                  files: [archivo],
+                  title: state.torneo?.name || "Grilla de juego"
+                });
+
+                compartido = true;
+
+              } catch (shareError) {
+                // El usuario cerró voluntariamente el menú Compartir.
+                if (shareError?.name === "AbortError") {
+                  return;
+                }
+
+                // En algunos iPhone/PWA navigator.share puede fallar
+                // después de generar el canvas. Continuamos con descarga.
+                console.warn(
+                  "No se pudo abrir Compartir. Se intentará descargar:",
+                  shareError
+                );
+              }
+            }
+
+            if (compartido) return;
+
+            // Fallback de descarga.
+            const blobUrl = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.download = nombreArchivo;
+            link.style.display = "none";
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setTimeout(() => {
+              URL.revokeObjectURL(blobUrl);
+            }, 30000);
+
+          } catch (error) {
+            console.error("Error exportando grilla:", error);
+
+            if (error?.name !== "AbortError") {
+              alert(
+                "No se pudo generar la imagen de la grilla. " +
+                "Cerrá y volvé a abrir la aplicación e intentá nuevamente."
+              );
+            }
+
+          } finally {
+            boton.disabled = false;
+            boton.textContent = textoOriginal;
+          }
         });
       }
     }
