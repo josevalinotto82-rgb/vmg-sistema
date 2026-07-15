@@ -4660,18 +4660,30 @@ Gracias.
               }, "image/png");
             });
 
-            const nombreArchivo = "grilla-whatsapp.png";
+            const nombreTorneo = String(state.torneo?.name || "grilla")
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-zA-Z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "")
+              .toLowerCase();
+
+            const nombreArchivo = `${nombreTorneo.trim() || "grilla"}.png`;
             const archivo = new File(
               [blob],
               nombreArchivo,
               { type: "image/png" }
             );
 
-            // iPhone / iPad / móviles compatibles:
-            // abrir directamente el menú Compartir.
+            const esDispositivoMovil =
+              /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+              window.matchMedia("(pointer: coarse)").matches;
+
             let compartido = false;
 
+            // En celulares y tablets intentamos abrir el menú Compartir.
+            // En PC saltamos este bloque y descargamos directamente el PNG.
             if (
+              esDispositivoMovil &&
               navigator.share &&
               navigator.canShare &&
               navigator.canShare({ files: [archivo] })
@@ -4686,15 +4698,16 @@ Gracias.
                 compartido = true;
 
               } catch (shareError) {
-                // El usuario cerró voluntariamente el menú Compartir.
+                // Si el usuario cerró voluntariamente el menú Compartir,
+                // no hacemos nada más.
                 if (shareError?.name === "AbortError") {
                   return;
                 }
 
-                // En algunos iPhone/PWA navigator.share puede fallar
-                // después de generar el canvas. Continuamos con descarga.
+                // Si Compartir falló por otro motivo,
+                // continuamos y descargamos la imagen.
                 console.warn(
-                  "No se pudo abrir Compartir. Se intentará descargar:",
+                  "No se pudo abrir Compartir. Se descargará la imagen:",
                   shareError
                 );
               }
@@ -4702,7 +4715,8 @@ Gracias.
 
             if (compartido) return;
 
-            // Fallback de descarga.
+            // En PC siempre llega acá.
+            // También llega un móvil cuando no soporta Compartir o cuando Compartir falla.
             const blobUrl = URL.createObjectURL(blob);
 
             const link = document.createElement("a");
@@ -4717,8 +4731,6 @@ Gracias.
             setTimeout(() => {
               URL.revokeObjectURL(blobUrl);
             }, 30000);
-
-          } catch (error) {
             console.error("Error exportando grilla:", error);
 
             if (error?.name !== "AbortError") {
