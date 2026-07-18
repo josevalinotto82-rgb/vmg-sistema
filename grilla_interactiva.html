@@ -1230,6 +1230,7 @@
     };
 
     const searchCache = new Map();
+    const registrationOperations = new Set();
 
     let slotBusquedaActivo = null;
     let activeLockedLineId = null;
@@ -3549,7 +3550,19 @@
         .single();
 
       if (error) {
-        console.error("ERROR INSERT registrations", { error, payload });
+        console.error("ERROR INSERT registrations", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          payload
+        });
+
+        if (error.code === "23505") {
+          throw new Error(
+            "La inscripción ya fue realizada o el casillero acaba de ser ocupado. Actualizá la grilla."
+          );
+        }
+
         throw error;
       }
 
@@ -3658,67 +3671,84 @@
       return data;
     }
 
-    async function occupySlotWithPlayer(slotId, jugador, registrationFallbackType = "aag_match") {
-      setStatus("Guardando jugador...");
+    async function occupySlotWithPlayer(
+      slotId,
+      jugador,
+      registrationFallbackType = "aag_match"
+    ) {
+      const operationKey = `${state.torneo.id}:${slotId}:${jugador.id}`;
 
-      const slotActual = await fetchSlotById(slotId);
-      await validateSlotPriority(slotId);
-      if (!isSlotEmpty(slotActual)) throw new Error("El casillero ya no está libre.");
-
-      validateOwnGroupLimit(1);
-      await validatePlayerNotDuplicated(jugador.id);
-
-      const lineId = slotActual.starting_line_id;
-      const slotPayload = buildSlotPayloadFromPlayer(jugador, participantTypeForGrid(jugador));
-
-      await deleteRegistrationsBySlotIds([slotId]);
-
-      console.log("REGISTRO A CREAR:", {
-        nombre: jugador.full_name,
-        matricula: jugador.aag_member_number,
-        jugador
-      });
-
-      await createRegistration({
-        tournament_id: state.torneo.id,
-        starting_line_id: lineId,
-        line_slot_id: slotId,
-        linked_player_id: jugador.id,
-        created_by_player_id: APP.miPlayerId || null,
-        display_name: jugador.full_name,
-        participant_type: registrationTypeForPlayer(jugador, registrationFallbackType),
-        aag_member_number: jugador.aag_member_number || null,
-        club_name: jugador.club_name || null,
-        country: jugador.country || null,
-        reported_index: jugador.current_index ?? null,
-        registration_status: "pending",
-        needs_admin_review: !jugador.aag_member_number,
-      });
-
-      const { error: updateError } = await supabase
-        .from("line_slots")
-        .update(slotPayload)
-        .eq("id", slotId);
-
-      if (updateError) throw updateError;
-
-      await unlockLineFromSlot(slotId);
-
-      const slotActualizado = await fetchSlotById(slotId);
-
-      const index = state.slots.findIndex(s => String(s.id) === String(slotId));
-      if (index !== -1) {
-        state.slots[index] = slotActualizado;
+      if (registrationOperations.has(operationKey)) {
+        throw new Error("La inscripción ya se está procesando.");
       }
 
-      rebuildIndexes();
-      state.playerAlreadyRegistered = await fetchPlayerAlreadyRegistered(state.torneo.id);
+      registrationOperations.add(operationKey);
 
-      const popup = document.getElementById("playerSearchPopup");
-      if (popup) popup.classList.add("hidden");
+      try {
+        setStatus("Guardando jugador...");
 
-      renderView();
-      setStatus("Jugador agregado correctamente.", "ok");
+        // Todo el contenido actual de la función.
+
+        const slotActual = await fetchSlotById(slotId);
+        await validateSlotPriority(slotId);
+        if (!isSlotEmpty(slotActual)) throw new Error("El casillero ya no está libre.");
+
+        validateOwnGroupLimit(1);
+        await validatePlayerNotDuplicated(jugador.id);
+
+        const lineId = slotActual.starting_line_id;
+        const slotPayload = buildSlotPayloadFromPlayer(jugador, participantTypeForGrid(jugador));
+
+        console.log("REGISTRO A CREAR:", {
+          nombre: jugador.full_name,
+          matricula: jugador.aag_member_number,
+          jugador
+        });
+
+        await createRegistration({
+          tournament_id: state.torneo.id,
+          starting_line_id: lineId,
+          line_slot_id: slotId,
+          linked_player_id: jugador.id,
+          created_by_player_id: APP.miPlayerId || null,
+          display_name: jugador.full_name,
+          participant_type: registrationTypeForPlayer(jugador, registrationFallbackType),
+          aag_member_number: jugador.aag_member_number || null,
+          club_name: jugador.club_name || null,
+          country: jugador.country || null,
+          reported_index: jugador.current_index ?? null,
+          registration_status: "pending",
+          needs_admin_review: !jugador.aag_member_number,
+        });
+
+        const { error: updateError } = await supabase
+          .from("line_slots")
+          .update(slotPayload)
+          .eq("id", slotId);
+
+        if (updateError) throw updateError;
+
+        await unlockLineFromSlot(slotId);
+
+        const slotActualizado = await fetchSlotById(slotId);
+
+        const index = state.slots.findIndex(s => String(s.id) === String(slotId));
+        if (index !== -1) {
+          state.slots[index] = slotActualizado;
+        }
+
+        rebuildIndexes();
+        state.playerAlreadyRegistered = await fetchPlayerAlreadyRegistered(state.torneo.id);
+
+        const popup = document.getElementById("playerSearchPopup");
+        if (popup) popup.classList.add("hidden");
+
+        renderView();
+        setStatus("Jugador agregado correctamente.", "ok");
+
+      } finally {
+        registrationOperations.delete(operationKey);
+      }
     }
 
     async function linkPartnerRegistrations(registrationId1, registrationId2) {
@@ -3729,88 +3759,205 @@
     }
 
     async function occupySlotWithPair(slotId, jugador1, jugador2) {
-      setStatus("Guardando pareja...");
+      const idsJugadores = [jugador1.id, jugador2.id]
+        .map(String)
+        .sort()
+        .join(":");
 
-      const slotActual = await fetchSlotById(slotId);
-      await validateSlotPriority(slotId);
+      const operationKey = `${state.torneo.id}:pair:${slotId}:${idsJugadores}`;
 
-      const bloque = getPartnerBlock(slotActual.slot_number);
-      if (!bloque) throw new Error("No se pudo determinar el bloque de pareja.");
-
-      validateOwnGroupLimit(2);
-      await validatePlayerNotDuplicated(jugador1.id);
-      await validatePlayerNotDuplicated(jugador2.id);
-
-      const slotsLinea = await fetchLineSlotsFresh(slotActual.starting_line_id);
-      const slot1 = slotsLinea.find((s) => s.slot_number === bloque.inicio);
-      const slot2 = slotsLinea.find((s) => s.slot_number === bloque.fin);
-      if (!slot1 || !slot2) throw new Error("No se encontraron ambos casilleros de la pareja.");
-      const slot1Ocupado = !isSlotEmpty(slot1) && String(slot1.id) !== String(slotId);
-      const slot2Ocupado = !isSlotEmpty(slot2) && String(slot2.id) !== String(slotId);
-
-      if (slot1Ocupado || slot2Ocupado) {
-        throw new Error(`Para anotar una pareja, los casilleros ${bloque.inicio}-${bloque.fin} deben estar ambos libres.`);
+      if (registrationOperations.has(operationKey)) {
+        throw new Error("La inscripción de la pareja ya se está procesando.");
       }
 
-      const payload1 = buildSlotPayloadFromPlayer(jugador1, participantTypeForGrid(jugador1));
-      const payload2 = buildSlotPayloadFromPlayer(jugador2, participantTypeForGrid(jugador2));
+      registrationOperations.add(operationKey);
 
-      console.log("REG1:", jugador1);
-      console.log("REG2:", jugador2);
+      try {
+        setStatus("Guardando pareja...");
 
-      await deleteRegistrationsBySlotIds([slot1.id, slot2.id]);
+        const slotActual = await fetchSlotById(slotId);
+        await validateSlotPriority(slotId);
 
-      const reg1 = await createRegistration({
-        tournament_id: state.torneo.id,
-        starting_line_id: slotActual.starting_line_id,
-        line_slot_id: slot1.id,
-        linked_player_id: jugador1.id,
-        created_by_player_id: APP.miPlayerId || null,
-        display_name: jugador1.full_name,
-        participant_type: registrationTypeForPlayer(jugador1, "aag_match"),
-        aag_member_number: jugador1.aag_member_number || null,
-        club_name: jugador1.club_name || null,
-        country: jugador1.country || null,
-        reported_index: jugador1.current_index ?? null,
-        registration_status: "pending",
-        needs_admin_review: !jugador1.aag_member_number,
-      });
+        const bloque = getPartnerBlock(slotActual.slot_number);
 
-      const reg2 = await createRegistration({
-        tournament_id: state.torneo.id,
-        starting_line_id: slotActual.starting_line_id,
-        line_slot_id: slot2.id,
-        linked_player_id: jugador2.id,
-        created_by_player_id: APP.miPlayerId || null,
-        display_name: jugador2.full_name,
-        participant_type: registrationTypeForPlayer(jugador2, "aag_match"),
-        aag_member_number: jugador2.aag_member_number || null,
-        club_name: jugador2.club_name || null,
-        country: jugador2.country || null,
-        reported_index: jugador2.current_index ?? null,
-        registration_status: "pending",
-        needs_admin_review: !jugador2.aag_member_number,
-      });
+        if (!bloque) {
+          throw new Error("No se pudo determinar el bloque de pareja.");
+        }
 
-      await linkPartnerRegistrations(reg1.id, reg2.id);
+        validateOwnGroupLimit(2);
 
-      const { error: updateError1 } = await supabase
-        .from("line_slots")
-        .update(payload1)
-        .eq("id", slot1.id);
+        await validatePlayerNotDuplicated(jugador1.id);
+        await validatePlayerNotDuplicated(jugador2.id);
 
-      if (updateError1) throw updateError1;
+        const slotsLinea = await fetchLineSlotsFresh(
+          slotActual.starting_line_id
+        );
 
-      const { error: updateError2 } = await supabase
-        .from("line_slots")
-        .update(payload2)
-        .eq("id", slot2.id);
+        const slot1 = slotsLinea.find(
+          (slot) => Number(slot.slot_number) === Number(bloque.inicio)
+        );
 
-      if (updateError2) throw updateError2;
+        const slot2 = slotsLinea.find(
+          (slot) => Number(slot.slot_number) === Number(bloque.fin)
+        );
 
-      await unlockLineFromSlot(slotId);
-      await cerrarBuscadorJugador();
-      await loadGrid();
+        if (!slot1 || !slot2) {
+          throw new Error(
+            "No se encontraron ambos casilleros de la pareja."
+          );
+        }
+
+        /*
+         * Los dos casilleros deben estar libres.
+         * No hacemos una excepción con slotId porque el casillero
+         * seleccionado también debe continuar libre.
+         */
+        if (!isSlotEmpty(slot1) || !isSlotEmpty(slot2)) {
+          throw new Error(
+            `Para anotar una pareja, los casilleros ${bloque.inicio}-${bloque.fin} deben estar ambos libres.`
+          );
+        }
+
+        const payload1 = buildSlotPayloadFromPlayer(
+          jugador1,
+          participantTypeForGrid(jugador1)
+        );
+
+        const payload2 = buildSlotPayloadFromPlayer(
+          jugador2,
+          participantTypeForGrid(jugador2)
+        );
+
+        console.log("REG1:", jugador1);
+        console.log("REG2:", jugador2);
+
+        /*
+         * No borrar previamente las inscripciones.
+         * Los índices únicos de Supabase deben impedir duplicados.
+         */
+
+        const reg1 = await createRegistration({
+          tournament_id: state.torneo.id,
+          starting_line_id: slotActual.starting_line_id,
+          line_slot_id: slot1.id,
+          linked_player_id: jugador1.id,
+          created_by_player_id: APP.miPlayerId || null,
+          display_name: jugador1.full_name,
+          participant_type: registrationTypeForPlayer(
+            jugador1,
+            "aag_match"
+          ),
+          aag_member_number: jugador1.aag_member_number || null,
+          club_name: jugador1.club_name || null,
+          country: jugador1.country || null,
+          reported_index: jugador1.current_index ?? null,
+          registration_status: "pending",
+          needs_admin_review: !jugador1.aag_member_number,
+        });
+
+        let reg2 = null;
+
+        try {
+          reg2 = await createRegistration({
+            tournament_id: state.torneo.id,
+            starting_line_id: slotActual.starting_line_id,
+            line_slot_id: slot2.id,
+            linked_player_id: jugador2.id,
+            created_by_player_id: APP.miPlayerId || null,
+            display_name: jugador2.full_name,
+            participant_type: registrationTypeForPlayer(
+              jugador2,
+              "aag_match"
+            ),
+            aag_member_number: jugador2.aag_member_number || null,
+            club_name: jugador2.club_name || null,
+            country: jugador2.country || null,
+            reported_index: jugador2.current_index ?? null,
+            registration_status: "pending",
+            needs_admin_review: !jugador2.aag_member_number,
+          });
+        } catch (error) {
+          /*
+           * Si falla el segundo jugador, retiramos el primer registro
+           * que acabamos de crear para no dejar una pareja incompleta.
+           */
+          const { error: rollbackError } = await supabase
+            .from("registrations")
+            .delete()
+            .eq("id", reg1.id);
+
+          if (rollbackError) {
+            console.error(
+              "No se pudo revertir la primera inscripción de la pareja:",
+              rollbackError
+            );
+          }
+
+          throw error;
+        }
+
+        try {
+          await linkPartnerRegistrations(reg1.id, reg2.id);
+
+          const { error: updateError1 } = await supabase
+            .from("line_slots")
+            .update(payload1)
+            .eq("id", slot1.id);
+
+          if (updateError1) throw updateError1;
+
+          const { error: updateError2 } = await supabase
+            .from("line_slots")
+            .update(payload2)
+            .eq("id", slot2.id);
+
+          if (updateError2) throw updateError2;
+        } catch (error) {
+          /*
+           * Si falla el vínculo o la actualización de los slots,
+           * eliminamos únicamente los registros creados en esta operación.
+           */
+          const { error: rollbackError } = await supabase
+            .from("registrations")
+            .delete()
+            .in("id", [reg1.id, reg2.id]);
+
+          if (rollbackError) {
+            console.error(
+              "No se pudo revertir la inscripción incompleta de la pareja:",
+              rollbackError
+            );
+          }
+
+          /*
+           * Dejamos los slots visualmente limpios por si uno llegó
+           * a actualizarse antes del error.
+           */
+          const resetPayload = buildSlotResetPayload();
+
+          const { error: resetError } = await supabase
+            .from("line_slots")
+            .update(resetPayload)
+            .in("id", [slot1.id, slot2.id]);
+
+          if (resetError) {
+            console.error(
+              "No se pudieron limpiar los slots de la pareja:",
+              resetError
+            );
+          }
+
+          throw error;
+        }
+
+        await unlockLineFromSlot(slotId);
+        await loadGrid();
+
+        setStatus("Pareja agregada correctamente.", "ok");
+
+      } finally {
+        registrationOperations.delete(operationKey);
+      }
     }
 
     async function startSelfRegistrationInline(slotId) {
@@ -4364,14 +4511,27 @@ Gracias.
         }
 
         const pickPlayerTrigger = e.target.closest("[data-pick-player]");
+
         if (pickPlayerTrigger) {
           e.preventDefault();
           e.stopPropagation();
 
+          if (pickPlayerTrigger.dataset.processing === "1") {
+            return;
+          }
+
+          pickPlayerTrigger.dataset.processing = "1";
+          pickPlayerTrigger.disabled = true;
+
+          const textoOriginal = pickPlayerTrigger.innerHTML;
+
           try {
+            pickPlayerTrigger.innerHTML = "<strong>Guardando...</strong>";
 
             const slotId = pickPlayerTrigger.dataset.pickPlayer;
             const playerId = pickPlayerTrigger.dataset.playerId;
+
+            // Continúa acá todo el código actual del evento.
 
             let elegido = null;
 
@@ -4426,13 +4586,13 @@ Gracias.
               input.dataset.jugadorBaseId = jugador.id;
               input.value = "";
               document.getElementById("playerSearchResults").innerHTML = `
-        <div style="margin-bottom:8px; font-weight:700; color:#166534;">
-          Primer jugador elegido: ${safeText(jugador.full_name)}
-        </div>
-        <div class="helper-text" style="padding:8px;">
-          Ahora buscá al compañero.
-        </div>
-      `;
+                <div style="margin-bottom:8px; font-weight:700; color:#166534;">
+                  Primer jugador elegido: ${safeText(jugador.full_name)}
+                </div>
+                <div class="helper-text" style="padding:8px;">
+                  Ahora buscá al compañero.
+                </div>
+              `;
               return;
             }
 
@@ -4448,7 +4608,16 @@ Gracias.
 
           } catch (error) {
             console.error(error);
-            showTransientMessage(error.message || "No se pudo seleccionar el jugador.", "error");
+            showTransientMessage(
+              error.message || "No se pudo agregar el jugador.",
+              "error"
+            );
+          } finally {
+            if (pickPlayerTrigger?.isConnected) {
+              pickPlayerTrigger.dataset.processing = "0";
+              pickPlayerTrigger.disabled = false;
+              pickPlayerTrigger.innerHTML = textoOriginal;
+            }
           }
 
           return;
