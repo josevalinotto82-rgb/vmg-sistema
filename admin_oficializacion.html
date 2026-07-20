@@ -1059,6 +1059,132 @@
         width: 100%;
       }
     }
+
+    /* ===== MODAL SALIR / GUARDAR TORNEO ===== */
+    .exit-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 15000;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(17, 24, 39, .64);
+    }
+
+    .exit-modal-backdrop.open {
+      display: flex;
+    }
+
+    .exit-modal-box {
+      width: min(590px, 100%);
+      overflow: hidden;
+      background: #fff;
+      border-radius: 22px;
+      border: 1px solid rgba(22, 101, 52, .18);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .32);
+      animation: exitModalIn .16s ease-out;
+    }
+
+    @keyframes exitModalIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .exit-modal-head {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 19px 20px;
+      color: #fff;
+      background: linear-gradient(135deg, #166534, #0f4f29);
+    }
+
+    .exit-modal-head.warning {
+      background: linear-gradient(135deg, #d97706, #b45309);
+    }
+
+    .exit-modal-icon {
+      width: 44px;
+      height: 44px;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, .30);
+      background: rgba(255, 255, 255, .17);
+      font-size: 23px;
+      font-weight: 900;
+    }
+
+    .exit-modal-head h2 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.15;
+    }
+
+    .exit-modal-sub {
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: .92;
+    }
+
+    .exit-modal-body {
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .exit-modal-status {
+      margin-top: 14px;
+      padding: 13px 14px;
+      border: 1px solid #bbf7d0;
+      border-radius: 15px;
+      background: #f0fdf4;
+      color: #166534;
+      font-weight: 800;
+    }
+
+    .exit-modal-status.warning {
+      border-color: #fde68a;
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .exit-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+      flex-wrap: wrap;
+      padding: 14px 20px 18px;
+      border-top: 1px solid #e5e7eb;
+      background: #fafafa;
+    }
+
+    .btn-exit-neutral {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .btn-exit-panel {
+      background: #475569;
+      color: #fff;
+    }
+
+    @media (max-width: 640px) {
+      .exit-modal-actions .btn {
+        width: 100%;
+        height: 42px;
+      }
+    }
+
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
@@ -1118,9 +1244,6 @@
               Informe pagos
             </button>
 
-            <button id="btnOficializarTorneo" class="btn btn-primary" type="button">
-              Guardar Torneo
-            </button>
           </div>
         </div>
 
@@ -1269,6 +1392,22 @@
     </div>
   </div>
 
+
+  <div id="exitTournamentModal" class="exit-modal-backdrop" aria-hidden="true">
+    <div class="exit-modal-box" role="dialog" aria-modal="true" aria-labelledby="exitTournamentTitle">
+      <div class="exit-modal-head" id="exitTournamentHead">
+        <div class="exit-modal-icon" id="exitTournamentIcon">✓</div>
+        <div>
+          <h2 id="exitTournamentTitle">Salir del torneo</h2>
+          <div class="exit-modal-sub" id="exitTournamentSub"></div>
+        </div>
+      </div>
+
+      <div class="exit-modal-body" id="exitTournamentBody"></div>
+      <div class="exit-modal-actions" id="exitTournamentActions"></div>
+    </div>
+  </div>
+
   <div id="print-root"></div>
 
   <script type="module">
@@ -1395,6 +1534,15 @@
     const tablaWrap = $("tablaWrap");
     const printRoot = $("print-root");
     const torneoSelect = $("torneoSelect");
+
+    torneoSelect.addEventListener("change", () => {
+      const nuevoTorneoId = torneoSelect.value;
+      if (!nuevoTorneoId || String(nuevoTorneoId) === String(torneoActual?.id || "")) return;
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("torneo", nuevoTorneoId);
+      window.location.href = url.toString();
+    });
     const torneoFecha = $("torneoFecha");
     const torneoPrecio = $("torneoPrecio");
     const torneoPrecioInvitado = $("torneoPrecioInvitado");
@@ -1465,8 +1613,7 @@
     }
 
 
-    torneoSelect.addEventListener("change", cargarTodo);
-    btnOficializarTorneo.addEventListener("click", oficializarTorneo);
+    btnOficializarTorneo?.addEventListener("click", oficializarTorneo);
     btnResumenPagos.addEventListener("click", imprimirResumenPagos);
     btnGenerarScorecards?.addEventListener("click", generarTodasLasScorecards);
     btnImprimirTodasTarjetas.addEventListener("click", imprimirTodasLasTarjetas);
@@ -2587,35 +2734,39 @@
           setEstado("Cargando torneo...");
         }
 
-        const { data: torneosData, error: errorTorneos } = await supabase
+        let torneoIdSeleccionado = new URLSearchParams(window.location.search).get("torneo");
+
+        const { data: torneosDisponibles, error: errorTorneos } = await supabase
           .from("tournaments")
-          .select("id, name, tournament_date, status")
-          .eq("status", "open")
-          .order("tournament_date", { ascending: true });
+          .select("id, name, tournament_date, status, published")
+          .in("status", ["open", "officialized"])
+          .order("tournament_date", { ascending: false });
 
         if (errorTorneos) throw errorTorneos;
 
-        if (!torneosData || torneosData.length === 0) {
-          torneoSelect.innerHTML = "";
-          torneoFecha.value = "";
-          tablaWrap.innerHTML = `<div class="empty">No hay torneos abiertos ni guardados.</div>`;
-          setEstado("No se encontraron torneos abiertos ni guardados.", "warn");
+        const listaTorneos = torneosDisponibles || [];
+
+        if (!listaTorneos.length) {
+          torneoSelect.innerHTML = `<option value="">No hay torneos abiertos o guardados</option>`;
+          torneoSelect.disabled = true;
+          setEstado("No hay torneos disponibles.", "warn");
           return;
         }
 
-        const torneoIdPrevio = torneoSelect.value;
-        torneoSelect.innerHTML = torneosData.map((t) => {
-          const selected = torneoIdPrevio ? String(t.id) === String(torneoIdPrevio) : false;
-          return `<option value="${t.id}" ${selected ? "selected" : ""}>${t.name} (${fechaTexto(t.tournament_date)})</option>`;
+        if (!torneoIdSeleccionado || !listaTorneos.some(t => String(t.id) === String(torneoIdSeleccionado))) {
+          torneoIdSeleccionado = String(listaTorneos[0].id);
+          const url = new URL(window.location.href);
+          url.searchParams.set("torneo", torneoIdSeleccionado);
+          window.history.replaceState({}, "", url);
+        }
+
+        torneoSelect.disabled = false;
+        torneoSelect.innerHTML = listaTorneos.map(t => {
+          const estado = String(t.status || "").toLowerCase() === "officialized" ? "Guardado" : "Abierto";
+          const publicacion = t.published === true ? "Publicado" : "Sin publicar";
+          const selected = String(t.id) === String(torneoIdSeleccionado) ? "selected" : "";
+          return `<option value="${t.id}" ${selected}>${t.name} (${fechaTexto(t.tournament_date)}) · ${estado} · ${publicacion}</option>`;
         }).join("");
-
-        const torneoIdSeleccionado = torneoSelect.value || torneosData[0]?.id;
-        if (!torneoIdSeleccionado) {
-          torneoFecha.value = "";
-          tablaWrap.innerHTML = `<div class="empty">No hay torneos disponibles.</div>`;
-          setEstado("Sin datos", "warn");
-          return;
-        }
 
         const { data: torneo, error: errorTorneo } = await supabase
           .from("tournaments")
@@ -2624,6 +2775,7 @@
         name,
         tournament_date,
         status,
+        published,
         game_mode_id,
         game_modes (
           id,
@@ -2644,9 +2796,12 @@
 
         if (torneoYaGuardado) {
           setEstado("Torneo ya guardado · podés guardar jugadores pendientes o imprimir tarjetas.", "warn");
-          btnOficializarTorneo.textContent = "Torneo ya guardado";
-          btnOficializarTorneo.disabled = true;
-        } else {
+
+          if (btnOficializarTorneo) {
+            btnOficializarTorneo.textContent = "Torneo ya guardado";
+            btnOficializarTorneo.disabled = true;
+          }
+        } else if (btnOficializarTorneo) {
           btnOficializarTorneo.textContent = "Guardar Torneo";
           btnOficializarTorneo.disabled = false;
         }
@@ -4778,27 +4933,26 @@
       return !!pairSharedScorecard(reg1, reg2)?.id;
     }
 
-    async function oficializarTorneo() {
-      if (!torneoActual?.id) return;
-
+    function obtenerFilasPendientesDeOficializar() {
       const pendientes = [];
+
       for (const fila of construirFilasVista()) {
         if (fila.tipo === "single") {
-          if (!extraerScorecard(fila.jugadores[0])?.id) pendientes.push(fila.jugadores[0].display_name);
-        } else {
-          if (!pairOficializada(fila.jugadores[0], fila.jugadores[1])) pendientes.push(`${fila.jugadores[0].display_name} / ${fila.jugadores[1].display_name}`);
+          if (!extraerScorecard(fila.jugadores[0])?.id) {
+            pendientes.push(fila.jugadores[0].display_name);
+          }
+        } else if (!pairOficializada(fila.jugadores[0], fila.jugadores[1])) {
+          pendientes.push(`${fila.jugadores[0].display_name} / ${fila.jugadores[1].display_name}`);
         }
       }
 
-      if (pendientes.length > 0) {
-        alert(`No podés oficializar el torneo.\n\nHay ${pendientes.length} fila(s) sin oficializar.`);
-        return;
-      }
+      return pendientes;
+    }
 
-      const confirmar = confirm(`¿Querés guardar el torneo "${torneoActual.name}"?`);
-      if (!confirmar) return;
+    async function guardarTorneoSinPreguntar() {
+      if (!torneoActual?.id) return false;
 
-      setEstado("Oficializando torneo...");
+      setEstado("Guardando torneo...");
 
       const { error } = await supabase
         .from("tournaments")
@@ -4807,13 +4961,184 @@
 
       if (error) {
         console.error(error);
-        alert(`No se pudo oficializar el torneo.\n\n${error.message || "Sin detalle"}`);
-        setEstado("Error al oficializar", "error");
+        alert(`No se pudo guardar el torneo.\n\n${error.message || "Sin detalle"}`);
+        setEstado("Error al guardar el torneo", "error");
+        return false;
+      }
+
+      torneoActual.status = "officialized";
+      setEstado("Torneo guardado correctamente", "ok");
+      return true;
+    }
+
+    async function oficializarTorneo() {
+      if (!torneoActual?.id) return;
+
+      const pendientes = obtenerFilasPendientesDeOficializar();
+
+      if (pendientes.length > 0) {
+        alert(`No podés guardar el torneo.\n\nHay ${pendientes.length} fila(s) sin tarjeta creada.`);
         return;
       }
 
-      await cargarTodo();
-      setEstado("Torneo oficializado correctamente", "ok");
+      const confirmar = confirm(`¿Querés guardar el torneo "${torneoActual.name}"?`);
+      if (!confirmar) return;
+
+      const guardado = await guardarTorneoSinPreguntar();
+      if (guardado) await cargarTodo();
+    }
+
+    function escaparHtml(valor) {
+      return String(valor ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function cerrarModalSalidaTorneo() {
+      const modal = document.getElementById("exitTournamentModal");
+      if (!modal) return;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function abrirModalSalidaTorneo() {
+      const modal = document.getElementById("exitTournamentModal");
+      const head = document.getElementById("exitTournamentHead");
+      const icon = document.getElementById("exitTournamentIcon");
+      const title = document.getElementById("exitTournamentTitle");
+      const sub = document.getElementById("exitTournamentSub");
+      const body = document.getElementById("exitTournamentBody");
+      const actions = document.getElementById("exitTournamentActions");
+
+      if (!modal || !head || !icon || !title || !sub || !body || !actions) {
+        window.location.href = "panel.html";
+        return;
+      }
+
+      const yaGuardado = String(torneoActual?.status || "").toLowerCase() === "officialized";
+      const pendientes = torneoActual?.id ? obtenerFilasPendientesDeOficializar() : [];
+      const tarjetasCompletas = !!torneoActual?.id && pendientes.length === 0;
+      const nombreTorneo = escaparHtml(torneoActual?.name || "Torneo seleccionado");
+
+      head.classList.toggle("warning", !tarjetasCompletas && !yaGuardado);
+
+      if (yaGuardado) {
+        icon.textContent = "✓";
+        title.textContent = "Torneo guardado";
+        sub.textContent = torneoActual?.name || "";
+        body.innerHTML = `
+          <p>Este torneo ya se encuentra guardado.</p>
+          <div class="exit-modal-status">
+            Podés volver al Panel de administración.
+          </div>
+        `;
+        actions.innerHTML = `
+          <button class="btn btn-exit-neutral" id="btnExitCancelar" type="button">Seguir trabajando</button>
+          <button class="btn btn-primary" id="btnExitPanel" type="button">Volver al Panel</button>
+        `;
+      } else if (!tarjetasCompletas) {
+        icon.textContent = "!";
+        title.textContent = "Salir del torneo";
+        sub.textContent = torneoActual?.name || "";
+        body.innerHTML = `
+          <p>El torneo todavía no está listo para guardarse.</p>
+          <div class="exit-modal-status warning">
+            Faltan <strong>${pendientes.length}</strong> ${pendientes.length === 1 ? "tarjeta" : "tarjetas"} por crear.
+          </div>
+          <p style="margin-bottom:0;">Podés seguir trabajando ahora o volver al Panel y continuar más tarde.</p>
+        `;
+        actions.innerHTML = `
+          <button class="btn btn-exit-neutral" id="btnExitCancelar" type="button">Cancelar</button>
+          <button class="btn btn-primary" id="btnExitPanel" type="button">Salir</button>
+        `;
+      } else {
+        icon.textContent = "✓";
+        title.textContent = "El torneo está listo";
+        sub.textContent = torneoActual?.name || "";
+        body.innerHTML = `
+          <p>Todas las tarjetas fueron creadas correctamente.</p>
+          <div class="exit-modal-status">
+            ¿Qué querés hacer con <strong>${nombreTorneo}</strong> antes de salir?
+          </div>
+        `;
+        actions.innerHTML = `
+          <button class="btn btn-exit-neutral" id="btnExitCancelar" type="button">Cancelar</button>
+          <button class="btn btn-exit-panel" id="btnExitPanel" type="button">No guardar</button>
+          <button class="btn btn-primary" id="btnExitGuardar" type="button">Guardar torneo</button>
+        `;
+      }
+
+      document.getElementById("btnExitCancelar")?.addEventListener("click", cerrarModalSalidaTorneo);
+      document.getElementById("btnExitPanel")?.addEventListener("click", () => {
+        window.location.href = "panel.html";
+      });
+      document.getElementById("btnExitGuardar")?.addEventListener("click", abrirConfirmacionGuardarDesdeSalida);
+
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+    }
+
+    function abrirConfirmacionGuardarDesdeSalida() {
+      const head = document.getElementById("exitTournamentHead");
+      const icon = document.getElementById("exitTournamentIcon");
+      const title = document.getElementById("exitTournamentTitle");
+      const sub = document.getElementById("exitTournamentSub");
+      const body = document.getElementById("exitTournamentBody");
+      const actions = document.getElementById("exitTournamentActions");
+
+      head?.classList.remove("warning");
+      if (icon) icon.textContent = "?";
+      if (title) title.textContent = "Confirmar guardado";
+      if (sub) sub.textContent = torneoActual?.name || "";
+      if (body) {
+        body.innerHTML = `
+          <p>¿Estás seguro de que querés guardar este torneo?</p>
+          <div class="exit-modal-status">
+            El torneo cambiará a estado <strong>Guardado</strong> y volverás al Panel.
+          </div>
+        `;
+      }
+      if (actions) {
+        actions.innerHTML = `
+          <button class="btn btn-exit-neutral" id="btnConfirmGuardarCancelar" type="button">No</button>
+          <button class="btn btn-primary" id="btnConfirmGuardarAceptar" type="button">Sí</button>
+        `;
+      }
+
+      document.getElementById("btnConfirmGuardarCancelar")?.addEventListener("click", abrirModalSalidaTorneo);
+      document.getElementById("btnConfirmGuardarAceptar")?.addEventListener("click", guardarTorneoDesdeModalSalida);
+    }
+
+    async function guardarTorneoDesdeModalSalida() {
+      const boton = document.getElementById("btnConfirmGuardarAceptar");
+      const cancelar = document.getElementById("btnConfirmGuardarCancelar");
+      const textoOriginal = boton?.textContent || "Sí, guardar torneo";
+
+      if (boton) {
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+      }
+      if (cancelar) cancelar.disabled = true;
+
+      const guardado = await guardarTorneoSinPreguntar();
+
+      if (guardado) {
+        window.location.href = "panel.html";
+        return;
+      }
+
+      if (boton) {
+        boton.disabled = false;
+        boton.textContent = textoOriginal;
+      }
+      if (cancelar) cancelar.disabled = false;
+    }
+
+    function volverDesdeOficializacion() {
+      abrirModalSalidaTorneo();
     }
 
     function fontSizeTorneo(texto) {
@@ -6323,15 +6648,19 @@
 
     reiniciarTemporizadorInactividad();
 
-    document.getElementById("btnHome").addEventListener("click", () => {
-      window.location.href = "panel.html";
+    document.getElementById("btnHome")?.addEventListener("click", volverDesdeOficializacion);
+
+    document.getElementById("exitTournamentModal")?.addEventListener("click", (e) => {
+      if (e.target?.id === "exitTournamentModal") cerrarModalSalidaTorneo();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && document.getElementById("exitTournamentModal")?.classList.contains("open")) {
+        cerrarModalSalidaTorneo();
+      }
     });
 
     cargarTodo();
-
-    document.getElementById("btnHome").addEventListener("click", () => {
-      window.location.href = "panel.html";
-    });
   </script>
 </body>
 

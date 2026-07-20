@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Seleccionar torneo - Oficialización</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f8f3;
+      color: #1f2937;
+    }
+
+    .page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 22px 16px 36px;
+    }
+
+    .header {
+      background: #fff;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      color: #14532d;
+      font-size: 25px;
+    }
+
+    .sub {
+      margin-top: 7px;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+
+    .list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .tournament {
+      position: relative;
+      display: block;
+      overflow: hidden;
+      background: #fff;
+      border-radius: 16px;
+      padding: 17px 18px 17px 24px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+      border: 1px solid #e5e7eb;
+      transition: transform .15s, box-shadow .15s;
+    }
+
+    .tournament::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 7px;
+      background: #16a34a;
+    }
+
+    .tournament.no-publicado::before {
+      background: #b91c1c;
+    }
+
+    .tournament:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 7px 18px rgba(0, 0, 0, .10);
+    }
+
+    .name {
+      font-size: 17px;
+      font-weight: 900;
+      color: #111827;
+    }
+
+    .meta {
+      margin-top: 7px;
+      display: flex;
+      gap: 9px;
+      flex-wrap: wrap;
+      align-items: center;
+      color: #6b7280;
+      font-size: 13px;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .no-publicado .badge-publicacion {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-inscriptos {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .empty,
+    .status {
+      background: #fff;
+      border-radius: 16px;
+      padding: 18px;
+      color: #6b7280;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+    }
+
+    .home {
+      display: inline-block;
+      margin-top: 16px;
+      background: #166534;
+      color: #fff;
+      text-decoration: none;
+      padding: 11px 16px;
+      border-radius: 10px;
+      font-weight: 800;
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="page">
+
+    <section class="header">
+      <h1>Administrador de torneos</h1>
+
+      <div class="sub">
+        Elegí un torneo abierto. Verde indica que se publica, rojo que no.
+      </div>
+    </section>
+
+    <div id="lista" class="list">
+      <div class="status">Cargando torneos abiertos...</div>
+    </div>
+
+    <a class="home" href="panel.html">
+      Volver
+    </a>
+
+  </main>
+
+  <script type="module">
+
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://bnnfolhrqxgxjmobclrm.supabase.co",
+      "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+    );
+
+    const lista = document.getElementById("lista");
+
+    function fechaTexto(valor) {
+      if (!valor) return "Sin fecha";
+
+      const [anio, mes, dia] = String(valor)
+        .slice(0, 10)
+        .split("-");
+
+      return `${dia}/${mes}/${anio}`;
+    }
+
+    function escapeHtml(texto) {
+      return String(texto ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function textoInscriptos(cantidad) {
+      return cantidad === 1
+        ? "1 inscripto"
+        : `${cantidad} inscriptos`;
+    }
+
+    async function iniciar() {
+
+      const {
+        data: { session }
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      const {
+        data: profile,
+        error: profileError
+      } = await supabase
+        .from("profiles")
+        .select("role, active")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (
+        profileError ||
+        !profile ||
+        profile.active !== true ||
+        profile.role !== "admin"
+      ) {
+        alert("No tenés permiso para entrar a esta página.");
+        window.location.href = "panel.html";
+        return;
+      }
+
+      /*
+       * 1. Traemos los torneos abiertos.
+       */
+      const {
+        data: torneos,
+        error: torneosError
+      } = await supabase
+        .from("tournaments")
+        .select("id, name, tournament_date, published")
+        .eq("status", "open")
+        .order("tournament_date", { ascending: true });
+
+      if (torneosError) {
+        console.error(torneosError);
+
+        lista.innerHTML = `
+          <div class="empty">
+            No se pudieron cargar los torneos:
+            ${escapeHtml(torneosError.message)}
+          </div>
+        `;
+
+        return;
+      }
+
+      if (!torneos?.length) {
+        lista.innerHTML = `
+          <div class="empty">
+            No hay torneos abiertos disponibles.
+          </div>
+        `;
+
+        return;
+      }
+
+      /*
+       * 2. Armamos la lista de IDs para consultar únicamente
+       *    las inscripciones de los torneos que se muestran.
+       */
+      const torneoIds = torneos.map((torneo) => torneo.id);
+
+      const {
+        data: inscripciones,
+        error: inscripcionesError
+      } = await supabase
+        .from("registrations")
+        .select("tournament_id, participant_type")
+        .in("tournament_id", torneoIds);
+
+      if (inscripcionesError) {
+        console.error(
+          "No se pudieron cargar las inscripciones:",
+          inscripcionesError
+        );
+
+        lista.innerHTML = `
+          <div class="empty">
+            Se cargaron los torneos, pero no se pudo obtener la cantidad
+            de inscriptos: ${escapeHtml(inscripcionesError.message)}
+          </div>
+        `;
+
+        return;
+      }
+
+      /*
+       * 3. Contamos inscripciones por torneo.
+       *    Los registros de tipo "empty" no cuentan como jugadores.
+       */
+      const cantidadPorTorneo = new Map();
+
+      for (const inscripcion of inscripciones || []) {
+
+        if (inscripcion.participant_type === "empty") {
+          continue;
+        }
+
+        const torneoId = String(inscripcion.tournament_id);
+
+        cantidadPorTorneo.set(
+          torneoId,
+          (cantidadPorTorneo.get(torneoId) || 0) + 1
+        );
+      }
+
+      /*
+       * 4. Mostramos cada torneo con la cantidad de inscriptos.
+       */
+      lista.innerHTML = torneos
+        .map((torneo) => {
+
+          const publicado = torneo.published === true;
+
+          const cantidadInscriptos =
+            cantidadPorTorneo.get(String(torneo.id)) || 0;
+
+          return `
+            <a
+              class="tournament ${publicado ? "" : "no-publicado"}"
+              href="admin_oficializacion.html?torneo=${encodeURIComponent(torneo.id)}"
+            >
+              <div class="name">
+                ${escapeHtml(torneo.name)}
+              </div>
+
+              <div class="meta">
+
+                <span>
+                  ${fechaTexto(torneo.tournament_date)}
+                </span>
+
+                <span class="badge badge-publicacion">
+                  ${publicado ? "Se publica" : "No se publica"}
+                </span>
+
+                <span class="badge badge-inscriptos">
+                  ${textoInscriptos(cantidadInscriptos)}
+                </span>
+
+              </div>
+            </a>
+          `;
+        })
+        .join("");
+    }
+
+    iniciar();
+
+  </script>
+
+</body>
+
+</html>
