@@ -2303,12 +2303,10 @@
       if (hcpBase == null) return null;
 
       // Fourball Americana:
-      // 1. Calcular Handicap de Cancha.
-      // 2. Redondearlo a entero.
-      // 3. Aplicar el 85%.
-      // 4. Volver a redondear.
-      const hcpCanchaRedondeado = roundHalfUp(hcpBase);
-      const hcpConPorcentaje = hcpCanchaRedondeado * 0.85;
+      // 1. Calcular el HCP de cancha exacto según el tee del jugador.
+      // 2. Aplicar el 85% sin redondear previamente.
+      // 3. Redondear el resultado final: 0,5 hacia arriba.
+      const hcpConPorcentaje = hcpBase * 0.85;
 
       return Math.min(roundHalfUp(hcpConPorcentaje), 54);
     }
@@ -2498,19 +2496,18 @@
        * PASO 3
        * Redondear el Handicap de Cancha individual.
        */
+      const [hcpAjustadoExacto1, hcpAjustadoExacto2] =
+        ajustarPorBrechaMaxima(
+          hcpCanchaExacto1,
+          hcpCanchaExacto2,
+          5
+        );
+
       const hcpCancha1 = roundHalfUp(hcpCanchaExacto1);
       const hcpCancha2 = roundHalfUp(hcpCanchaExacto2);
 
-      /*
-       * PASO 4
-       * Aplicar una diferencia máxima de 5 golpes.
-       */
-      const [hcpAjustado1, hcpAjustado2] =
-        ajustarPorBrechaMaxima(
-          hcpCancha1,
-          hcpCancha2,
-          5
-        );
+      const hcpAjustado1 = hcpAjustadoExacto1;
+      const hcpAjustado2 = hcpAjustadoExacto2;
 
       /*
        * PASO 5
@@ -2582,11 +2579,8 @@
 
       if (hcpExacto1 == null || hcpExacto2 == null) return null;
 
-      const hcp1 = roundHalfUp(hcpExacto1);
-      const hcp2 = roundHalfUp(hcpExacto2);
-
       const [hcpAjustado1, hcpAjustado2] =
-        ajustarPorBrechaMaxima(hcp1, hcp2, 5);
+        ajustarPorBrechaMaxima(hcpExacto1, hcpExacto2, 5);
 
       return Math.min(
         roundHalfUp((hcpAjustado1 + hcpAjustado2) * 0.375),
@@ -3820,8 +3814,8 @@
       const categoria2 = getCategoriaById(categoriaId2);
       const indiceManual1 = calcularIndiceManualAmericana(idxBase1, categoria1);
       const indiceManual2 = calcularIndiceManualAmericana(idxBase2, categoria2);
-      const hcpJuego1 = calcularHcpDesdeCategoria(indiceManual1, categoria1);
-      const hcpJuego2 = calcularHcpDesdeCategoria(indiceManual2, categoria2);
+      const hcpJuego1 = calcularHcpAmericana(indiceManual1, categoria1);
+      const hcpJuego2 = calcularHcpAmericana(indiceManual2, categoria2);
       const teeEl1 = document.getElementById(`tee-pair-${reg1.id}`);
       const teeEl2 = document.getElementById(`tee-pair-${reg2.id}`);
       const manualCell = document.querySelector(`#cat-pair-${reg1.id}`)?.closest("tr")?.children[5];
