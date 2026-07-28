@@ -363,6 +363,40 @@
             border-color: #166534;
         }
 
+        .serie-filtros {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 18px;
+            padding: 12px;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        .serie-filtro-btn {
+            border: 1px solid #166534;
+            background: white;
+            color: #166534;
+            border-radius: 999px;
+            padding: 9px 14px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .serie-filtro-btn.activo {
+            background: #166534;
+            color: white;
+        }
+
+        .serie-criterio-leyenda {
+            width: 100%;
+            margin-top: 4px;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
         @media (max-width: 860px) {
             .container {
                 width: 100%;
@@ -617,6 +651,7 @@
         let scorecardsSeriePorJugador = new Map();
         let scorecardsSeriePorId = new Map();
         let detalleJugadoresMap = new Map();
+        let criterioSerieSeleccionado = "dia";
 
         function fechaAObjeto(fecha) {
             const texto = String(fecha || "").trim();
@@ -850,6 +885,156 @@
             return cantidad;
         }
 
+        function tarjetasValidasSerie(j, esScratch = false) {
+            const key = claveJugadorSerie(j);
+            const mapa = scorecardsSeriePorJugador.get(key);
+
+            if (!mapa) return [];
+
+            return Array.from(mapa.values())
+                .filter(sc => {
+                    if (!sc || esNoValido(sc)) return false;
+
+                    const valor = esScratch
+                        ? parseNumero(sc.gross)
+                        : parseNumero(sc.net ?? sc.total);
+
+                    return valor !== null && valor > 0;
+                })
+                .map(sc => ({
+                    scorecard: sc,
+                    valor: esScratch
+                        ? parseNumero(sc.gross)
+                        : parseNumero(sc.net ?? sc.total)
+                }))
+                .sort((a, b) => a.valor - b.valor);
+        }
+
+        function resumenSerieJugador(j, esScratch = false) {
+            const tarjetas = tarjetasValidasSerie(j, esScratch);
+            const cantidad = tarjetas.length;
+
+            if (!cantidad) {
+                return {
+                    cantidad: 0,
+                    suma: 999999,
+                    tarjetasUsadas: []
+                };
+            }
+
+            let tarjetasUsadas = [];
+
+            if (criterioSerieSeleccionado === "mejor36") {
+                tarjetasUsadas = tarjetas.slice(0, 2);
+            } else if (criterioSerieSeleccionado === "mejor18") {
+                tarjetasUsadas = tarjetas.slice(0, 1);
+            } else {
+                tarjetasUsadas = tarjetas;
+            }
+
+            return {
+                cantidad,
+                suma: tarjetasUsadas.reduce(
+                    (total, item) => total + Number(item.valor),
+                    0
+                ),
+                tarjetasUsadas
+            };
+        }
+
+        function cumpleMinimoSerie(j, esScratch = false) {
+            const cantidad = tarjetasValidasSerie(j, esScratch).length;
+
+            /*
+             * Mejor acumulado:
+             * solamente participan quienes completaron
+             * todas las fechas de la serie.
+             */
+            if (criterioSerieSeleccionado === "acumulado") {
+                return cantidad === torneosSerie.length;
+            }
+
+            /*
+             * Mejores 36 hoyos:
+             * deben tener al menos dos tarjetas válidas.
+             */
+            if (criterioSerieSeleccionado === "mejor36") {
+                return cantidad >= 2;
+            }
+
+            /*
+             * Mejores 18 hoyos:
+             * alcanza con una tarjeta válida.
+             */
+            if (criterioSerieSeleccionado === "mejor18") {
+                return cantidad >= 1;
+            }
+
+            return true;
+        }
+
+        function compararClasificacionSerie(a, b, esScratch = false) {
+            const ra = resumenSerieJugador(a, esScratch);
+            const rb = resumenSerieJugador(b, esScratch);
+
+            const aCumple = cumpleMinimoSerie(a, esScratch);
+            const bCumple = cumpleMinimoSerie(b, esScratch);
+
+            if (aCumple !== bCumple) {
+                return aCumple ? -1 : 1;
+            }
+
+            if (criterioSerieSeleccionado === "acumulado") {
+                // Primero quien presentó más tarjetas.
+                if (ra.cantidad !== rb.cantidad) {
+                    return rb.cantidad - ra.cantidad;
+                }
+            }
+
+            // Después, menor suma.
+            if (ra.suma !== rb.suma) {
+                return ra.suma - rb.suma;
+            }
+
+            // Desempate adicional: más tarjetas presentadas.
+            if (ra.cantidad !== rb.cantidad) {
+                return rb.cantidad - ra.cantidad;
+            }
+
+            return String(a.display_name || "")
+                .localeCompare(String(b.display_name || ""), "es");
+        }
+
+        function valorClasificacionSerie(j, esScratch = false) {
+            const resumen = resumenSerieJugador(j, esScratch);
+
+            if (!cumpleMinimoSerie(j, esScratch)) return "";
+
+            return resumen.suma === 999999 ? "" : resumen.suma;
+        }
+
+        function fechaMejorTarjetaSerie(j, esScratch = false) {
+            if (criterioSerieSeleccionado !== "mejor18") {
+                return "";
+            }
+
+            const resumen = resumenSerieJugador(j, esScratch);
+            const mejor = resumen.tarjetasUsadas?.[0]?.scorecard;
+
+            if (!mejor) return "";
+
+            const fecha = formatearFecha(mejor.tournament_date);
+            const nombre = String(mejor.tournament_name || "").trim();
+
+            return nombre
+                ? `${fecha} · ${nombre}`
+                : fecha;
+        }
+
+        function tarjetasClasificacionSerie(j, esScratch = false) {
+            return resumenSerieJugador(j, esScratch).cantidad;
+        }
+
         function posicionSerieEnRondaActual(j, listaCategoria) {
             if (!torneoTieneSerie() || !jugoRondaActual(j)) return "";
 
@@ -940,6 +1125,52 @@
             });
         }
 
+        function jugadoresRepresentativosSerie() {
+            const representantes = new Map();
+
+            scorecardsSerie
+                .slice()
+                .sort((a, b) => {
+                    return Number(b.series_round_number || 0) -
+                        Number(a.series_round_number || 0);
+                })
+                .forEach(sc => {
+                    const key = claveJugadorSerie(sc);
+
+                    if (!representantes.has(key)) {
+                        representantes.set(key, sc);
+                    }
+                });
+
+            return Array.from(representantes.values());
+        }
+
+        function perteneceCategoriaSerie(j, cat) {
+            if (!j || !cat) return false;
+
+            /*
+             * En el resultado del día se puede usar el ID,
+             * porque jugador y categoría pertenecen al mismo torneo.
+             */
+            if (criterioSerieSeleccionado === "dia") {
+                return String(j.category_id || "") === String(cat.id || "");
+            }
+
+            /*
+             * En las clasificaciones de toda la serie se compara
+             * por nombre, porque cada fecha puede tener otro category_id.
+             */
+            const nombreJugador = normalizarTexto(
+                j.category_name ||
+                j.tournament_categories?.name ||
+                ""
+            );
+
+            const nombreCategoria = normalizarTexto(cat.name || "");
+
+            return nombreJugador === nombreCategoria;
+        }
+
         function nombreModalidad() {
             return normalizarTexto(torneoActual?.game_modes?.name || "");
         }
@@ -948,14 +1179,29 @@
             return nombreModalidad().includes("medal");
         }
 
-        function esAmericana() {
+        function esFourballAmericana() {
             const nombre = nombreModalidad();
-            return nombre.includes("americana") || nombre.includes("american");
+
+            return (
+                nombre.includes("americana") ||
+                nombre.includes("american")
+            );
+        }
+
+        function esFourballClasico() {
+            const nombre = nombreModalidad();
+
+            return (
+                (
+                    nombre.includes("fourball") ||
+                    nombre.includes("four ball")
+                ) &&
+                !esFourballAmericana()
+            );
         }
 
         function esFourball() {
-            const nombre = nombreModalidad();
-            return nombre.includes("fourball") || nombre.includes("four ball") || esAmericana();
+            return esFourballAmericana() || esFourballClasico();
         }
 
         function categoriaPublicaFourball(j) {
@@ -1030,8 +1276,16 @@
         function valorPrincipal(j) {
             if (esNoValido(j)) return 999999;
 
-            if (esAmericana()) {
-                return valorGross(j);
+            if (esFourballAmericana()) {
+                const net = parseNumero(j.net);
+                const total = parseNumero(j.total);
+                const gross = parseNumero(j.gross);
+
+                if (net !== null && net > 0) return net;
+                if (total !== null && total > 0) return total;
+                if (gross !== null && gross > 0) return gross;
+
+                return 999999;
             }
 
             const total = parseNumero(j.total);
@@ -1062,6 +1316,37 @@
             const hoyos = hoyosPorScorecard[j.id] || {};
             const suma = sumaHoyosArray(hoyos, desde, hasta);
             return suma - (hcpJuego(j) / divisorHcp);
+        }
+
+        function valorDesempateAmericana(j, desde, hasta) {
+            const hoyos = hoyosPorScorecard[j.id] || {};
+
+            /*
+             * Los golpes guardados por hoyo en Americana
+             * ya tienen aplicado el HCP correspondiente.
+             * Por eso se suman directamente.
+             */
+            return sumaHoyosArray(hoyos, desde, hasta);
+        }
+
+        function diferenciaHcpPareja(j) {
+            const hcp1 = parseNumero(
+                j.player_1_playing_handicap ??
+                j.playing_handicap_1 ??
+                j.hcp_player_1
+            );
+
+            const hcp2 = parseNumero(
+                j.player_2_playing_handicap ??
+                j.playing_handicap_2 ??
+                j.hcp_player_2
+            );
+
+            if (hcp1 === null || hcp2 === null) {
+                return 999999;
+            }
+
+            return Math.abs(hcp1 - hcp2);
         }
 
         function fmtDesempate(valor) {
@@ -1099,9 +1384,51 @@
 
             const aPrincipal = valorPrincipal(a);
             const bPrincipal = valorPrincipal(b);
+
             if (aPrincipal !== bPrincipal) return aPrincipal - bPrincipal;
 
-            // Desempate NETO para categorías:
+            // DESEMPATE FOURBALL AMERICANA
+            // Los golpes por hoyo ya son netos: no se vuelve a descontar HCP.
+            if (esFourballAmericana()) {
+                const criteriosAmericana = [
+                    { desde: 10, hasta: 18 }, // últimos 9
+                    { desde: 13, hasta: 18 }, // últimos 6
+                    { desde: 16, hasta: 18 }, // últimos 3
+                    { desde: 18, hasta: 18 }  // último hoyo
+                ];
+
+                for (const criterio of criteriosAmericana) {
+                    const va = valorDesempateAmericana(
+                        a,
+                        criterio.desde,
+                        criterio.hasta
+                    );
+
+                    const vb = valorDesempateAmericana(
+                        b,
+                        criterio.desde,
+                        criterio.hasta
+                    );
+
+                    if (va !== vb) {
+                        return va - vb;
+                    }
+                }
+
+                // Si continúa el empate:
+                // gana la pareja con menor diferencia de HCP.
+                const diferenciaA = diferenciaHcpPareja(a);
+                const diferenciaB = diferenciaHcpPareja(b);
+
+                if (diferenciaA !== diferenciaB) {
+                    return diferenciaA - diferenciaB;
+                }
+
+                return String(a.display_name || "")
+                    .localeCompare(String(b.display_name || ""), "es");
+            }
+
+            // Desempate NETO para categorías Medal y FourBall Clasico:
             // últimos 9 - 1/2 HCP
             // últimos 6 - 1/3 HCP
             // últimos 3 - 1/6 HCP
@@ -1141,13 +1468,25 @@
                 { desde: 18, hasta: 18, nombre: "Último hoyo", divisor: 9, textoHcp: "1/9 HCP" }
             ];
 
+            const criteriosAmericana = [
+                { desde: 10, hasta: 18, nombre: "Últimos 9 hoyos" },
+                { desde: 13, hasta: 18, nombre: "Últimos 6 hoyos" },
+                { desde: 16, hasta: 18, nombre: "Últimos 3 hoyos" },
+                { desde: 18, hasta: 18, nombre: "Último hoyo" },
+                { nombre: "Menor diferencia de HCP de la pareja", hcp: true }
+            ];
+
             const misHoyos = hoyosPorScorecard[jugador.id] || {};
 
             for (const rival of rivalesEmpatados) {
                 const hoyosRival = hoyosPorScorecard[rival.id] || {};
                 const lineas = [];
 
-                const criterios = esScratch ? criteriosScratch : criteriosNeto;
+                const criterios = esScratch
+                    ? criteriosScratch
+                    : esFourballAmericana()
+                        ? criteriosAmericana
+                        : criteriosNeto;
 
                 for (const c of criterios) {
                     let miValor;
@@ -1155,12 +1494,28 @@
                     let textoJugador;
                     let textoRival;
 
-                    if (esScratch) {
+                    if (c.hcp) {
+
+                        miValor = diferenciaHcpPareja(jugador);
+                        suValor = diferenciaHcpPareja(rival);
+
+                        textoJugador = `${miValor}`;
+                        textoRival = `${suValor}`;
+
+                    } else if (esScratch) {
                         miValor = sumaHoyosArray(misHoyos, c.desde, c.hasta);
                         suValor = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
 
                         textoJugador = `${miValor}`;
                         textoRival = `${suValor}`;
+
+                    } else if (esFourballAmericana()) {
+                        miValor = sumaHoyosArray(misHoyos, c.desde, c.hasta);
+                        suValor = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
+
+                        textoJugador = `${miValor}`;
+                        textoRival = `${suValor}`;
+
                     } else {
                         const miSuma = sumaHoyosArray(misHoyos, c.desde, c.hasta);
                         const suSuma = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
@@ -1168,8 +1523,11 @@
                         miValor = miSuma - (hcpJuego(jugador) / c.divisor);
                         suValor = suSuma - (hcpJuego(rival) / c.divisor);
 
-                        textoJugador = `${miSuma} - ${c.textoHcp} = ${fmtDesempate(miValor)}`;
-                        textoRival = `${suSuma} - ${c.textoHcp} = ${fmtDesempate(suValor)}`;
+                        textoJugador =
+                            `${miSuma} - ${c.textoHcp} = ${fmtDesempate(miValor)}`;
+
+                        textoRival =
+                            `${suSuma} - ${c.textoHcp} = ${fmtDesempate(suValor)}`;
                     }
 
                     const decisivo = Math.abs(miValor - suValor) > 0.00001;
@@ -1261,7 +1619,7 @@
                 <td class="sum">${PAR_VUELTA}</td>
                 <td class="sum">${PAR_TOTAL}</td>
               </tr>
-              ${esAmericana() ? "" : `
+              ${esFourballAmericana() ? "" : `
               <tr class="hcp-row">
                 <td class="label">HCP</td>
                 ${HOYOS.slice(0, 9).map(x => `<td>${x.hp}</td>`).join("")}
@@ -1320,7 +1678,7 @@
                 ${hoyos.map(x => `<td>${x.par}</td>`).join("")}
                 <td class="sum">${parTotal}</td>
               </tr>
-              ${esAmericana() ? "" : `
+              ${esFourballAmericana() ? "" : `
               <tr class="hcp-row">
                 <td class="label">HCP</td>
                 ${hoyos.map(x => `<td>${x.hp}</td>`).join("")}
@@ -1390,10 +1748,10 @@
                 <div><strong>Puesto:</strong> ${posicionDetalle || ""}</div>
                 <div><strong>Gross:</strong> ${jDetalle.gross ?? ""}</div>
                 `
-                : esAmericana()
+                : esFourballAmericana()
                     ? `
                 <div><strong>Puesto:</strong> ${posicionDetalle || ""}</div>
-                <div><strong>Gross:</strong> ${jDetalle.gross ?? ""}</div>
+                <div><strong>Neto:</strong> ${jDetalle.net ?? jDetalle.total ?? jDetalle.gross ?? ""}</div>
                 `
                     : `
                 <div><strong>Puesto:</strong> ${posicionDetalle || ""}</div>
@@ -1649,21 +2007,23 @@
                 const { data: scorecards, error: errorSc } = await supabase
                     .from("scorecards")
                     .select(`
-                    id,
-                    tournament_id,
-                    linked_player_id,
-                    aag_member_number,
-                    display_name,
-                    gross,
-                    net,
-                    total,
-                    card_status,
-                    category_id,
-                    official_index,
-                    playing_handicap,
-                    player_gender,
-                    hole_scores
-                `)
+                        id,
+                        tournament_id,
+                        linked_player_id,
+                        aag_member_number,
+                        display_name,
+                        gross,
+                        net,
+                        total,
+                        card_status,
+                        category_id,
+                        official_index,
+                        playing_handicap,
+                        player_1_playing_handicap,
+                        player_2_playing_handicap,
+                        player_gender,
+                        hole_scores
+                    `)
                     .eq("tournament_id", torneoId);
 
                 if (errorSc) throw errorSc;
@@ -1707,17 +2067,28 @@
                                 category_id,
                                 official_index,
                                 playing_handicap,
+                                player_1_playing_handicap,
+                                player_2_playing_handicap,
                                 player_gender,
-                                hole_scores
+                                hole_scores,
+                                tournament_categories (
+                                    name,
+                                    gender
+                                )
                             `)
                             .in("tournament_id", idsRondas);
 
                         if (errorScSerie) throw errorScSerie;
 
                         scorecardsSerie = (scSerie || []).map(sc => {
-                            const t = torneosSerie.find(r => String(r.id) === String(sc.tournament_id));
+                            const t = torneosSerie.find(
+                                r => String(r.id) === String(sc.tournament_id)
+                            );
+
                             return {
                                 ...sc,
+                                category_name: sc.tournament_categories?.name || "",
+                                category_gender: sc.tournament_categories?.gender || "",
                                 series_round_number: numeroRondaTorneo(t),
                                 tournament_name: t?.name || "",
                                 tournament_date: t?.tournament_date || ""
@@ -1738,6 +2109,51 @@
             }
         }
 
+        function leyendaCriterioSerie() {
+            if (criterioSerieSeleccionado === "acumulado") {
+                return `Se muestran los jugadores que completaron las ${torneosSerie.length} fechas. Se ordenan por menor suma acumulada. Máximo 15 resultados por categoría.`;
+            }
+
+            if (criterioSerieSeleccionado === "mejor36") {
+                return "Se suman las dos mejores tarjetas de cada jugador. Se requieren al menos dos fechas disputadas. Máximo 15 resultados por categoría.";
+            }
+
+            if (criterioSerieSeleccionado === "mejor18") {
+                return "Se toma la mejor tarjeta de cada jugador y se indica la fecha en que fue presentada. Máximo 15 resultados por categoría.";
+            }
+
+            return "Se muestran las posiciones correspondientes a la fecha actualmente abierta.";
+        }
+
+        function controlesSerieHtml() {
+            if (!torneoTieneSerie()) return "";
+
+            const opciones = [
+                { id: "dia", texto: "Resultado del día" },
+                { id: "acumulado", texto: "Mejor acumulado" },
+                { id: "mejor36", texto: "Mejores 36 hoyos" },
+                { id: "mejor18", texto: "Mejores 18 hoyos" }
+            ];
+
+            return `
+                <div class="serie-filtros">
+                    ${opciones.map(opcion => `
+                        <button
+                            type="button"
+                            class="serie-filtro-btn ${criterioSerieSeleccionado === opcion.id ? "activo" : ""}"
+                            onclick="cambiarCriterioSerie('${opcion.id}')"
+                        >
+                            ${opcion.texto}
+                        </button>
+                    `).join("")}
+
+                    <div class="serie-criterio-leyenda">
+                        ${leyendaCriterioSerie()}
+                    </div>
+                </div>
+            `;
+        }
+
         function renderTorneo() {
             indiceAutoAbrir = null;
             detalleJugadoresMap = new Map();
@@ -1747,7 +2163,7 @@
                 return;
             }
 
-            let html = "";
+            let html = controlesSerieHtml();
             let globalIndex = 0;
             let scratchCaballerosAgregado = false;
             let scratchDamasAgregado = false;
@@ -1755,23 +2171,61 @@
             function renderTablaCategoria(titulo, lista, esScratch = false) {
                 if (!lista.length) return;
 
-                const columnasSerie = torneoTieneSerie() && !esScratch && !esAmericana()
-                    ? `
-                <th>Pos</th>
-                <th>Jugador</th>
-                <th>Index</th>
-                ${torneosSerie.map(t => `<th>Net${numeroRondaTorneo(t)}</th>`).join("")}
-                <th>Total</th>
-              `
+                const esClasificacionSerie =
+                    torneoTieneSerie() &&
+                    criterioSerieSeleccionado !== "dia";
+
+                const columnasSerie = torneoTieneSerie() && !esFourball()
+                    ? esClasificacionSerie
+                        ? `
+                            <th>Pos</th>
+                            <th>Jugador</th>
+                            <th>Tarjetas</th>
+                            <th>
+                                ${criterioSerieSeleccionado === "mejor18"
+                            ? (esScratch ? "Mejor Gross" : "Mejor Neto")
+                            : (esScratch ? "Gross acumulado" : "Neto acumulado")
+                        }
+                            </th>
+                            ${criterioSerieSeleccionado === "mejor18"
+                            ? "<th>Fecha</th>"
+                            : ""
+                        }
+                    `
+                        : !esScratch
+                            ? `
+                                <th>Pos</th>
+                                <th>Jugador</th>
+                                <th>Index</th>
+                                ${torneosSerie.map(t => `<th>Net${numeroRondaTorneo(t)}</th>`).join("")}
+                                <th>Total</th>
+                            `
+                            : ""
                     : "";
 
-                const columnas = columnasSerie || ((esAmericana() || esScratch)
-                    ? `
+                const columnas = columnasSerie || (
+                    esScratch
+                        ? `
                 <th>Pos</th>
                 <th>Jugador</th>
                 <th>Gross</th>
-              `
-                    : `
+                `
+                        : esFourballAmericana()
+                            ? `
+                <th>Pos</th>
+                <th>Pareja</th>
+                <th>Neto</th>
+                `
+                            : esFourballClasico()
+                                ? `
+                <th>Pos</th>
+                <th>Pareja</th>
+                <th>Gross</th>
+                <th>HCP</th>
+                <th>Neto</th>
+                <th>Total</th>
+                `
+                                : `
                 <th>Pos</th>
                 <th>Jugador</th>
                 <th>Index</th>
@@ -1779,11 +2233,22 @@
                 <th>HCP</th>
                 <th>Neto</th>
                 <th>Total</th>
-              `);
+                `
+                );
 
-                const colspanDetalle = columnasSerie
-                    ? (4 + torneosSerie.length)
-                    : ((esAmericana() || esScratch) ? 3 : 7);
+                const colspanDetalle = esClasificacionSerie
+                    ? (
+                        criterioSerieSeleccionado === "mejor18"
+                            ? 5
+                            : 4
+                    )
+                    : columnasSerie
+                        ? (4 + torneosSerie.length)
+                        : esFourballAmericana() || esScratch
+                            ? 3
+                            : esFourballClasico()
+                                ? 6
+                                : 7;
 
                 html += `
             <div class="categoria-card">
@@ -1804,9 +2269,15 @@
                         ? `scratch-${titulo.replace(/\s+/g, "-").toLowerCase()}-${globalIndex++}`
                         : globalIndex++;
 
-                    const posMostrar = torneoTieneSerie() && !esScratch && !esAmericana()
-                        ? posicionSerieEnRondaActual(j, lista)
-                        : (esNoValido(j) ? "" : posicion++);
+                    const posMostrar = esClasificacionSerie
+                        ? (
+                            cumpleMinimoSerie(j, esScratch)
+                                ? posicion++
+                                : ""
+                        )
+                        : torneoTieneSerie() && !esScratch && !esFourball()
+                            ? posicionSerieEnRondaActual(j, lista)
+                            : (esNoValido(j) ? "" : posicion++);
                     const rowColor = colorIdx % 2 === 0 ? "row-white" : "row-gray";
                     colorIdx++;
 
@@ -1832,33 +2303,68 @@
                         ? ' style="outline: 2px solid #86efac;"'
                         : '';
 
-                    const filaSimple = `
-                <td>${posMostrar}</td>
-                <td class="nombre">${j.display_name}</td>
-                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross ?? "")}</td>
-            `;
+                    const filaScratch = `
+                        <td>${posMostrar}</td>
+                        <td class="nombre">${j.display_name}</td>
+                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross != null ? j.gross : "")}</td>
+                    `;
+
+                    const filaAmericana = `
+                        <td>${posMostrar}</td>
+                        <td class="nombre">${j.display_name}</td>
+                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.net ?? j.total ?? j.gross ?? "")}</td>
+                    `;
+
+                    const filaFourballClasico = `
+                        <td>${posMostrar}</td>
+                        <td class="nombre">${j.display_name}</td>
+                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross != null ? j.gross : "")}</td>
+                        <td>${j.playing_handicap ?? ""}</td>
+                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.net ?? "")}</td>
+                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>
+                    `;
+
+                    const filaClasificacionSerie = `
+                        <td>${posMostrar}</td>
+                        <td class="nombre">${j.display_name}</td>
+                        <td>${tarjetasClasificacionSerie(j, esScratch)}</td>
+                        <td>${valorClasificacionSerie(j, esScratch)}</td>
+                        ${criterioSerieSeleccionado === "mejor18"
+                            ? `<td>${fechaMejorTarjetaSerie(j, esScratch)}</td>`
+                            : ""
+                        }
+                    `;
 
                     const filaSerie = `
-                <td>${posMostrar}</td>
-                <td class="nombre">${j.display_name}</td>
-                <td>${j.official_index ?? ""}</td>
-                ${rondasSerieHtml(j, idx)}
-                <td>${totalSerie(j) === 999999 ? "" : totalSerie(j)}</td>
-            `;
+                        <td>${posMostrar}</td>
+                        <td class="nombre">${j.display_name}</td>
+                        <td>${j.official_index ?? ""}</td>
+                        ${rondasSerieHtml(j, idx)}
+                        <td>${totalSerie(j) === 999999 ? "" : totalSerie(j)}</td>
+                    `;
 
                     const filaNormal = `
-                <td>${posMostrar}</td>
-                <td class="nombre">${j.display_name}</td>
-                <td>${j.official_index ?? ""}</td>
-                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross ?? "")}</td>
-                <td>${j.playing_handicap ?? ""}</td>
-                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.net ?? "")}</td>
-                <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>
-            `;
+                        <td>${posMostrar}</td>
+                        <td class="nombre">${j.display_name}</td>
+                        <td>${j.official_index ?? ""}</td>
+                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross != null ? j.gross : "")}</td>
+                        <td>${j.playing_handicap ?? ""}</td>
+                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.net ?? "")}</td>
+                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>
+                    `;
 
-                    const filaVisible = torneoTieneSerie() && !esScratch && !esAmericana()
-                        ? filaSerie
-                        : ((esAmericana() || esScratch) ? filaSimple : filaNormal);
+                    const filaVisible =
+                        esClasificacionSerie
+                            ? filaClasificacionSerie
+                            : torneoTieneSerie() && !esScratch && !esFourball()
+                                ? filaSerie
+                                : esScratch
+                                    ? filaScratch
+                                    : esFourballAmericana()
+                                        ? filaAmericana
+                                        : esFourballClasico()
+                                            ? filaFourballClasico
+                                            : filaNormal;
 
                     detalleJugadoresMap.set(String(idx), {
                         j,
@@ -1894,15 +2400,36 @@
                 if (genero === "male" && scratchCaballerosAgregado) return;
                 if (genero === "female" && scratchDamasAgregado) return;
 
-                const indexMin = -6;
-                const indexMax = genero === "male" ? 9 : 54;
-                const titulo = genero === "male" ? "Scratch Caballeros" : "Scratch Damas";
+                const titulo =
+                    genero === "male"
+                        ? "Scratch Caballeros"
+                        : "Scratch Damas";
 
-                const listaScratch = jugadores
+                const listaBaseScratch =
+                    torneoTieneSerie() && criterioSerieSeleccionado !== "dia"
+                        ? jugadoresRepresentativosSerie()
+                        : jugadores;
+
+                const listaScratch = listaBaseScratch
                     .filter(j => jugadorEnRangoScratch(j, genero))
                     .slice()
                     .sort((a, b) => {
 
+                        /*
+                         * En las clasificaciones de serie:
+                         * acumulado, mejores 36 y mejores 18.
+                         * Se ordena utilizando Gross.
+                         */
+                        if (
+                            torneoTieneSerie() &&
+                            criterioSerieSeleccionado !== "dia"
+                        ) {
+                            return compararClasificacionSerie(a, b, true);
+                        }
+
+                        /*
+                         * Resultado correspondiente al torneo del día.
+                         */
                         const ea = String(a.card_status || "").toLowerCase();
                         const eb = String(b.card_status || "").toLowerCase();
 
@@ -1915,9 +2442,11 @@
 
                         if (ag !== bg) return ag - bg;
 
-                        // usar exactamente el mismo desempate
-                        // que usan las categorías normales
-
+                        /*
+                         * Desempate Scratch:
+                         * segunda vuelta, últimos 6, últimos 3,
+                         * últimos 2 y último hoyo.
+                         */
                         const criterios = [
                             [10, 18],
                             [13, 18],
@@ -1930,7 +2459,6 @@
                         const hoyosB = hoyosPorScorecard[b.id] || {};
 
                         for (const [desde, hasta] of criterios) {
-
                             const sa = sumaHoyosArray(hoyosA, desde, hasta);
                             const sb = sumaHoyosArray(hoyosB, desde, hasta);
 
@@ -1938,17 +2466,45 @@
                         }
 
                         return String(a.display_name || "")
-                            .localeCompare(String(b.display_name || ""), "es");
+                            .localeCompare(
+                                String(b.display_name || ""),
+                                "es"
+                            );
+                    });
+
+                /*
+                 * Scratch siempre muestra únicamente
+                 * los tres primeros puestos.
+                 */
+                const listaScratchFinal = listaScratch
+                    .filter(j => {
+                        if (
+                            !torneoTieneSerie() ||
+                            criterioSerieSeleccionado === "dia"
+                        ) {
+                            return true;
+                        }
+
+                        return cumpleMinimoSerie(j, true);
                     })
                     .slice(0, 3);
 
-                renderTablaCategoria(titulo, listaScratch, true);
+                renderTablaCategoria(
+                    titulo,
+                    listaScratchFinal,
+                    true
+                );
 
-                if (genero === "male") scratchCaballerosAgregado = true;
-                if (genero === "female") scratchDamasAgregado = true;
+                if (genero === "male") {
+                    scratchCaballerosAgregado = true;
+                }
+
+                if (genero === "female") {
+                    scratchDamasAgregado = true;
+                }
             }
 
-            if (esFourball()) {
+            if (esFourballAmericana()) {
                 const listaCaballeros = jugadores
                     .filter(j => categoriaPublicaFourball(j) === "Caballeros")
                     .slice()
@@ -1972,6 +2528,11 @@
                 orden: ordenCategoriaHistorica(c.name)
             })));
 
+            const jugadoresParaMostrar =
+                torneoTieneSerie() && criterioSerieSeleccionado !== "dia"
+                    ? jugadoresRepresentativosSerie()
+                    : jugadores;
+
             categorias
                 .slice()
                 .sort((a, b) => {
@@ -1994,10 +2555,48 @@
                     if (generoCat === "male") renderScratch("male");
                     if (generoCat === "female") renderScratch("female");
 
-                    const lista = jugadores
-                        .filter(j => j.category_id === cat.id)
+                    let lista = jugadoresParaMostrar
+                        .filter(j => perteneceCategoriaSerie(j, cat))
+                        .filter(j => {
+                            /*
+                             * El resultado del día conserva el funcionamiento actual.
+                             */
+                            if (
+                                !torneoTieneSerie() ||
+                                criterioSerieSeleccionado === "dia"
+                            ) {
+                                return true;
+                            }
+
+                            /*
+                             * En las clasificaciones especiales no se muestran
+                             * jugadores que no cumplen el mínimo requerido.
+                             */
+                            return cumpleMinimoSerie(j, false);
+                        })
                         .slice()
-                        .sort(torneoTieneSerie() ? compararSeriePorRondaActual : compararJugadores);
+                        .sort((a, b) => {
+                            if (!torneoTieneSerie()) {
+                                return compararJugadores(a, b);
+                            }
+
+                            if (criterioSerieSeleccionado === "dia") {
+                                return compararSeriePorRondaActual(a, b);
+                            }
+
+                            return compararClasificacionSerie(a, b, false);
+                        });
+
+                    /*
+                     * Las clasificaciones especiales muestran
+                     * únicamente los primeros 15 resultados.
+                     */
+                    if (
+                        torneoTieneSerie() &&
+                        criterioSerieSeleccionado !== "dia"
+                    ) {
+                        lista = lista.slice(0, 15);
+                    }
 
                     if (!lista.length) return;
 
@@ -2016,6 +2615,15 @@
                 }, 250);
             }
         }
+
+        window.cambiarCriterioSerie = function (criterio) {
+            const permitidos = ["dia", "acumulado", "mejor36", "mejor18"];
+
+            if (!permitidos.includes(criterio)) return;
+
+            criterioSerieSeleccionado = criterio;
+            renderTorneo();
+        };
 
         window.toggleDetalle = function (idx, scorecardId = null) {
             const allDetails = document.querySelectorAll(".detail-row");

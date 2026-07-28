@@ -1323,6 +1323,95 @@
             return sumaHoyosScorecard(sc, desde, hasta) - (hcpJuego(sc) / divisorHcp);
         }
 
+        function diferenciaHcpPareja(sc) {
+            /*
+             * Estos dos valores deben contener los handicaps DE JUEGO
+             * individuales de los integrantes.
+             *
+             * Ejemplo:
+             * jugador 1 = 4
+             * jugador 2 = 8
+             * diferencia = 4
+             */
+
+            const hcp1 = n(
+                sc.player_1_playing_handicap ??
+                sc.playing_handicap_1 ??
+                sc.hcp_player_1
+            );
+
+            const hcp2 = n(
+                sc.player_2_playing_handicap ??
+                sc.playing_handicap_2 ??
+                sc.hcp_player_2
+            );
+
+            if (hcp1 == null || hcp2 == null) {
+                return 999999;
+            }
+
+            return Math.abs(hcp1 - hcp2);
+        }
+
+        function compareFourballAmericana(a, b) {
+            const netoA = n(a.net);
+            const netoB = n(b.net);
+
+            if (netoA == null && netoB == null) {
+                return String(a.display_name || "")
+                    .localeCompare(String(b.display_name || ""), "es");
+            }
+
+            if (netoA == null) return 1;
+            if (netoB == null) return -1;
+
+            // 1. Menor neto total
+            if (netoA !== netoB) {
+                return netoA - netoB;
+            }
+
+            /*
+             * Los golpes guardados en hole_scores ya son netos.
+             * No se descuenta nuevamente ninguna proporción de HCP.
+             */
+            const criterios = [
+                { desde: 10, hasta: 18 }, // últimos 9
+                { desde: 13, hasta: 18 }, // últimos 6
+                { desde: 16, hasta: 18 }, // últimos 3
+                { desde: 18, hasta: 18 }  // último hoyo
+            ];
+
+            for (const criterio of criterios) {
+                const parcialA = sumaHoyosScorecard(
+                    a,
+                    criterio.desde,
+                    criterio.hasta
+                );
+
+                const parcialB = sumaHoyosScorecard(
+                    b,
+                    criterio.desde,
+                    criterio.hasta
+                );
+
+                if (parcialA !== parcialB) {
+                    return parcialA - parcialB;
+                }
+            }
+
+            // 6. Menor diferencia de HCP entre compañeros
+            const diferenciaA = diferenciaHcpPareja(a);
+            const diferenciaB = diferenciaHcpPareja(b);
+
+            if (diferenciaA !== diferenciaB) {
+                return diferenciaA - diferenciaB;
+            }
+
+            // 7. Último recurso estable
+            return String(a.display_name || "")
+                .localeCompare(String(b.display_name || ""), "es");
+        }
+
         function compareScore(a, b, field) {
             const av = n(a[field]);
             const bv = n(b[field]);
@@ -1389,7 +1478,7 @@
             const grupos = {};
 
             validas.forEach(sc => {
-                const cat = esFourball()
+                const cat = esFourballAmericana()
                     ? categoriaFourballDesdeScorecard(sc)
                     : (sc.category_name || "Sin categoría");
 
@@ -1405,9 +1494,12 @@
             </div>
     `;
 
-            const categoriasOrdenadas = esFourball()
+            const categoriasOrdenadas = esFourballAmericana()
                 ? ["Caballeros", "Damas"].filter(cat => grupos[cat]?.length)
-                : Object.keys(grupos).sort((a, b) => ordenCategoria(a) - ordenCategoria(b));
+                : Object.keys(grupos).sort((a, b) =>
+                    ordenCategoria(a) - ordenCategoria(b) ||
+                    a.localeCompare(b, "es")
+                );
 
             categoriasOrdenadas.forEach(cat => {
 
@@ -1985,9 +2077,30 @@
             return 500 + (min ?? 999);
         }
 
-        function esFourball() {
-            const nombre = String(torneoActual?.game_modes?.name || "").toLowerCase();
-            return nombre.includes("fourball") || nombre.includes("four ball");
+        function nombreModalidadActual() {
+            return String(torneoActual?.game_modes?.name || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .trim()
+                .toLowerCase();
+        }
+
+        function esFourballAmericana() {
+            const nombre = nombreModalidadActual();
+
+            return (
+                (nombre.includes("fourball") || nombre.includes("four ball")) &&
+                nombre.includes("americana")
+            );
+        }
+
+        function esFourballClasico() {
+            const nombre = nombreModalidadActual();
+
+            return (
+                (nombre.includes("fourball") || nombre.includes("four ball")) &&
+                nombre.includes("clasico")
+            );
         }
 
         function categoriaFourballDesdeScorecard(sc) {
@@ -2004,9 +2117,10 @@
             );
 
             // =========================
-            // FOURBALL: solo Caballeros / Damas, sin Scratch
+            // FOURBALL AMERICANA:
+            // solo Caballeros / Damas, sin Scratch
             // =========================
-            if (esFourball()) {
+            if (esFourballAmericana()) {
                 const grupos = new Map();
 
                 for (const s of validasBase) {
@@ -2022,7 +2136,7 @@
                     const items = grupos.get(cat) || [];
                     const gan = items
                         .slice()
-                        .sort((a, b) => compareScore(a, b, "net"))
+                        .sort(compareFourballAmericana)
                         .slice(0, topCategoria);
 
                     html += `
@@ -2852,7 +2966,7 @@
             html += renderPrintApproach();
             html += `<div class="print-section-title">Ganadores por Categoría</div>`;
 
-            if (esFourball()) {
+            if (esFourballAmericana()) {
                 const gruposFourball = new Map();
 
                 scorecards
@@ -2928,7 +3042,11 @@
             function renderPrintCategoria(cat, items) {
                 const ganadores = items
                     .slice()
-                    .sort((a, b) => compareScore(a, b, "net"))
+                    .sort((a, b) =>
+                        esFourballAmericana()
+                            ? compareFourballAmericana(a, b)
+                            : compareScore(a, b, "net")
+                    )
                     .slice(0, top)
                     .reverse();
 
@@ -2977,28 +3095,14 @@
                 })
                 .sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"));
 
-            const ordenDeseadoCategorias = [
-                "damas rojas",
-                "caballeros blancas b",
-                "caballeros blancas a",
-                "caballeros amarillas",
-                "caballeros negras"
-            ];
-
-            function claveCat(cat) {
-                return normalizarTextoClave(cat).toLowerCase();
-            }
-
-            const todasCategorias = [...categoriasDam, ...categoriasCab];
-
-            ordenDeseadoCategorias.forEach(nombreBuscado => {
-                const encontrada = todasCategorias.find(([cat]) =>
-                    claveCat(cat).includes(nombreBuscado)
+            const todasCategorias = [...categoriasDam, ...categoriasCab]
+                .sort((a, b) =>
+                    ordenCategoria(a[0]) - ordenCategoria(b[0]) ||
+                    a[0].localeCompare(b[0], "es")
                 );
 
-                if (encontrada) {
-                    html += renderPrintCategoria(encontrada[0], encontrada[1]);
-                }
+            todasCategorias.forEach(([cat, items]) => {
+                html += renderPrintCategoria(cat, items);
             });
 
             html += renderPrintScratch("Scratch Damas", scratchDam);

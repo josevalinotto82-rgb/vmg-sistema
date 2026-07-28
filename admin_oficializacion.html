@@ -1091,6 +1091,7 @@
         opacity: 0;
         transform: translateY(10px) scale(.98);
       }
+
       to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -1184,7 +1185,6 @@
         height: 42px;
       }
     }
-
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
@@ -1582,6 +1582,18 @@
     let registrations = [];
     let categorias = [];
     let tees = [];
+
+    // Reglas de tee usadas para calcular el HCP individual
+    // en Fourball Clásico.
+    let teeHandicapRules = [];
+    let teeHandicapRulesMap = new Map();
+
+    const TEE_CLASICO_IDS = {
+      damasRojas: "8737a42b-ef86-408a-9280-20c9e744264a",
+      caballerosBlancas: "6d962f3b-787e-47b7-bdb9-ac78f2dc94a5",
+      caballerosAmarillas: "8a2abefe-e1bd-4dfc-95f1-db52cf7a7262",
+      caballerosNegras: "9f08b519-a40c-4776-83b5-3c50ae10f370"
+    };
 
     let regMap = new Map();
     let categoriaMap = new Map();
@@ -2290,8 +2302,15 @@
       const hcpBase = calcularHcpBasePorTee(indexJugador, categoria);
       if (hcpBase == null) return null;
 
-      // Fourball Americana: 85% sobre Handicap de Cancha sin redondear.
-      return Math.min(roundHalfUp(hcpBase * 0.85), 54);
+      // Fourball Americana:
+      // 1. Calcular Handicap de Cancha.
+      // 2. Redondearlo a entero.
+      // 3. Aplicar el 85%.
+      // 4. Volver a redondear.
+      const hcpCanchaRedondeado = roundHalfUp(hcpBase);
+      const hcpConPorcentaje = hcpCanchaRedondeado * 0.85;
+
+      return Math.min(roundHalfUp(hcpConPorcentaje), 54);
     }
 
     function calcularIndiceManualAmericana(indiceAAG, categoria) {
@@ -2334,6 +2353,63 @@
       );
     }
 
+    function obtenerReglaTeeClasico(indexJugador, genderValor) {
+      const idx = toNumber(indexJugador);
+      if (idx == null) return null;
+
+      const genero = normalizarGenero(genderValor);
+
+      let reglaId = null;
+
+      // Todas las damas calculan su HCP individual desde Rojas.
+      if (genero === "female") {
+        reglaId = TEE_CLASICO_IDS.damasRojas;
+      }
+
+      // Caballeros hasta 9,0: Negras.
+      else if (genero === "male" && idx <= 9.0) {
+        reglaId = TEE_CLASICO_IDS.caballerosNegras;
+      }
+
+      // Caballeros de 9,1 a 15,0: Amarillas.
+      else if (genero === "male" && idx <= 15.0) {
+        reglaId = TEE_CLASICO_IDS.caballerosAmarillas;
+      }
+
+      // Caballeros desde 15,1: Blancas.
+      else if (genero === "male") {
+        reglaId = TEE_CLASICO_IDS.caballerosBlancas;
+      }
+
+      if (!reglaId) {
+        console.warn(
+          "No se pudo determinar la regla de tee del jugador.",
+          {
+            indexJugador,
+            genderValor,
+            genero
+          }
+        );
+
+        return null;
+      }
+
+      const regla = teeHandicapRulesMap.get(String(reglaId)) || null;
+
+      if (!regla) {
+        console.warn(
+          "No se encontró la regla de tee en tee_handicap_rules.",
+          {
+            reglaId,
+            indexJugador,
+            genero
+          }
+        );
+      }
+
+      return regla;
+    }
+
     function categoriaClasicoParejaPorHcp(hcpJuego, reg1 = null, reg2 = null) {
       const hcp = toNumber(hcpJuego);
       if (hcp == null) return null;
@@ -2352,45 +2428,133 @@
     function calcularDatosClasico(reg1, reg2) {
       const idxBase1 = obtenerIndexBaseParaCalculo(reg1);
       const idxBase2 = obtenerIndexBaseParaCalculo(reg2);
-      const [idxAjustado1, idxAjustado2] = ajustarPorBrechaMaxima(idxBase1, idxBase2, 5);
 
-      if (idxAjustado1 == null || idxAjustado2 == null) return null;
+      if (idxBase1 == null || idxBase2 == null) return null;
 
-      const categoriaJugador1 = categoriaClasicoJugadorPorIndex(idxAjustado1, reg1);
-      const categoriaJugador2 = categoriaClasicoJugadorPorIndex(idxAjustado2, reg2);
+      /*
+       * PASO 1
+       * Seleccionar la regla habitual de cada jugador.
+       *
+       * Damas:
+       * - Siempre Rojas.
+       *
+       * Caballeros:
+       * - Hasta 9,0: Negras.
+       * - De 9,1 a 15,0: Amarillas.
+       * - Desde 15,1: Blancas.
+       *
+       * Estas reglas salen de tee_handicap_rules,
+       * no de tournament_categories.
+       */
+      const reglaTeeJugador1 = obtenerReglaTeeClasico(
+        idxBase1,
+        reg1?.player?.gender
+      );
 
-      const hcpCancha1 = calcularHcpBasePorTee(idxAjustado1, categoriaJugador1);
-      const hcpCancha2 = calcularHcpBasePorTee(idxAjustado2, categoriaJugador2);
+      const reglaTeeJugador2 = obtenerReglaTeeClasico(
+        idxBase2,
+        reg2?.player?.gender
+      );
 
-      if (hcpCancha1 == null || hcpCancha2 == null) {
+      /*
+       * PASO 2
+       * Calcular el Handicap de Cancha exacto de cada jugador,
+       * usando slope, course rating y par de su tee habitual.
+       */
+      const hcpCanchaExacto1 = calcularHcpBasePorTee(
+        idxBase1,
+        reglaTeeJugador1
+      );
+
+      const hcpCanchaExacto2 = calcularHcpBasePorTee(
+        idxBase2,
+        reglaTeeJugador2
+      );
+
+      if (hcpCanchaExacto1 == null || hcpCanchaExacto2 == null) {
         return {
           idxBase1,
           idxBase2,
-          idxAjustado1,
-          idxAjustado2,
-          categoriaJugador1,
-          categoriaJugador2,
-          hcpCancha1,
-          hcpCancha2,
+
+          reglaTeeJugador1,
+          reglaTeeJugador2,
+
+          hcpCanchaExacto1,
+          hcpCanchaExacto2,
+
+          hcpCancha1: null,
+          hcpCancha2: null,
+
+          hcpAjustado1: null,
+          hcpAjustado2: null,
+
           hcpExacto: null,
           playingHandicap: null,
           categoriaPareja: null
         };
       }
 
-      const hcpExacto = (hcpCancha1 + hcpCancha2) * 0.375;
-      const playingHandicap = Math.min(roundHalfUp(hcpExacto), 54);
-      const categoriaPareja = categoriaClasicoParejaPorHcp(playingHandicap, reg1, reg2);
+      /*
+       * PASO 3
+       * Redondear el Handicap de Cancha individual.
+       */
+      const hcpCancha1 = roundHalfUp(hcpCanchaExacto1);
+      const hcpCancha2 = roundHalfUp(hcpCanchaExacto2);
+
+      /*
+       * PASO 4
+       * Aplicar una diferencia máxima de 5 golpes.
+       */
+      const [hcpAjustado1, hcpAjustado2] =
+        ajustarPorBrechaMaxima(
+          hcpCancha1,
+          hcpCancha2,
+          5
+        );
+
+      /*
+       * PASO 5
+       * Aplicar 3/8 a la suma de los handicaps ajustados.
+       */
+      const hcpExacto =
+        (hcpAjustado1 + hcpAjustado2) * 0.375;
+
+      /*
+       * PASO 6
+       * Redondear el HCP final de la pareja.
+       */
+      const playingHandicap = Math.min(
+        roundHalfUp(hcpExacto),
+        54
+      );
+
+      /*
+       * PASO 7
+       * Recién ahora se usa tournament_categories
+       * para determinar la categoría y tee final de la pareja.
+       */
+      const categoriaPareja = categoriaClasicoParejaPorHcp(
+        playingHandicap,
+        reg1,
+        reg2
+      );
 
       return {
         idxBase1,
         idxBase2,
-        idxAjustado1,
-        idxAjustado2,
-        categoriaJugador1,
-        categoriaJugador2,
+
+        reglaTeeJugador1,
+        reglaTeeJugador2,
+
+        hcpCanchaExacto1,
+        hcpCanchaExacto2,
+
         hcpCancha1,
         hcpCancha2,
+
+        hcpAjustado1,
+        hcpAjustado2,
+
         hcpExacto,
         playingHandicap,
         categoriaPareja
@@ -2398,18 +2562,36 @@
     }
 
     function calcularHcpClasico(indiceAAG1, indiceAAG2) {
-      const maxGap = 5;
-      const [aj1, aj2] = ajustarPorBrechaMaxima(indiceAAG1, indiceAAG2, maxGap);
-      if (aj1 == null || aj2 == null) return null;
+      const idx1 = toNumber(indiceAAG1);
+      const idx2 = toNumber(indiceAAG2);
 
-      const categoria1 = categoriaClasicoJugadorPorIndex(aj1, null);
-      const categoria2 = categoriaClasicoJugadorPorIndex(aj2, null);
-      const hcp1 = calcularHcpBasePorTee(aj1, categoria1);
-      const hcp2 = calcularHcpBasePorTee(aj2, categoria2);
+      if (idx1 == null || idx2 == null) return null;
 
-      if (hcp1 == null || hcp2 == null) return null;
+      /*
+       * Como esta función no recibe registros ni género,
+       * busca las categorías únicamente por rango de índice.
+       */
+      const categoria1 =
+        sugerirCategoriaSinGenero(redondearIndiceUnDecimal(idx1));
 
-      return Math.min(roundHalfUp((hcp1 + hcp2) * 0.375), 54);
+      const categoria2 =
+        sugerirCategoriaSinGenero(redondearIndiceUnDecimal(idx2));
+
+      const hcpExacto1 = calcularHcpBasePorTee(idx1, categoria1);
+      const hcpExacto2 = calcularHcpBasePorTee(idx2, categoria2);
+
+      if (hcpExacto1 == null || hcpExacto2 == null) return null;
+
+      const hcp1 = roundHalfUp(hcpExacto1);
+      const hcp2 = roundHalfUp(hcpExacto2);
+
+      const [hcpAjustado1, hcpAjustado2] =
+        ajustarPorBrechaMaxima(hcp1, hcp2, 5);
+
+      return Math.min(
+        roundHalfUp((hcpAjustado1 + hcpAjustado2) * 0.375),
+        54
+      );
     }
 
     function calcularHcpDesdeCategoria(indiceManual, categoria) {
@@ -2807,7 +2989,15 @@
         }
         torneoFecha.value = fechaTexto(torneo.tournament_date);
 
-        const [categoriasRes, teesRes, regsRes, aagRes, pagosRes] = await Promise.all([
+        const [
+          categoriasRes,
+          teesRes,
+          teeHandicapRulesRes,
+          regsRes,
+          aagRes,
+          pagosRes
+        ] = await Promise.all([
+
           supabase
             .from("tournament_categories")
             .select("id, name, index_min, index_max, tee_id, display_order, gender, slope, course_rating, par, hole_segment")
@@ -2818,6 +3008,17 @@
             .from("tees")
             .select("id, name, display_order")
             .order("display_order", { ascending: true }),
+
+          supabase
+            .from("tee_handicap_rules")
+            .select(`
+              id,
+              tee_id,
+              slope,
+              course_rating,
+              par
+            `)
+            .in("id", Object.values(TEE_CLASICO_IDS)),
 
           supabase
             .from("registrations")
@@ -2859,6 +3060,8 @@
             official_index,
             manual_index,
             playing_handicap,
+            player_1_playing_handicap,
+            player_2_playing_handicap,
             category_id,
             category_name,
             tee_id,
@@ -2890,6 +3093,7 @@
 
         if (categoriasRes.error) throw categoriasRes.error;
         if (teesRes.error) throw teesRes.error;
+        if (teeHandicapRulesRes.error) throw teeHandicapRulesRes.error;
         if (regsRes.error) throw regsRes.error;
         if (aagRes.error) throw aagRes.error;
         if (pagosRes.error) {
@@ -2909,7 +3113,22 @@
 
         categorias = categoriasRes.data || [];
         tees = teesRes.data || [];
+        teeHandicapRules = teeHandicapRulesRes.data || [];
         registrations = regsRes.data || [];
+
+        teeHandicapRulesMap = new Map(
+          teeHandicapRules.map((regla) => [
+            String(regla.id),
+            regla
+          ])
+        );
+
+        if (teeHandicapRules.length !== 4) {
+          console.warn(
+            "No se cargaron las cuatro reglas necesarias para Fourball Clásico.",
+            teeHandicapRules
+          );
+        }
 
         const salidaIds = [
           ...new Set(
@@ -4580,14 +4799,44 @@
       const categoriaPrincipal = getCategoriaById(datos.modo === "clasico" ? datos.categoriaId : datos.categoriaId1);
 
       await upsertScorecardPareja(reg1, reg2, {
-        category_id: datos.modo === "clasico" ? datos.categoriaId : datos.categoriaId1,
-        tee_id: datos.modo === "clasico" ? datos.teeId : datos.teeId1,
-        official_index: datos.modo === "clasico" ? datos.manualIndex : datos.manualIndex1,
-        playing_handicap: datos.modo === "clasico" ? datos.playingHandicap : datos.playingHandicap1,
+        category_id:
+          datos.modo === "clasico"
+            ? datos.categoriaId
+            : datos.categoriaId1,
+
+        tee_id:
+          datos.modo === "clasico"
+            ? datos.teeId
+            : datos.teeId1,
+
+        official_index:
+          datos.modo === "clasico"
+            ? datos.manualIndex
+            : datos.manualIndex1,
+
+        // Se mantiene por compatibilidad con el resto del sistema.
+        // En Americana representa el HCP del jugador 1.
+        playing_handicap:
+          datos.modo === "clasico"
+            ? datos.playingHandicap
+            : datos.playingHandicap1,
+
+        // HCP individuales de la pareja.
+        player_1_playing_handicap:
+          datos.modo === "americana"
+            ? datos.playingHandicap1
+            : null,
+
+        player_2_playing_handicap:
+          datos.modo === "americana"
+            ? datos.playingHandicap2
+            : null,
+
         starting_time: line?.line_time || null,
         starting_hole: line?.starting_hole || null,
         card_status: "npt",
         display_name: displayNamePareja,
+
         ...payloadInternoPareja(datos, categoriaPrincipal)
       });
 

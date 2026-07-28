@@ -550,11 +550,35 @@
 
         if (errorTorneos) throw errorTorneos;
 
-        const { data: scorecardsData, error: errorScorecards } = await supabase
-          .from("scorecards")
-          .select("tournament_id, display_name");
+        // =========================
+        // SCORECARDS MODERNAS
+        // Cargar todas, superando el límite de 1.000 filas
+        // =========================
 
-        if (errorScorecards) throw errorScorecards;
+        let scorecardsData = [];
+        let desdeScorecards = 0;
+        const bloqueScorecards = 1000;
+
+        while (true) {
+          const { data, error } = await supabase
+            .from("scorecards")
+            .select("tournament_id, display_name")
+            .order("id", { ascending: true })
+            .range(
+              desdeScorecards,
+              desdeScorecards + bloqueScorecards - 1
+            );
+
+          if (error) throw error;
+
+          scorecardsData.push(...(data || []));
+
+          if (!data || data.length < bloqueScorecards) {
+            break;
+          }
+
+          desdeScorecards += bloqueScorecards;
+        }
 
         // =========================
         // TORNEOS HISTORICOS
