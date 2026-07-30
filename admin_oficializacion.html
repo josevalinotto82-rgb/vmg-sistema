@@ -202,6 +202,17 @@
       filter: brightness(.95);
     }
 
+    .btn-danger {
+      background: #dc2626;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(220, 38, 38, .28);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #b91c1c;
+      box-shadow: 0 5px 15px rgba(185, 28, 28, .36);
+    }
+
     .btn-light {
       background: var(--gold);
       color: #fff;
@@ -1244,6 +1255,10 @@
               Informe pagos
             </button>
 
+            <button id="btnOficializarTorneo" class="btn btn-primary" type="button">
+              Guardar Torneo
+            </button>
+
           </div>
         </div>
 
@@ -1288,6 +1303,10 @@
 
         <button id="btnImprimirTodasTarjetas" class="btn btn-secondary" type="button">
           Imprimir Tarjetas
+        </button>
+
+        <button id="btnCargarTarjetas" class="btn btn-danger" type="button" style="display:none;">
+          Cargar Tarjetas
         </button>
       </div>
     </div>
@@ -1569,6 +1588,7 @@
     const btnResumenPagos = document.getElementById("btnResumenPagos");
     const btnGenerarScorecards = document.getElementById("btnGenerarScorecards");
     const btnImprimirTodasTarjetas = document.getElementById("btnImprimirTodasTarjetas");
+    const btnCargarTarjetas = document.getElementById("btnCargarTarjetas");
 
     configurarSucursalPorAdmin(adminActual);
 
@@ -1629,6 +1649,10 @@
     btnResumenPagos.addEventListener("click", imprimirResumenPagos);
     btnGenerarScorecards?.addEventListener("click", generarTodasLasScorecards);
     btnImprimirTodasTarjetas.addEventListener("click", imprimirTodasLasTarjetas);
+    btnCargarTarjetas?.addEventListener("click", () => {
+      if (!torneoActual?.id) return;
+      window.location.href = `carga_tarjeta.html?torneo=${encodeURIComponent(torneoActual.id)}`;
+    });
     document.getElementById("btnLimpiarBusqueda")?.addEventListener("click", () => { const b = document.getElementById("buscadorJugadores"); if (b) b.value = ""; filtroPendientesScorecardIds = null; filtrarTablaJugadores(); b?.focus(); });
     document.getElementById("btnCerrarFactModal")?.addEventListener("click", cerrarFacturacion);
     document.getElementById("factModal")?.addEventListener("click", (e) => { if (e.target?.id === "factModal") cerrarFacturacion(); });
@@ -3158,6 +3182,7 @@
 
         renderTabla();
         actualizarResumen();
+        actualizarBotonCargarTarjetas();
 
         iniciarAutoRefrescoIndicesVivos();
         suscribirRealtimeOficializacion();
@@ -5192,6 +5217,16 @@
       return pendientes;
     }
 
+    function actualizarBotonCargarTarjetas() {
+      if (!btnCargarTarjetas) return;
+
+      const hayInscriptos = registrations.length > 0;
+      const tarjetasCompletas =
+        hayInscriptos && obtenerFilasPendientesDeOficializar().length === 0;
+
+      btnCargarTarjetas.style.display = tarjetasCompletas ? "" : "none";
+    }
+
     async function guardarTorneoSinPreguntar() {
       if (!torneoActual?.id) return false;
 
@@ -5381,7 +5416,7 @@
     }
 
     function volverDesdeOficializacion() {
-      abrirModalSalidaTorneo();
+      window.location.href = "panel.html";
     }
 
     function fontSizeTorneo(texto) {
@@ -6892,16 +6927,6 @@
     reiniciarTemporizadorInactividad();
 
     document.getElementById("btnHome")?.addEventListener("click", volverDesdeOficializacion);
-
-    document.getElementById("exitTournamentModal")?.addEventListener("click", (e) => {
-      if (e.target?.id === "exitTournamentModal") cerrarModalSalidaTorneo();
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && document.getElementById("exitTournamentModal")?.classList.contains("open")) {
-        cerrarModalSalidaTorneo();
-      }
-    });
 
     cargarTodo();
   </script>
