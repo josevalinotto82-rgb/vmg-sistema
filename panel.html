@@ -467,6 +467,124 @@
             }
         }
 
+        .reminder-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 210000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(15, 23, 42, .58);
+            backdrop-filter: blur(4px);
+        }
+
+        .reminder-backdrop.open {
+            display: flex;
+        }
+
+        .reminder-box {
+            position: relative;
+            width: min(590px, 100%);
+            max-height: calc(100vh - 36px);
+            overflow-y: auto;
+            padding: 28px;
+            border: 1px solid rgba(22, 101, 52, .18);
+            border-radius: 22px;
+            background: #ffffff;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, .30);
+            animation: hcpModalIn .18s ease-out;
+        }
+
+        .reminder-close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 50%;
+            background: #f3f4f6;
+            color: #374151;
+            font-size: 22px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+
+        .reminder-close:hover {
+            color: #ffffff;
+            background: #ef4444;
+            transform: scale(1.08);
+        }
+
+        .reminder-icon {
+            width: 54px;
+            height: 54px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            background: #dcfce7;
+            color: #166534;
+            font-size: 28px;
+        }
+
+        .reminder-box h2 {
+            margin: 0 48px 8px 0;
+            color: #14532d;
+            font-size: 24px;
+            line-height: 1.2;
+        }
+
+        .reminder-lead {
+            margin: 0 0 20px;
+            color: #4b5563;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .reminder-step {
+            margin-top: 12px;
+            padding: 16px;
+            border-left: 4px solid #22c55e;
+            border-radius: 12px;
+            background: #f0fdf4;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .reminder-step strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #166534;
+        }
+
+        .reminder-note {
+            margin: 18px 0 0;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 520px) {
+            .reminder-box {
+                padding: 24px 20px;
+                border-radius: 18px;
+            }
+
+            .reminder-box h2 {
+                font-size: 21px;
+            }
+        }
+
         @media (max-width: 700px) {
             .hcp-presentacion {
                 max-width: 100%;
@@ -641,6 +759,14 @@
         </div>
     </div>
 
+    <div id="adminReminderModal" class="reminder-backdrop" aria-hidden="true">
+        <div class="reminder-box" role="dialog" aria-modal="true" aria-labelledby="adminReminderTitle">
+            <button id="adminReminderClose" class="reminder-close" type="button"
+                aria-label="Cerrar recordatorio">×</button>
+            <div id="adminReminderContent"></div>
+        </div>
+    </div>
+
 
     <script type="module">
         import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -664,8 +790,69 @@
         const hcpModalContent = document.getElementById("hcpModalContent");
         const hcpModalClose = document.getElementById("hcpModalClose");
 
+        const adminReminderModal = document.getElementById("adminReminderModal");
+        const adminReminderContent = document.getElementById("adminReminderContent");
+        const adminReminderClose = document.getElementById("adminReminderClose");
+
         let hcpSearchTimer = null;
         let hcpModalTimer = null;
+
+        const adminReminders = {
+            Wednesday: `
+                <div class="reminder-icon" aria-hidden="true">✓</div>
+                <h2 id="adminReminderTitle">Recordatorio del miércoles</h2>
+                <p class="reminder-lead">
+                    Guardar y archivar los torneos abiertos que ya fueron jugados y cuyas tarjetas estén cargadas.
+                </p>
+                <div class="reminder-step">
+                    <strong>1. Guardar el torneo</strong>
+                    Entrá a <b>Admin Torneo</b>, elegí el torneo que deseás guardar y, una vez dentro,
+                    presioná <b>Guardar Torneo</b>. El torneo solamente podrá guardarse si están creadas
+                    todas las tarjetas de los jugadores.
+                </div>
+                <div class="reminder-step">
+                    <strong>2. Archivar el torneo</strong>
+                    Entrá a <b>Carga de Tarjetas</b> y presioná <b>Archivar Torneo</b>.
+                </div>
+                <p class="reminder-note">
+                    Al completar estos pasos, los torneos podrán ser enviados a la AAG.
+                </p>
+            `,
+            Thursday: `
+                <div class="reminder-icon" aria-hidden="true">↻</div>
+                <h2 id="adminReminderTitle">Recordatorio del jueves</h2>
+                <p class="reminder-lead">Actualizar el índice de los jugadores.</p>
+                <div class="reminder-step">
+                    <strong>Pasos a seguir</strong>
+                    Entrá a <b>Act. Index</b> y, una vez dentro, presioná <b>Actualizar Index</b>.
+                </div>
+            `
+        };
+
+        function abrirRecordatorioAdmin() {
+            const dayName = new Intl.DateTimeFormat("en-US", {
+                weekday: "long",
+                timeZone: "America/Argentina/Cordoba"
+            }).format(new Date());
+
+            const reminderHtml = adminReminders[dayName];
+            if (!reminderHtml || !adminReminderModal || !adminReminderContent) return;
+
+            adminReminderContent.innerHTML = reminderHtml;
+            adminReminderModal.classList.add("open");
+            adminReminderModal.setAttribute("aria-hidden", "false");
+        }
+
+        function cerrarRecordatorioAdmin() {
+            adminReminderModal?.classList.remove("open");
+            adminReminderModal?.setAttribute("aria-hidden", "true");
+        }
+
+        adminReminderClose?.addEventListener("click", cerrarRecordatorioAdmin);
+
+        adminReminderModal?.addEventListener("click", (e) => {
+            if (e.target === adminReminderModal) cerrarRecordatorioAdmin();
+        });
 
         function normalizarTexto(txt) {
             return String(txt || "")
@@ -994,6 +1181,11 @@
         });
 
         document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && adminReminderModal?.classList.contains("open")) {
+                cerrarRecordatorioAdmin();
+                return;
+            }
+
             if (e.key === "Escape" && hcpModal?.classList.contains("open")) {
                 cerrarHcpModal();
             }
@@ -1044,6 +1236,7 @@
 
             if (profile.role === "admin") {
                 adminPanel.classList.remove("hidden");
+                abrirRecordatorioAdmin();
             } else {
                 playerPanel.classList.remove("hidden");
             }
