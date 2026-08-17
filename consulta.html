@@ -1323,6 +1323,95 @@
             return sumaHoyosScorecard(sc, desde, hasta) - (hcpJuego(sc) / divisorHcp);
         }
 
+        function compararTarjetasMejor18(a, b, field = "net") {
+
+            const valorA = n(a[field]);
+            const valorB = n(b[field]);
+
+            if (valorA == null && valorB == null) return 0;
+            if (valorA == null) return 1;
+            if (valorB == null) return -1;
+
+            // 1. Resultado principal
+            if (valorA !== valorB) {
+                return valorA - valorB;
+            }
+
+
+            // =========================================
+            // SCRATCH / GROSS
+            // =========================================
+            if (field === "gross") {
+
+                const criteriosScratch = [
+                    { desde: 10, hasta: 18 },
+                    { desde: 13, hasta: 18 },
+                    { desde: 16, hasta: 18 },
+                    { desde: 17, hasta: 18 },
+                    { desde: 18, hasta: 18 }
+                ];
+
+                for (const c of criteriosScratch) {
+
+                    const va = sumaHoyosScorecard(
+                        a,
+                        c.desde,
+                        c.hasta
+                    );
+
+                    const vb = sumaHoyosScorecard(
+                        b,
+                        c.desde,
+                        c.hasta
+                    );
+
+                    if (va !== vb) {
+                        return va - vb;
+                    }
+                }
+
+                return 0;
+            }
+
+
+            // =========================================
+            // NETO
+            // =========================================
+            if (field === "net" || field === "total") {
+
+                const criteriosNeto = [
+                    { desde: 10, hasta: 18, divisor: 2 },
+                    { desde: 13, hasta: 18, divisor: 3 },
+                    { desde: 16, hasta: 18, divisor: 6 },
+                    { desde: 18, hasta: 18, divisor: 9 }
+                ];
+
+                for (const c of criteriosNeto) {
+
+                    const va = valorDesempateNeto(
+                        a,
+                        c.desde,
+                        c.hasta,
+                        c.divisor
+                    );
+
+                    const vb = valorDesempateNeto(
+                        b,
+                        c.desde,
+                        c.hasta,
+                        c.divisor
+                    );
+
+                    if (Math.abs(va - vb) > 0.00001) {
+                        return va - vb;
+                    }
+                }
+            }
+
+
+            return 0;
+        }
+
         function diferenciaHcpPareja(sc) {
             /*
              * Estos dos valores deben contener los handicaps DE JUEGO
@@ -1643,7 +1732,7 @@
                 .select(`
                     id,tournament_id,linked_player_id,display_name,aag_member_number,player_gender,
                     category_name,tee_name,official_index,manual_index,playing_handicap,
-                    gross,net,total,card_status,hole_segment,starting_time,starting_hole
+                    gross,net,total,card_status,hole_segment,hole_scores,starting_time,starting_hole
                 `)
                 .in("tournament_id", ids);
             if (errorCardsSerie) throw errorCardsSerie;
@@ -1741,36 +1830,139 @@
         }
 
         function calcularMejor18Serie() {
+
             const field = getSerieScoringField();
-            const validas = scorecardsSerie.filter(s => esTarjetaValida(s) && n(s[field]) != null);
+
+            const validas = scorecardsSerie.filter(
+                s =>
+                    esTarjetaValida(s) &&
+                    n(s[field]) != null
+            );
+
             const grupos = new Map();
 
-            for (const sc of validas) {
-                const key = jugadorKey(sc);
-                const torneo = torneoSeriePorId(sc.tournament_id);
-                const item = {
-                    key,
-                    display_name: sc.display_name,
-                    tournament_id: sc.tournament_id,
-                    tournament_name: torneo?.name || "Fecha",
-                    tournament_date: torneo?.tournament_date,
-                    round_number: torneo?.series_round_number,
-                    player_gender: sc.player_gender,
-                    official_index: n(sc.official_index ?? sc.manual_index),
-                    manual_index: n(sc.manual_index),
-                    net: n(sc.net),
-                    gross: n(sc.gross),
-                    total: n(sc.total),
-                    score: n(sc[field]),
-                    category_name: sc.category_name
-                };
 
-                if (!grupos.has(key) || item.score < grupos.get(key).score || (item.score === grupos.get(key).score && (item.gross || 999) < (grupos.get(key).gross || 999))) {
-                    grupos.set(key, item);
+            for (const sc of validas) {
+
+                const key = jugadorKey(sc);
+
+                if (!grupos.has(key)) {
+                    grupos.set(key, []);
                 }
+
+                grupos.get(key).push(sc);
             }
 
-            return [...grupos.values()].sort((a, b) => a.score - b.score || (a.gross || 999) - (b.gross || 999) || String(a.display_name).localeCompare(String(b.display_name), "es"));
+
+            const resultado = [];
+
+
+            for (const [key, tarjetas] of grupos.entries()) {
+
+                // Ordenar TODAS las tarjetas del jugador
+                // utilizando el desempate real.
+                const ordenadas = tarjetas
+                    .slice()
+                    .sort((a, b) =>
+                        compararTarjetasMejor18(
+                            a,
+                            b,
+                            field
+                        )
+                    );
+
+
+                const mejor = ordenadas[0];
+
+                if (!mejor) continue;
+
+
+                const torneo =
+                    torneoSeriePorId(
+                        mejor.tournament_id
+                    );
+
+
+                resultado.push({
+
+                    key,
+
+                    scorecard: mejor,
+
+                    display_name:
+                        mejor.display_name,
+
+                    tournament_id:
+                        mejor.tournament_id,
+
+                    tournament_name:
+                        torneo?.name || "Fecha",
+
+                    tournament_date:
+                        torneo?.tournament_date,
+
+                    round_number:
+                        torneo?.series_round_number,
+
+                    player_gender:
+                        mejor.player_gender,
+
+                    official_index:
+                        n(
+                            mejor.official_index ??
+                            mejor.manual_index
+                        ),
+
+                    manual_index:
+                        n(mejor.manual_index),
+
+                    playing_handicap:
+                        n(mejor.playing_handicap),
+
+                    net:
+                        n(mejor.net),
+
+                    gross:
+                        n(mejor.gross),
+
+                    total:
+                        n(mejor.total),
+
+                    score:
+                        n(mejor[field]),
+
+                    category_name:
+                        mejor.category_name,
+
+                    hole_scores:
+                        mejor.hole_scores
+
+                });
+            }
+
+
+            // Finalmente comparar las mejores tarjetas
+            // de jugadores distintos con EL MISMO criterio.
+            return resultado.sort((a, b) => {
+
+                const desempate =
+                    compararTarjetasMejor18(
+                        a.scorecard,
+                        b.scorecard,
+                        field
+                    );
+
+                if (desempate !== 0) {
+                    return desempate;
+                }
+
+                return String(
+                    a.display_name || ""
+                ).localeCompare(
+                    String(b.display_name || ""),
+                    "es"
+                );
+            });
         }
 
         function generoSerie(item) {
@@ -1919,9 +2111,44 @@
             const esMejor18 = tipo === "mejor18";
             const esMejor36 = tipo === "mejor36";
 
-            const ordenarScratch = (a, b) =>
-                (scoreScratchSerie(a, tipo) ?? 9999) - (scoreScratchSerie(b, tipo) ?? 9999) ||
-                String(a.display_name).localeCompare(String(b.display_name), "es");
+            const ordenarScratch = (a, b) => {
+
+                if (esMejor18) {
+
+                    const scA = a.scorecard || a;
+                    const scB = b.scorecard || b;
+
+                    const desempate =
+                        compararTarjetasMejor18(
+                            scA,
+                            scB,
+                            "gross"
+                        );
+
+                    if (desempate !== 0) {
+                        return desempate;
+                    }
+                }
+
+
+                const scoreA =
+                    scoreScratchSerie(a, tipo) ?? 9999;
+
+                const scoreB =
+                    scoreScratchSerie(b, tipo) ?? 9999;
+
+                if (scoreA !== scoreB) {
+                    return scoreA - scoreB;
+                }
+
+
+                return String(
+                    a.display_name || ""
+                ).localeCompare(
+                    String(b.display_name || ""),
+                    "es"
+                );
+            };
 
             const scratchCab = topScratchCab > 0
                 ? items.filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "male").slice().sort(ordenarScratch).slice(0, topScratchCab)
@@ -1966,7 +2193,41 @@
             for (const [cat, catItems] of grupos) {
                 catItems
                     .slice()
-                    .sort((a, b) => n(a.score) - n(b.score) || (n(a.total_gross ?? a.gross) ?? 9999) - (n(b.total_gross ?? b.gross) ?? 9999) || String(a.display_name).localeCompare(String(b.display_name), "es"))
+                    .sort((a, b) => {
+
+                        if (esMejor18) {
+
+                            const scA = a.scorecard || a;
+                            const scB = b.scorecard || b;
+
+                            const desempate =
+                                compararTarjetasMejor18(
+                                    scA,
+                                    scB,
+                                    field
+                                );
+
+                            if (desempate !== 0) {
+                                return desempate;
+                            }
+                        }
+
+
+                        const scoreA = n(a.score) ?? 999999;
+                        const scoreB = n(b.score) ?? 999999;
+
+                        if (scoreA !== scoreB) {
+                            return scoreA - scoreB;
+                        }
+
+
+                        return String(
+                            a.display_name || ""
+                        ).localeCompare(
+                            String(b.display_name || ""),
+                            "es"
+                        );
+                    })
                     .slice(0, topCategoria)
                     .forEach((item, i) => html += fila(cat, item, i + 1));
             }
@@ -2446,9 +2707,40 @@
             const esMejor18 = tipo === "mejor18";
             const esMejor36 = tipo === "mejor36";
 
-            const ordenarScratch = (a, b) =>
-                (scoreScratchSerie(a, tipo) ?? 9999) - (scoreScratchSerie(b, tipo) ?? 9999) ||
-                String(a.display_name).localeCompare(String(b.display_name), "es");
+            const ordenarScratch = (a, b) => {
+
+                if (esMejor18) {
+
+                    const scA = a.scorecard || a;
+                    const scB = b.scorecard || b;
+
+                    const desempate = compararTarjetasMejor18(
+                        scA,
+                        scB,
+                        "gross"
+                    );
+
+                    if (desempate !== 0) {
+                        return desempate;
+                    }
+                }
+
+                const scoreA =
+                    scoreScratchSerie(a, tipo) ?? 9999;
+
+                const scoreB =
+                    scoreScratchSerie(b, tipo) ?? 9999;
+
+                if (scoreA !== scoreB) {
+                    return scoreA - scoreB;
+                }
+
+                return String(a.display_name || "")
+                    .localeCompare(
+                        String(b.display_name || ""),
+                        "es"
+                    );
+            };
 
             const scratchCab = topScratchCab > 0
                 ? items.filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "male").slice().sort(ordenarScratch).slice(0, topScratchCab)
@@ -2499,11 +2791,37 @@
             for (const [cat, catItems] of grupos) {
                 catItems
                     .slice()
-                    .sort((a, b) =>
-                        n(a.score) - n(b.score) ||
-                        (n(a.total_gross ?? a.gross) ?? 9999) - (n(b.total_gross ?? b.gross) ?? 9999) ||
-                        String(a.display_name).localeCompare(String(b.display_name), "es")
-                    )
+                    .sort((a, b) => {
+
+                        if (esMejor18) {
+
+                            const scA = a.scorecard || a;
+                            const scB = b.scorecard || b;
+
+                            const desempate = compararTarjetasMejor18(
+                                scA,
+                                scB,
+                                field
+                            );
+
+                            if (desempate !== 0) {
+                                return desempate;
+                            }
+                        }
+
+                        const scoreA = n(a.score) ?? 999999;
+                        const scoreB = n(b.score) ?? 999999;
+
+                        if (scoreA !== scoreB) {
+                            return scoreA - scoreB;
+                        }
+
+                        return String(a.display_name || "")
+                            .localeCompare(
+                                String(b.display_name || ""),
+                                "es"
+                            );
+                    })
                     .slice(0, topCategoria)
                     .forEach((item, i) => html += fila(cat, item, i + 1));
             }
@@ -2654,14 +2972,75 @@
             const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
             const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
 
-            const ordenarCategoria = (a, b) =>
-                n(a.score) - n(b.score) ||
-                (n(a.total_gross ?? a.gross) ?? 9999) - (n(b.total_gross ?? b.gross) ?? 9999) ||
-                String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+            const esMejor18 = tipo === "mejor18";
 
-            const ordenarScratch = (a, b) =>
-                (scoreScratchSerie(a, tipo) ?? 9999) - (scoreScratchSerie(b, tipo) ?? 9999) ||
-                String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+            const ordenarCategoria = (a, b) => {
+
+                if (esMejor18) {
+
+                    const scA = a.scorecard || a;
+                    const scB = b.scorecard || b;
+
+                    const desempate = compararTarjetasMejor18(
+                        scA,
+                        scB,
+                        field
+                    );
+
+                    if (desempate !== 0) {
+                        return desempate;
+                    }
+                }
+
+                const scoreA = n(a.score) ?? 999999;
+                const scoreB = n(b.score) ?? 999999;
+
+                if (scoreA !== scoreB) {
+                    return scoreA - scoreB;
+                }
+
+                return String(a.display_name || "")
+                    .localeCompare(
+                        String(b.display_name || ""),
+                        "es"
+                    );
+            };
+
+
+            const ordenarScratch = (a, b) => {
+
+                if (esMejor18) {
+
+                    const scA = a.scorecard || a;
+                    const scB = b.scorecard || b;
+
+                    const desempate = compararTarjetasMejor18(
+                        scA,
+                        scB,
+                        "gross"
+                    );
+
+                    if (desempate !== 0) {
+                        return desempate;
+                    }
+                }
+
+                const scoreA =
+                    scoreScratchSerie(a, tipo) ?? 9999;
+
+                const scoreB =
+                    scoreScratchSerie(b, tipo) ?? 9999;
+
+                if (scoreA !== scoreB) {
+                    return scoreA - scoreB;
+                }
+
+                return String(a.display_name || "")
+                    .localeCompare(
+                        String(b.display_name || ""),
+                        "es"
+                    );
+            };
 
             const scratchDam = topScratchDam > 0
                 ? items

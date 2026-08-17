@@ -885,15 +885,128 @@
             return cantidad;
         }
 
+        function compararTarjetasSerie(a, b, esScratch = false) {
+
+            // =========================================
+            // 1. RESULTADO PRINCIPAL DE LA TARJETA
+            // =========================================
+            const valorA = esScratch
+                ? parseNumero(a.gross)
+                : parseNumero(a.net ?? a.total);
+
+            const valorB = esScratch
+                ? parseNumero(b.gross)
+                : parseNumero(b.net ?? b.total);
+
+            const va = valorA === null ? 999999 : valorA;
+            const vb = valorB === null ? 999999 : valorB;
+
+            if (va !== vb) {
+                return va - vb;
+            }
+
+
+            // =========================================
+            // 2. DESEMPATE SCRATCH
+            // Segunda vuelta, últimos 6,
+            // últimos 3, últimos 2, último hoyo
+            // =========================================
+            if (esScratch) {
+
+                const criteriosScratch = [
+                    [10, 18],
+                    [13, 18],
+                    [16, 18],
+                    [17, 18],
+                    [18, 18]
+                ];
+
+                const hoyosA = hoyosPorScorecard[a.id] || {};
+                const hoyosB = hoyosPorScorecard[b.id] || {};
+
+                for (const [desde, hasta] of criteriosScratch) {
+
+                    const sumaA = sumaHoyosArray(
+                        hoyosA,
+                        desde,
+                        hasta
+                    );
+
+                    const sumaB = sumaHoyosArray(
+                        hoyosB,
+                        desde,
+                        hasta
+                    );
+
+                    if (sumaA !== sumaB) {
+                        return sumaA - sumaB;
+                    }
+                }
+
+                return 0;
+            }
+
+
+            // =========================================
+            // 3. DESEMPATE NETO
+            //
+            // Últimos 9  - 1/2 HCP
+            // Últimos 6  - 1/3 HCP
+            // Últimos 3  - 1/6 HCP
+            // Último hoyo - 1/9 HCP
+            //
+            // NO IMPORTA DE QUÉ FECHA SEA LA TARJETA
+            // =========================================
+
+            const criteriosNeto = [
+                { desde: 10, hasta: 18, divisor: 2 },
+                { desde: 13, hasta: 18, divisor: 3 },
+                { desde: 16, hasta: 18, divisor: 6 },
+                { desde: 18, hasta: 18, divisor: 9 }
+            ];
+
+            for (const criterio of criteriosNeto) {
+
+                const desempateA = valorDesempateNeto(
+                    a,
+                    criterio.desde,
+                    criterio.hasta,
+                    criterio.divisor
+                );
+
+                const desempateB = valorDesempateNeto(
+                    b,
+                    criterio.desde,
+                    criterio.hasta,
+                    criterio.divisor
+                );
+
+                if (Math.abs(desempateA - desempateB) > 0.00001) {
+                    return desempateA - desempateB;
+                }
+            }
+
+
+            // =========================================
+            // EMPATE TOTAL
+            // =========================================
+            return 0;
+        }
+
         function tarjetasValidasSerie(j, esScratch = false) {
+
             const key = claveJugadorSerie(j);
             const mapa = scorecardsSeriePorJugador.get(key);
 
             if (!mapa) return [];
 
             return Array.from(mapa.values())
+
                 .filter(sc => {
-                    if (!sc || esNoValido(sc)) return false;
+
+                    if (!sc || esNoValido(sc)) {
+                        return false;
+                    }
 
                     const valor = esScratch
                         ? parseNumero(sc.gross)
@@ -901,13 +1014,24 @@
 
                     return valor !== null && valor > 0;
                 })
+
                 .map(sc => ({
                     scorecard: sc,
+
                     valor: esScratch
                         ? parseNumero(sc.gross)
                         : parseNumero(sc.net ?? sc.total)
                 }))
-                .sort((a, b) => a.valor - b.valor);
+
+                .sort((a, b) => {
+
+                    return compararTarjetasSerie(
+                        a.scorecard,
+                        b.scorecard,
+                        esScratch
+                    );
+
+                });
         }
 
         function resumenSerieJugador(j, esScratch = false) {
@@ -974,35 +1098,95 @@
         }
 
         function compararClasificacionSerie(a, b, esScratch = false) {
+
             const ra = resumenSerieJugador(a, esScratch);
             const rb = resumenSerieJugador(b, esScratch);
 
             const aCumple = cumpleMinimoSerie(a, esScratch);
             const bCumple = cumpleMinimoSerie(b, esScratch);
 
+
+            // =========================================
+            // 1. CUMPLIMIENTO DEL CRITERIO
+            // =========================================
+
             if (aCumple !== bCumple) {
                 return aCumple ? -1 : 1;
             }
 
+
+            // =========================================
+            // 2. ACUMULADO
+            // Primero quien presentó más tarjetas
+            // =========================================
+
             if (criterioSerieSeleccionado === "acumulado") {
-                // Primero quien presentó más tarjetas.
+
                 if (ra.cantidad !== rb.cantidad) {
                     return rb.cantidad - ra.cantidad;
                 }
             }
 
-            // Después, menor suma.
+
+            // =========================================
+            // 3. MENOR RESULTADO
+            // =========================================
+
             if (ra.suma !== rb.suma) {
                 return ra.suma - rb.suma;
             }
 
-            // Desempate adicional: más tarjetas presentadas.
+
+            // =========================================
+            // 4. DESEMPATE ESPECIAL MEJORES 18
+            //
+            // Si ambos tienen el mismo Mejor Neto/Gross,
+            // comparar directamente las dos tarjetas.
+            // NO IMPORTA DE QUÉ FECHA SEAN.
+            // =========================================
+
+            if (criterioSerieSeleccionado === "mejor18") {
+
+                const tarjetaA =
+                    ra.tarjetasUsadas?.[0]?.scorecard;
+
+                const tarjetaB =
+                    rb.tarjetasUsadas?.[0]?.scorecard;
+
+                if (tarjetaA && tarjetaB) {
+
+                    const desempate = compararTarjetasSerie(
+                        tarjetaA,
+                        tarjetaB,
+                        esScratch
+                    );
+
+                    if (desempate !== 0) {
+                        return desempate;
+                    }
+                }
+            }
+
+
+            // =========================================
+            // 5. RESTO DE CRITERIOS
+            // =========================================
+
             if (ra.cantidad !== rb.cantidad) {
                 return rb.cantidad - ra.cantidad;
             }
 
+
+            // =========================================
+            // 6. EMPATE ABSOLUTO
+            // Sólo para mantener orden estable en pantalla
+            // =========================================
+
             return String(a.display_name || "")
-                .localeCompare(String(b.display_name || ""), "es");
+                .localeCompare(
+                    String(b.display_name || ""),
+                    "es"
+                );
         }
 
         function valorClasificacionSerie(j, esScratch = false) {
@@ -1450,37 +1634,121 @@
             return String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
         }
 
-        function obtenerDetalleDesempate(jugador, rivalesEmpatados, esScratch = false) {
-            if (!rivalesEmpatados || rivalesEmpatados.length === 0) return "";
+        function obtenerDetalleDesempate(
+            jugador,
+            rivalesEmpatados,
+            esScratch = false
+        ) {
+
+            if (
+                !rivalesEmpatados ||
+                rivalesEmpatados.length === 0
+            ) {
+                return "";
+            }
+
 
             const criteriosScratch = [
-                { desde: 10, hasta: 18, nombre: "Segunda vuelta" },
-                { desde: 13, hasta: 18, nombre: "Últimos 6 hoyos" },
-                { desde: 16, hasta: 18, nombre: "Últimos 3 hoyos" },
-                { desde: 17, hasta: 18, nombre: "Últimos 2 hoyos" },
-                { desde: 18, hasta: 18, nombre: "Último hoyo" }
+                {
+                    desde: 10,
+                    hasta: 18,
+                    nombre: "Segunda vuelta"
+                },
+                {
+                    desde: 13,
+                    hasta: 18,
+                    nombre: "Últimos 6 hoyos"
+                },
+                {
+                    desde: 16,
+                    hasta: 18,
+                    nombre: "Últimos 3 hoyos"
+                },
+                {
+                    desde: 17,
+                    hasta: 18,
+                    nombre: "Últimos 2 hoyos"
+                },
+                {
+                    desde: 18,
+                    hasta: 18,
+                    nombre: "Último hoyo"
+                }
             ];
+
 
             const criteriosNeto = [
-                { desde: 10, hasta: 18, nombre: "Últimos 9 hoyos", divisor: 2, textoHcp: "1/2 HCP" },
-                { desde: 13, hasta: 18, nombre: "Últimos 6 hoyos", divisor: 3, textoHcp: "1/3 HCP" },
-                { desde: 16, hasta: 18, nombre: "Últimos 3 hoyos", divisor: 6, textoHcp: "1/6 HCP" },
-                { desde: 18, hasta: 18, nombre: "Último hoyo", divisor: 9, textoHcp: "1/9 HCP" }
+                {
+                    desde: 10,
+                    hasta: 18,
+                    nombre: "Últimos 9 hoyos",
+                    divisor: 2,
+                    textoHcp: "1/2 HCP"
+                },
+                {
+                    desde: 13,
+                    hasta: 18,
+                    nombre: "Últimos 6 hoyos",
+                    divisor: 3,
+                    textoHcp: "1/3 HCP"
+                },
+                {
+                    desde: 16,
+                    hasta: 18,
+                    nombre: "Últimos 3 hoyos",
+                    divisor: 6,
+                    textoHcp: "1/6 HCP"
+                },
+                {
+                    desde: 18,
+                    hasta: 18,
+                    nombre: "Último hoyo",
+                    divisor: 9,
+                    textoHcp: "1/9 HCP"
+                }
             ];
+
 
             const criteriosAmericana = [
-                { desde: 10, hasta: 18, nombre: "Últimos 9 hoyos" },
-                { desde: 13, hasta: 18, nombre: "Últimos 6 hoyos" },
-                { desde: 16, hasta: 18, nombre: "Últimos 3 hoyos" },
-                { desde: 18, hasta: 18, nombre: "Último hoyo" },
-                { nombre: "Menor diferencia de HCP de la pareja", hcp: true }
+                {
+                    desde: 10,
+                    hasta: 18,
+                    nombre: "Últimos 9 hoyos"
+                },
+                {
+                    desde: 13,
+                    hasta: 18,
+                    nombre: "Últimos 6 hoyos"
+                },
+                {
+                    desde: 16,
+                    hasta: 18,
+                    nombre: "Últimos 3 hoyos"
+                },
+                {
+                    desde: 18,
+                    hasta: 18,
+                    nombre: "Último hoyo"
+                },
+                {
+                    nombre:
+                        "Menor diferencia de HCP de la pareja",
+                    hcp: true
+                }
             ];
 
-            const misHoyos = hoyosPorScorecard[jugador.id] || {};
+
+            const misHoyos =
+                hoyosPorScorecard[jugador.id] || {};
+
 
             for (const rival of rivalesEmpatados) {
-                const hoyosRival = hoyosPorScorecard[rival.id] || {};
+
+                const hoyosRival =
+                    hoyosPorScorecard[rival.id] || {};
+
                 const lineas = [];
+
 
                 const criterios = esScratch
                     ? criteriosScratch
@@ -1488,74 +1756,290 @@
                         ? criteriosAmericana
                         : criteriosNeto;
 
+
                 for (const c of criterios) {
+
                     let miValor;
                     let suValor;
+
                     let textoJugador;
                     let textoRival;
 
+
+                    // ================================
+                    // Diferencia HCP pareja
+                    // ================================
+
                     if (c.hcp) {
 
-                        miValor = diferenciaHcpPareja(jugador);
-                        suValor = diferenciaHcpPareja(rival);
+                        miValor =
+                            diferenciaHcpPareja(jugador);
 
-                        textoJugador = `${miValor}`;
-                        textoRival = `${suValor}`;
-
-                    } else if (esScratch) {
-                        miValor = sumaHoyosArray(misHoyos, c.desde, c.hasta);
-                        suValor = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
-
-                        textoJugador = `${miValor}`;
-                        textoRival = `${suValor}`;
-
-                    } else if (esFourballAmericana()) {
-                        miValor = sumaHoyosArray(misHoyos, c.desde, c.hasta);
-                        suValor = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
-
-                        textoJugador = `${miValor}`;
-                        textoRival = `${suValor}`;
-
-                    } else {
-                        const miSuma = sumaHoyosArray(misHoyos, c.desde, c.hasta);
-                        const suSuma = sumaHoyosArray(hoyosRival, c.desde, c.hasta);
-
-                        miValor = miSuma - (hcpJuego(jugador) / c.divisor);
-                        suValor = suSuma - (hcpJuego(rival) / c.divisor);
+                        suValor =
+                            diferenciaHcpPareja(rival);
 
                         textoJugador =
-                            `${miSuma} - ${c.textoHcp} = ${fmtDesempate(miValor)}`;
+                            `${fmtDesempate(miValor)}`;
 
                         textoRival =
-                            `${suSuma} - ${c.textoHcp} = ${fmtDesempate(suValor)}`;
+                            `${fmtDesempate(suValor)}`;
+
+
+                        // ================================
+                        // SCRATCH
+                        // ================================
+
+                    } else if (esScratch) {
+
+                        miValor =
+                            sumaHoyosArray(
+                                misHoyos,
+                                c.desde,
+                                c.hasta
+                            );
+
+                        suValor =
+                            sumaHoyosArray(
+                                hoyosRival,
+                                c.desde,
+                                c.hasta
+                            );
+
+                        textoJugador =
+                            `${fmtDesempate(miValor)}`;
+
+                        textoRival =
+                            `${fmtDesempate(suValor)}`;
+
+
+                        // ================================
+                        // AMERICANA
+                        // ================================
+
+                    } else if (esFourballAmericana()) {
+
+                        miValor =
+                            sumaHoyosArray(
+                                misHoyos,
+                                c.desde,
+                                c.hasta
+                            );
+
+                        suValor =
+                            sumaHoyosArray(
+                                hoyosRival,
+                                c.desde,
+                                c.hasta
+                            );
+
+                        textoJugador =
+                            `${fmtDesempate(miValor)}`;
+
+                        textoRival =
+                            `${fmtDesempate(suValor)}`;
+
+
+                        // ================================
+                        // MEDAL NETO
+                        // ================================
+
+                    } else {
+
+                        const miSuma =
+                            sumaHoyosArray(
+                                misHoyos,
+                                c.desde,
+                                c.hasta
+                            );
+
+                        const suSuma =
+                            sumaHoyosArray(
+                                hoyosRival,
+                                c.desde,
+                                c.hasta
+                            );
+
+
+                        const miHcpAplicado =
+                            hcpJuego(jugador) /
+                            c.divisor;
+
+                        const suHcpAplicado =
+                            hcpJuego(rival) /
+                            c.divisor;
+
+
+                        miValor =
+                            miSuma -
+                            miHcpAplicado;
+
+                        suValor =
+                            suSuma -
+                            suHcpAplicado;
+
+
+                        textoJugador =
+                            `${miSuma} - ${fmtDesempate(miHcpAplicado)} = ${fmtDesempate(miValor)}`;
+
+                        textoRival =
+                            `${suSuma} - ${fmtDesempate(suHcpAplicado)} = ${fmtDesempate(suValor)}`;
                     }
 
-                    const decisivo = Math.abs(miValor - suValor) > 0.00001;
+
+                    const decisivo =
+                        Math.abs(
+                            miValor - suValor
+                        ) > 0.00001;
+
 
                     lineas.push({
+
                         nombre: c.nombre,
+
                         jugador: textoJugador,
+
                         rival: textoRival,
+
                         decisivo
+
                     });
 
+
                     if (decisivo) {
+
+                        const estoyEnMejor18 =
+                            torneoTieneSerie() &&
+                            criterioSerieSeleccionado ===
+                            "mejor18";
+
+
+                        const titulo =
+                            estoyEnMejor18
+                                ? "Desempate Mejores 18"
+                                : "Desempate automático";
+
+
+                        const fechaJugador =
+                            etiquetaTarjetaDesempate(
+                                jugador
+                            );
+
+                        const fechaRival =
+                            etiquetaTarjetaDesempate(
+                                rival
+                            );
+
+
+                        const resultadoJugador =
+                            esScratch
+                                ? jugador.gross
+                                : (
+                                    jugador.net ??
+                                    jugador.total
+                                );
+
+
+                        const resultadoRival =
+                            esScratch
+                                ? rival.gross
+                                : (
+                                    rival.net ??
+                                    rival.total
+                                );
+
+
+                        const comparacionFechas =
+                            estoyEnMejor18
+                                ? `
+                        <div class="desempate-linea">
+                            <strong>${jugador.display_name}</strong>
+                            — tarjeta utilizada:
+                            ${fechaJugador}
+                        </div>
+
+                        <div class="desempate-linea">
+                            <strong>${rival.display_name}</strong>
+                            — tarjeta utilizada:
+                            ${fechaRival}
+                        </div>
+
+                        <div class="desempate-linea">
+                            <strong>Resultado empatado:</strong>
+                            ${resultadoJugador}
+                        </div>
+                        `
+                                : `
+                        <div class="desempate-linea">
+                            <strong>Empatado con:</strong>
+                            ${rival.display_name}
+                        </div>
+                        `;
+
+
+                        const ganador =
+                            miValor < suValor
+                                ? jugador.display_name
+                                : rival.display_name;
+
+
                         return `
                     <div class="desempate-box">
-                        <h4>Desempate automático</h4>
-                        <div class="desempate-linea"><strong>Empatado con:</strong> ${rival.display_name}</div>
+
+                        <h4>${titulo}</h4>
+
+                        ${comparacionFechas}
+
                         ${lineas.map(l => `
+
                             <div class="desempate-linea">
-                                ${l.decisivo ? "<strong>" : ""}
-                                ${l.nombre}: ${l.jugador} / Rival: ${l.rival}${l.decisivo ? " ← criterio decisivo" : ""}
-                                ${l.decisivo ? "</strong>" : ""}
+
+                                ${l.decisivo
+                                ? "<strong>"
+                                : ""
+                            }
+
+                                ${l.nombre}:
+
+                                ${jugador.display_name}:
+                                ${l.jugador}
+
+                                /
+
+                                ${rival.display_name}:
+                                ${l.rival}
+
+                                ${l.decisivo
+                                ? " ← criterio decisivo"
+                                : ""
+                            }
+
+                                ${l.decisivo
+                                ? "</strong>"
+                                : ""
+                            }
+
                             </div>
+
                         `).join("")}
+
+
+                        <div
+                            class="desempate-linea"
+                            style="margin-top:10px;"
+                        >
+                            <strong>
+                                ${ganador} obtiene la mejor posición
+                                por menor resultado en el criterio
+                                de desempate.
+                            </strong>
+                        </div>
+
                     </div>
                 `;
                     }
                 }
             }
+
 
             return "";
         }
@@ -1737,8 +2221,178 @@
                 .sort((a, b) => compararJugadores(a, b));
         }
 
-        function detalleJugadorHtml(j, posicion, empatados, categoriaNombre, esScratch = false, scorecardDetalle = null, idx = "") {
-            const jDetalle = scorecardDetalle || (torneoTieneSerie() ? scorecardRondaActual(j) : null) || j;
+        function empatadosMejor18Serie(j, esScratch = false) {
+
+            if (
+                !torneoTieneSerie() ||
+                criterioSerieSeleccionado !== "mejor18"
+            ) {
+                return [];
+            }
+
+            const miKey = claveJugadorSerie(j);
+            const miResumen = resumenSerieJugador(j, esScratch);
+            const miMejor = miResumen.tarjetasUsadas?.[0]?.scorecard;
+
+            if (!miMejor || miResumen.suma === 999999) {
+                return [];
+            }
+
+            return jugadoresRepresentativosSerie()
+
+                // No compararse consigo mismo
+                .filter(rival =>
+                    claveJugadorSerie(rival) !== miKey
+                )
+
+                // Debe pertenecer a la misma clasificación
+                .filter(rival => {
+
+                    if (esScratch) {
+
+                        return (
+                            generoJugador(rival) === generoJugador(j) &&
+                            jugadorEnRangoScratch(
+                                rival,
+                                generoJugador(j)
+                            )
+                        );
+
+                    }
+
+                    const categoriaJugador =
+                        normalizarTexto(
+                            j.category_name ||
+                            j.tournament_categories?.name ||
+                            ""
+                        );
+
+                    const categoriaRival =
+                        normalizarTexto(
+                            rival.category_name ||
+                            rival.tournament_categories?.name ||
+                            ""
+                        );
+
+                    return categoriaJugador === categoriaRival;
+                })
+
+                // Tiene que cumplir Mejor 18
+                .filter(rival =>
+                    cumpleMinimoSerie(rival, esScratch)
+                )
+
+                // Solamente los que tienen el MISMO Mejor 18
+                .filter(rival => {
+
+                    const resumenRival =
+                        resumenSerieJugador(
+                            rival,
+                            esScratch
+                        );
+
+                    return Math.abs(
+                        Number(resumenRival.suma) -
+                        Number(miResumen.suma)
+                    ) < 0.00001;
+                })
+
+                // Convertimos cada jugador en la tarjeta
+                // concreta utilizada para Mejor 18
+                .map(rival => {
+
+                    const resumenRival =
+                        resumenSerieJugador(
+                            rival,
+                            esScratch
+                        );
+
+                    return resumenRival
+                        .tarjetasUsadas?.[0]?.scorecard || null;
+                })
+
+                .filter(Boolean)
+
+                // Orden según el mismo desempate
+                .sort((a, b) =>
+                    compararTarjetasSerie(
+                        a,
+                        b,
+                        esScratch
+                    )
+                );
+        }
+
+        function etiquetaTarjetaDesempate(sc) {
+
+            if (!sc) return "";
+
+            const fecha =
+                formatearFecha(sc.tournament_date);
+
+            const torneo =
+                String(
+                    sc.tournament_name || ""
+                ).trim();
+
+            if (fecha && torneo) {
+                return `${fecha} · ${torneo}`;
+            }
+
+            if (fecha) {
+                return fecha;
+            }
+
+            if (torneo) {
+                return torneo;
+            }
+
+            return "Fecha no disponible";
+        }
+
+        function detalleJugadorHtml(
+            j,
+            posicion,
+            empatados,
+            categoriaNombre,
+            esScratch = false,
+            scorecardDetalle = null,
+            idx = ""
+        ) {
+
+            // ========================================
+            // TARJETA QUE DEBE MOSTRARSE EN EL DETALLE
+            // ========================================
+
+            let tarjetaClasificacion = null;
+
+            if (
+                torneoTieneSerie() &&
+                criterioSerieSeleccionado === "mejor18"
+            ) {
+
+                const resumen =
+                    resumenSerieJugador(
+                        j,
+                        esScratch
+                    );
+
+                tarjetaClasificacion =
+                    resumen
+                        .tarjetasUsadas?.[0]
+                        ?.scorecard || null;
+            }
+
+
+            const jDetalle =
+                scorecardDetalle ||
+                tarjetaClasificacion ||
+                (
+                    torneoTieneSerie()
+                        ? scorecardRondaActual(j)
+                        : null
+                ) ||
+                j;
             const posicionDetalle = torneoTieneSerie()
                 ? (jDetalle ? posicionScorecardSerie(jDetalle) : "")
                 : (scorecardDetalle ? posicionScorecardSerie(jDetalle) : posicion);
@@ -1768,7 +2422,28 @@
           </div>
 
           ${otrosNetosSerieHtml(j, jDetalle, idx)}
-          ${obtenerDetalleDesempate(jDetalle, torneoTieneSerie() ? empatadosParaScorecardDetalle(jDetalle, esScratch) : empatados, esScratch)}
+          ${obtenerDetalleDesempate(
+                jDetalle,
+
+                torneoTieneSerie() &&
+                    criterioSerieSeleccionado === "mejor18"
+
+                    ? empatadosMejor18Serie(
+                        j,
+                        esScratch
+                    )
+
+                    : torneoTieneSerie()
+
+                        ? empatadosParaScorecardDetalle(
+                            jDetalle,
+                            esScratch
+                        )
+
+                        : empatados,
+
+                esScratch
+            )}
           ${detalleDesktop(jDetalle)}
           ${detalleMobile(jDetalle)}
         </div>

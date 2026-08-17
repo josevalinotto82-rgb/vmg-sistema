@@ -4673,12 +4673,7 @@ Gracias.
             const results = document.getElementById("playerSearchResults");
             const manualWrap = document.getElementById("playerManualPopup");
 
-            const etapaParejaClick =
-              pickPlayerTrigger.dataset.etapaPareja ||
-              (pickPlayerTrigger.dataset.jugadorBaseId ? "segundo" : "primero");
-
             const jugadorBaseId =
-              pickPlayerTrigger.dataset.jugadorBaseId ||
               seleccionParejaActual.jugadorBaseId ||
               input?.dataset?.jugadorBaseId ||
               "";
