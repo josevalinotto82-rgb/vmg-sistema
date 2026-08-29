@@ -2543,8 +2543,31 @@
 
         function obtenerScratchItems(generoFiltro = "all") {
             let items = scorecards.filter(s => (s.card_status === "valid" || s.card_status === "cargada") && n(s.gross) != null);
-            items = items.filter(s => { const idx = n(s.official_index ?? s.manual_index); return idx != null && idx >= -6 && idx <= 9; });
-            if (generoFiltro !== "all") items = items.filter(s => normalizarGenero(s.player_gender) === generoFiltro);
+
+            // En Scratch Damas participan todas las tarjetas válidas: la
+            // clasificación se define exclusivamente por el menor gross.
+            // Se conserva el límite histórico de índice para Caballeros.
+            if (generoFiltro !== "female") {
+                items = items.filter(s => {
+                    const idx = n(s.official_index ?? s.manual_index);
+                    return idx != null && idx >= -6 && idx <= 9;
+                });
+            }
+
+            if (generoFiltro !== "all") {
+                items = items.filter(s => {
+                    const meta = categoriaMetaPorNombre(s.category_name);
+                    const referenciaGenero = s.player_gender || meta?.gender || s.category_name || s.tee_name;
+                    const textoGenero = String(referenciaGenero || "").toLowerCase();
+                    const genero = textoGenero.includes("dama") || textoGenero.includes("mujer") || textoGenero.includes("roja")
+                        ? "female"
+                        : textoGenero.includes("caballero") || textoGenero.includes("hombre")
+                            ? "male"
+                            : normalizarGenero(referenciaGenero);
+                    return genero === generoFiltro;
+                });
+            }
+
             return items.sort((a, b) => compareScore(a, b, "gross"));
         }
 
@@ -3400,7 +3423,7 @@
     `;
             }
 
-            function renderPrintScratch(titulo, items) {
+            function renderPrintScratch(titulo, items, limite) {
                 if (!items.length) return "";
 
                 let out = `<div class="print-category">${esc(titulo)}</div>`;
@@ -3408,7 +3431,7 @@
                 items
                     .slice()
                     .sort((a, b) => compareScore(a, b, "gross"))
-                    .slice(0, topScratchCab || topScratchDam || 2)
+                    .slice(0, limite)
                     .reverse()
                     .forEach((s, idx, arr) => {
                         const pos = arr.length - idx;
@@ -3484,8 +3507,8 @@
                 html += renderPrintCategoria(cat, items);
             });
 
-            html += renderPrintScratch("Scratch Damas", scratchDam);
-            html += renderPrintScratch("Scratch Caballeros", scratchCab);
+            html += renderPrintScratch("Scratch Damas", scratchDam, topScratchDam);
+            html += renderPrintScratch("Scratch Caballeros", scratchCab, topScratchCab);
 
             html += `</div>`;
 
