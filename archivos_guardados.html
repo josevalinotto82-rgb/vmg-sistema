@@ -779,10 +779,320 @@
     .snapshot-shell .print-page {
       border: 1px dashed #d1d5db;
       margin: 0 0 12px;
-      padding: 12px;
-      background: white
+      padding: 24px;
+      background: white;
+      min-width: 720px;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      color: #111
+    }
+
+    /* Vista previa en pantalla. Replica el informe sin afectar la impresión. */
+    .snapshot-shell .print-letterhead {
+      display: grid;
+      grid-template-columns: 130px minmax(0, 1fr) 145px;
+      align-items: center;
+      min-height: 95px;
+      padding-bottom: 15px;
+      margin-bottom: 18px;
+      border-bottom: 2px solid #166534
+    }
+
+    .snapshot-shell .print-logo {
+      display: block;
+      width: 102px;
+      height: 83px;
+      object-fit: contain;
+      object-position: left center
+    }
+
+    .snapshot-shell .print-letterhead-title {
+      text-align: center;
+      font-size: 22px;
+      line-height: 1.08;
+      font-weight: 900;
+      text-transform: uppercase
+    }
+
+    .snapshot-shell .print-letterhead-date {
+      text-align: right;
+      font-size: 13px;
+      font-weight: 800
+    }
+
+    .snapshot-shell .print-page-subtitle {
+      text-align: center;
+      color: #166534;
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      margin: 0 0 22px
+    }
+
+    .snapshot-shell .print-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 18px;
+      margin: 10px 0 24px;
+      font-size: 13px
+    }
+
+    .snapshot-shell .print-meta-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid #d6ded3;
+      border-left: 4px solid #166534;
+      border-radius: 4px;
+      background: #f7faf6
+    }
+
+    .snapshot-shell .print-meta-label,
+    .snapshot-shell .print-meta-value { font-weight: 800 }
+    .snapshot-shell .print-meta-value { color: #166534; font-size: 15px }
+    .snapshot-shell .print-approach-title,
+    .snapshot-shell .print-section-title {
+      font-size: 18px;
+      font-weight: 900;
+      margin: 18px 0 8px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #166534
+    }
+
+    .snapshot-shell .print-winner.approach-print {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr);
+      gap: 24px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #ddd;
+      font-size: 15px;
+      font-weight: 700
+    }
+
+    .snapshot-shell .print-winner.approach-print>div:first-child {
+      padding-right: 18px;
+      border-right: 1px solid #b7c4b4;
+      white-space: nowrap
+    }
+
+    .snapshot-shell .print-special-winner {
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase
+    }
+
+    .snapshot-shell .print-category {
+      font-size: 14px;
+      font-weight: 900;
+      margin: 12px 0 4px
+    }
+
+    .snapshot-shell .print-winner-premio {
+      display: grid;
+      grid-template-columns: 90px minmax(0, 1fr) 120px;
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid #ddd;
+      padding: 6px 0
+    }
+
+    .snapshot-shell .print-winner-premio .pos { font-weight: 900 }
+    .snapshot-shell .print-winner-premio .name {
+      font-size: 15px;
+      font-weight: 900;
+      text-transform: uppercase
+    }
+    .snapshot-shell .print-winner-premio .score-big {
+      font-weight: 900;
+      text-align: right
+    }
+
+    .snapshot-shell .print-grid-table,
+    .snapshot-shell .print-series-table,
+    .snapshot-shell .print-hole-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 10px;
+      margin-bottom: 10px
+    }
+
+    .snapshot-shell .print-grid-table th,
+    .snapshot-shell .print-grid-table td,
+    .snapshot-shell .print-series-table th,
+    .snapshot-shell .print-series-table td,
+    .snapshot-shell .print-hole-table th,
+    .snapshot-shell .print-hole-table td {
+      border: 1px solid #bbb;
+      padding: 4px;
+      text-align: center
+    }
+
+    .snapshot-shell .print-grid-table th,
+    .snapshot-shell .print-series-table th,
+    .snapshot-shell .print-hole-table th {
+      background: #e5e7eb;
+      font-weight: 900
+    }
+
+    .snapshot-shell .print-rank-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 4px;
+      margin-top: 8px
+    }
+
+    .snapshot-shell .print-rank-cell {
+      border: 1px solid #ddd;
+      padding: 4px;
+      font-size: 10px
+    }
+    /* Compatibilidad con los snapshots del nuevo resumen con membrete. */
+    @media print {
+      .print-page {
+        page-break-after: always;
+        break-after: page;
+        height: 275mm;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .print-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      .print-letterhead {
+        display: grid;
+        grid-template-columns: 34mm 1fr 42mm;
+        align-items: center;
+        min-height: 25mm;
+        padding-bottom: 4mm;
+        margin-bottom: 5mm;
+        border-bottom: 2px solid #166534;
+      }
+
+      .print-logo {
+        display: block;
+        width: 27mm;
+        height: 22mm;
+        object-fit: contain;
+        object-position: left center;
+      }
+
+      .print-letterhead-title {
+        text-align: center;
+        font-size: 22px;
+        line-height: 1.05;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .print-letterhead-date {
+        text-align: right;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .print-page-subtitle {
+        text-align: center;
+        color: #166534;
+        font-size: 15px;
+        font-weight: 900;
+        text-transform: uppercase;
+        margin: -2mm 0 5mm;
+      }
+
+      .print-winner-premio {
+        display: grid;
+        grid-template-columns: 90px minmax(0, 1fr) 120px;
+        gap: 10px;
+        align-items: center;
+        border-bottom: 1px solid #ddd;
+        padding: 6px 0;
+      }
+
+      .print-winner-premio .pos { font-size: 14px; font-weight: 900; }
+      .print-winner-premio .name {
+        font-size: 16px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+      .print-winner-premio .score-big {
+        font-size: 16px;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .print-page.compact .print-category { margin: 7px 0 2px; }
+      .print-page.compact .print-winner-premio { padding: 3px 0; }
+      .print-page.compact .print-winner-premio .name { font-size: 13px; }
+      .print-page.compact .print-winner-premio .pos,
+      .print-page.compact .print-winner-premio .score-big { font-size: 12px; }
+
+      .print-cover-page .print-letterhead {
+        grid-template-columns: 48mm 1fr 48mm;
+        min-height: 38mm;
+        margin-bottom: 10mm;
+        padding-bottom: 6mm;
+      }
+      .print-cover-page .print-logo { width: 42mm; height: 34mm; }
+      .print-cover-page .print-letterhead-title { font-size: 29px; line-height: 1.12; }
+      .print-cover-page .print-letterhead-date { font-size: 15px; }
+      .print-cover-page .print-page-subtitle { font-size: 20px; margin: 0 0 10mm; }
+      .print-cover-page .print-meta {
+        grid-template-columns: 1fr 1fr;
+        gap: 6mm 10mm;
+        margin: 0 0 12mm;
+        font-size: 16px;
+      }
+      .print-cover-page .print-meta-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 16mm;
+        padding: 4mm 5mm;
+        align-items: center;
+        border: 1px solid #cbd5c5;
+        border-left: 4px solid #166534;
+        border-radius: 4px;
+        background: #f7faf6;
+      }
+      .print-cover-page .print-meta-value { font-size: 19px; color: #166534; }
+      .print-cover-page .print-approach-title {
+        font-size: 22px;
+        padding-bottom: 3mm;
+        border-bottom: 2px solid #166534;
+      }
+      .print-cover-page .print-approach-row { font-size: 17px; padding: 3mm 0; }
+      .print-cover-page .print-winner.approach-print {
+        display: grid;
+        grid-template-columns: 52mm minmax(0, 1fr);
+        column-gap: 8mm;
+        align-items: center;
+        width: 100%;
+      }
+      .print-cover-page .print-winner.approach-print > div {
+        min-width: 0;
+        white-space: normal;
+        overflow: visible;
+      }
+      .print-cover-page .print-winner.approach-print > div:first-child {
+        padding-right: 5mm;
+        border-right: 1px solid #b7c4b4;
+        white-space: nowrap;
+      }
+      .print-cover-page .print-special-winner {
+        font-size: 18px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
     }
   </style>
+  <link rel="preload" href="escudo_pagina.png" as="image">
 </head>
 
 <body>
@@ -891,7 +1201,38 @@
     $("indexFiltro").addEventListener("change", renderIndexSeleccionado);
     $("btnCargarPagos").addEventListener("click", cargarPagos);
     $("selectPagos").addEventListener("change", renderPagosSeleccionado);
-    $("btnImprimir").addEventListener("click", () => { if (!ultimoPrintHtml) { alert("Primero seleccioná un archivo para imprimir."); return; } $("printArea").innerHTML = ultimoPrintHtml; window.print(); });
+    $("btnImprimir").addEventListener("click", imprimirArchivoSeleccionado);
+
+    async function imprimirArchivoSeleccionado() {
+      if (!ultimoPrintHtml) {
+        alert("Primero seleccioná un archivo para imprimir.");
+        return;
+      }
+
+      const area = $("printArea");
+      area.innerHTML = ultimoPrintHtml;
+
+      // Normaliza snapshots creados antes del cambio de nombre del escudo.
+      area.querySelectorAll('img[src="logo-vmgc.png"]').forEach(img => {
+        img.src = "escudo_pagina.png";
+      });
+
+      // Si el navegador todavía está decodificando una imagen, esperamos sólo
+      // lo necesario. El preload del <head> evita buscar el escudo al imprimir.
+      const imagenes = [...area.querySelectorAll("img")];
+      await Promise.all(imagenes.map(img => {
+        if (img.complete) return Promise.resolve();
+        return Promise.race([
+          new Promise(resolve => {
+            img.addEventListener("load", resolve, { once: true });
+            img.addEventListener("error", resolve, { once: true });
+          }),
+          new Promise(resolve => setTimeout(resolve, 1500))
+        ]);
+      }));
+
+      window.print();
+    }
 
     function activarTab(tab) {
       activeTab = tab;
@@ -957,6 +1298,9 @@
       }
 
       $("vistaResultados").innerHTML = html;
+      $("vistaResultados").querySelectorAll('.snapshot-shell img[src="logo-vmgc.png"], .snapshot-shell img[src="escudo_pagina.png"]').forEach(img => {
+        img.src = "escudo_pagina.png";
+      });
       show("vistaResultados", true);
     }
 
