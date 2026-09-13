@@ -2022,8 +2022,27 @@
             if (directo) return directo;
 
             const nombre = normalizarTexto(cat?.name || "");
-            if (nombre.includes("dama") || nombre.includes("damas")) return "female";
-            if (nombre.includes("caballero") || nombre.includes("caballeros")) return "male";
+
+            if (nombre.includes("dama") || nombre.includes("damas")) {
+                return "female";
+            }
+
+            /*
+             * En categorías NEW la categoría femenina puede llamarse
+             * simplemente "Rojas". Para el orden/render de resultados
+             * debe reconocerse como Damas.
+             */
+            if (
+                esCategoriaNuevaResultado(cat) &&
+                (nombre.includes("roja") || nombre.includes("rojas"))
+            ) {
+                return "female";
+            }
+
+            if (nombre.includes("caballero") || nombre.includes("caballeros")) {
+                return "male";
+            }
+
             return "";
         }
 
@@ -2039,7 +2058,10 @@
             if (idx === null) return false;
 
             if (genero === "male") return idx >= -6 && idx <= 9;
-            if (genero === "female") return idx >= -6 && idx <= 54;
+
+            // Damas: todas compiten por Scratch.
+            if (genero === "female") return idx >= -10 && idx <= 54;
+
             return false;
         }
 
@@ -4080,6 +4102,18 @@
                     false
                 );
             } else {
+                const esNewMedal =
+                    torneoUsaSistemaNuevoResultado() &&
+                    esMedal();
+
+                /*
+                 * TORNEOS NEW:
+                 * Scratch Caballeros va siempre arriba de todo.
+                 */
+                if (esNewMedal) {
+                    renderScratch("male");
+                }
+
                 categorias
                     .slice()
                     .sort((a, b) => {
@@ -4103,8 +4137,24 @@
 
                         const generoCat = generoCategoria(cat);
 
-                        if (generoCat === "male") renderScratch("male");
-                        if (generoCat === "female") renderScratch("female");
+                        /*
+                         * NEW:
+                         * Scratch Caballeros ya se agregó arriba de todo.
+                         * Scratch Damas se agrega JUSTO antes de la categoría
+                         * femenina (Rojas).
+                         */
+                        if (esNewMedal) {
+                            if (generoCat === "female") {
+                                renderScratch("female");
+                            }
+                        } else {
+                            /*
+                             * LEGACY:
+                             * conservar exactamente el comportamiento anterior.
+                             */
+                            if (generoCat === "male") renderScratch("male");
+                            if (generoCat === "female") renderScratch("female");
+                        }
 
                         let lista = jugadoresParaMostrar
                             .filter(j => perteneceCategoriaSerie(j, cat))
@@ -4153,6 +4203,14 @@
 
                         renderTablaCategoria(cat.name, lista, false);
                     });
+
+                /*
+                 * Respaldo para NEW: si no hubo categoría femenina reconocible,
+                 * mostrar Scratch Damas igualmente una sola vez.
+                 */
+                if (esNewMedal && !scratchDamasAgregado) {
+                    renderScratch("female");
+                }
 
             }
 

@@ -1028,10 +1028,45 @@
                 text-overflow: clip;
             }
 
+            /*
+             * HOJAS DE SERIE
+             * Mantienen una sola A4, pero visualmente siguen la hoja 2.
+             * Se ahorra espacio en márgenes y separaciones, NO achicando
+             * excesivamente la tipografía.
+             */
             .print-series-page {
-                page-break-after: avoid;
+                page-break-after: always;
                 break-after: page;
-                overflow: visible;
+                overflow: hidden;
+                height: 275mm;
+            }
+
+            /* Membrete casi idéntico al de la hoja 2. */
+            .print-series-page .print-letterhead {
+                grid-template-columns: 32mm 1fr 40mm;
+                min-height: 23mm;
+                padding-bottom: 3mm;
+                margin-bottom: 3.5mm;
+            }
+
+            .print-series-page .print-logo {
+                width: 25mm;
+                height: 20mm;
+            }
+
+            .print-series-page .print-letterhead-title {
+                font-size: 21px;
+                line-height: 1.02;
+            }
+
+            .print-series-page .print-letterhead-date {
+                font-size: 11.5px;
+            }
+
+            .print-series-page .print-page-subtitle {
+                font-size: 14px;
+                margin: -1mm 0 3mm;
+                line-height: 1.05;
             }
 
             .print-series-page .print-title {
@@ -1040,34 +1075,114 @@
             }
 
             .print-series-page .print-date {
-                font-size: 12px;
-                margin-bottom: 6px;
+                font-size: 11px;
+                margin: 0 0 2.5mm;
+                line-height: 1.1;
             }
 
             .print-series-page .print-section-title {
                 font-size: 13px;
-                margin: 7px 0 4px;
+                margin: 4px 0 2px;
                 padding-bottom: 2px;
             }
 
             .print-series-page .print-meta {
-                font-size: 9px;
-                line-height: 1.25;
-                margin: 3px 0 5px;
+                display: block;
+                font-size: 10px;
+                line-height: 1.15;
+                margin: 1mm 0 2.5mm;
+            }
+
+            /* Misma presencia visual que la hoja 2. */
+            .print-series-page .print-category {
+                font-size: 14px;
+                line-height: 1.05;
+                margin: 3mm 0 1mm;
+            }
+
+            .print-series-page .print-winner-premio {
+                grid-template-columns: 25mm minmax(0, 1fr) 33mm;
+                gap: 2.5mm;
+                padding: 1.5mm 0;
+                line-height: 1.05;
+            }
+
+            .print-series-page .print-winner-premio .pos {
+                font-size: 12.5px;
+                line-height: 1.05;
+            }
+
+            .print-series-page .print-winner-premio .name {
+                font-size: 14.5px;
+                line-height: 1.05;
+            }
+
+            .print-series-page .print-winner-premio .score-big {
+                font-size: 13.5px;
+                line-height: 1.05;
+            }
+
+            .print-series-page .print-winner-premio .serie-detalle-premio {
+                font-size: 10px !important;
+                line-height: 1.05 !important;
+                margin-top: 0.8mm !important;
+                font-weight: 700 !important;
+                color: #444 !important;
             }
 
             .print-series-page .print-series-table {
-                font-size: 7.6px;
-                margin: 3px 0 6px;
+                font-size: 8.5px;
+                margin: 3px 0 5px;
             }
 
             .print-series-page .print-series-table th,
             .print-series-page .print-series-table td {
-                padding: 2px 3px;
-                line-height: 1.12;
+                padding: 1.5px 2.5px;
+                line-height: 1.08;
                 white-space: normal;
                 word-break: normal;
-                overflow: visible;
+                overflow: hidden;
+            }
+
+            /*
+             * Sólo si la cantidad REAL de premios es alta se ajustan
+             * levemente las separaciones. Los tamaños de letra se mantienen
+             * cercanos a la hoja 2.
+             */
+            .print-series-page.compact .print-letterhead {
+                min-height: 21mm;
+                margin-bottom: 2.5mm;
+            }
+
+            .print-series-page.compact .print-logo {
+                width: 23mm;
+                height: 18mm;
+            }
+
+            .print-series-page.compact .print-page-subtitle {
+                margin-bottom: 2mm;
+            }
+
+            .print-series-page.compact .print-category {
+                font-size: 13px;
+                margin: 2mm 0 0.6mm;
+            }
+
+            .print-series-page.compact .print-winner-premio {
+                padding: 1mm 0;
+            }
+
+            .print-series-page.compact .print-winner-premio .name {
+                font-size: 13.5px;
+            }
+
+            .print-series-page.compact .print-winner-premio .pos,
+            .print-series-page.compact .print-winner-premio .score-big {
+                font-size: 12px;
+            }
+
+            .print-series-page.compact .print-winner-premio .serie-detalle-premio {
+                font-size: 9.5px !important;
             }
 
             .print-series-table th {
@@ -2319,7 +2434,20 @@
             return texto.includes("scratch") || texto.includes("scrach");
         }
 
-        function esElegibleScratchSerie(item) {
+        function esElegibleScratchSerie(item, generoFiltro = "male") {
+            /*
+             * SCRATCH DAMAS:
+             * participan TODAS las damas válidas, sin límite de Index.
+             * En VMGC hay una sola categoría femenina, por lo que el Scratch
+             * Damas comprende todo el rango de participantes.
+             *
+             * SCRATCH CABALLEROS:
+             * conserva el criterio histórico vigente.
+             */
+            if (generoFiltro === "female") {
+                return true;
+            }
+
             const idx = n(item.official_index ?? item.manual_index);
             return idx != null && idx >= -6 && idx <= 9;
         }
@@ -2388,11 +2516,11 @@
             };
 
             const scratchCab = topScratchCab > 0
-                ? items.filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "male").slice().sort(ordenarScratch).slice(0, topScratchCab)
+                ? items.filter(x => esElegibleScratchSerie(x, "male") && generoSerie(x) === "male").slice().sort(ordenarScratch).slice(0, topScratchCab)
                 : [];
 
             const scratchDam = topScratchDam > 0
-                ? items.filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "female").slice().sort(ordenarScratch).slice(0, topScratchDam)
+                ? items.filter(x => esElegibleScratchSerie(x, "female") && generoSerie(x) === "female").slice().sort(ordenarScratch).slice(0, topScratchDam)
                 : [];
 
             const scratchIds = new Set([
@@ -3586,11 +3714,11 @@
             };
 
             const scratchCab = topScratchCab > 0
-                ? items.filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "male").slice().sort(ordenarScratch).slice(0, topScratchCab)
+                ? items.filter(x => esElegibleScratchSerie(x, "male") && generoSerie(x) === "male").slice().sort(ordenarScratch).slice(0, topScratchCab)
                 : [];
 
             const scratchDam = topScratchDam > 0
-                ? items.filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "female").slice().sort(ordenarScratch).slice(0, topScratchDam)
+                ? items.filter(x => esElegibleScratchSerie(x, "female") && generoSerie(x) === "female").slice().sort(ordenarScratch).slice(0, topScratchDam)
                 : [];
 
             const scratchIds = new Set([
@@ -3775,7 +3903,7 @@
             <div class="pos">${pos}° puesto</div>
             <div>
                 <div class="name">${esc(item.display_name || "")}</div>
-                ${detalle ? `<div style="font-size:11px;font-weight:700;color:#444;margin-top:2px">${esc(detalle)}</div>` : ""}
+                ${detalle ? `<div class="serie-detalle-premio" style="font-size:11px;font-weight:700;color:#444;margin-top:2px">${esc(detalle)}</div>` : ""}
             </div>
             <div class="score-big">${label}: ${fmt(valor, 0)}</div>
         </div>
@@ -3875,7 +4003,7 @@
 
             const scratchDam = topScratchDam > 0
                 ? items
-                    .filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "female")
+                    .filter(x => esElegibleScratchSerie(x, "female") && generoSerie(x) === "female")
                     .slice()
                     .sort(ordenarScratch)
                     .slice(0, topScratchDam)
@@ -3883,7 +4011,7 @@
 
             const scratchCab = topScratchCab > 0
                 ? items
-                    .filter(x => esElegibleScratchSerie(x) && generoSerie(x) === "male")
+                    .filter(x => esElegibleScratchSerie(x, "male") && generoSerie(x) === "male")
                     .slice()
                     .sort(ordenarScratch)
                     .slice(0, topScratchCab)
@@ -3909,7 +4037,13 @@
                 .sort((a, b) => compararCategoriasPremios(a[0], b[0]));
 
             let html = `
-        <div class="print-page print-series-page ${items.length > 30 ? "compact" : ""}">
+        <div class="print-page print-series-page ${
+            (
+                categoriasOrdenadas.length * topCategoria +
+                scratchDam.length +
+                scratchCab.length
+            ) > 12 ? "compact" : ""
+        }">
             ${renderPrintMembrete(titulo)}
             <div class="print-date">${subtitulo}</div>
     `;
@@ -4140,7 +4274,17 @@
                     .trim() === texto
             );
             const genero = normalizarGenero(meta?.gender || nombre);
-            const esDamas = genero === "female" || texto.includes("dama");
+
+            // En torneos NEW la categoría femenina puede llamarse simplemente
+            // "Rojas". Debe imprimirse antes de todas las categorías de caballeros.
+            // Para legacy conservamos el criterio histórico existente.
+            const esDamas =
+                genero === "female" ||
+                texto.includes("dama") ||
+                (
+                    torneoUsaSistemaNuevo() &&
+                    (texto.includes("roja") || texto.includes("rojas"))
+                );
             const numeroValido = value => value == null || value === "" ? null : n(value);
             let maximo = numeroValido(meta?.playing_handicap_max) ?? numeroValido(meta?.index_max);
             let minimo = numeroValido(meta?.playing_handicap_min) ?? numeroValido(meta?.index_min);
