@@ -3164,6 +3164,36 @@
 
             if (n.includes("scratch")) return 0;
 
+            /*
+             * FOURBALL CLÁSICO LEGACY
+             * Orden histórico por categoría de HCP de pareja.
+             * Se reconoce por el nombre, antes de aplicar las reglas
+             * de categorías Medal.
+             */
+            if (n.includes("clasico") || n.includes("clásico")) {
+                if (
+                    n.includes("0 a 7") ||
+                    n.includes("0 7") ||
+                    n.includes("hasta 7")
+                ) return 10;
+
+                if (
+                    n.includes("8 a 14") ||
+                    n.includes("8 14") ||
+                    n.includes("8 a 15") ||
+                    n.includes("8 15")
+                ) return 20;
+
+                if (
+                    n.includes("15 a 54") ||
+                    n.includes("15 54") ||
+                    n.includes("16 a 54") ||
+                    n.includes("16 54")
+                ) return 30;
+
+                return 90;
+            }
+
             // NEGRAS
             if (
                 n.includes("negra") ||
@@ -3985,79 +4015,146 @@
                     ? jugadoresRepresentativosSerie()
                     : jugadores;
 
-            categorias
-                .slice()
-                .sort((a, b) => {
-                    const usarOrdenHistorico =
-                        torneoActual?.legacy ||
-                        torneoUsaSistemaLegacyResultado();
+            /*
+             * =========================================================
+             * AMERICANA LEGACY
+             * =========================================================
+             *
+             * En los torneos viejos Fourball Americana no hay categorías
+             * competitivas: todas las parejas juegan contra todas.
+             *
+             * Por eso se ignoran las categorías históricas SOLO para la
+             * presentación del resultado y se muestra una única tabla.
+             *
+             * Los torneos NEW NO entran acá.
+             */
+            if (
+                torneoUsaSistemaLegacyResultado() &&
+                esFourballAmericana()
+            ) {
+                const unicosAmericana = new Map();
 
-                    const oa = usarOrdenHistorico
-                        ? ordenCategoriaHistorica(a.name)
-                        : (a.display_order ?? 99);
+                jugadoresParaMostrar.forEach(j => {
+                    const key = String(j?.id || "").trim() ||
+                        `${normalizarTexto(j?.display_name || "")}|${j?.gross ?? ""}|${j?.net ?? j?.total ?? ""}`;
 
-                    const ob = usarOrdenHistorico
-                        ? ordenCategoriaHistorica(b.name)
-                        : (b.display_order ?? 99);
-
-                    if (oa !== ob) return oa - ob;
-
-                    return String(a.name || "").localeCompare(String(b.name || ""), "es");
-                })
-                .forEach(cat => {
-
-                    const generoCat = generoCategoria(cat);
-
-                    if (generoCat === "male") renderScratch("male");
-                    if (generoCat === "female") renderScratch("female");
-
-                    let lista = jugadoresParaMostrar
-                        .filter(j => perteneceCategoriaSerie(j, cat))
-                        .filter(j => {
-                            /*
-                             * El resultado del día conserva el funcionamiento actual.
-                             */
-                            if (
-                                !torneoTieneSerie() ||
-                                criterioSerieSeleccionado === "dia"
-                            ) {
-                                return true;
-                            }
-
-                            /*
-                             * En las clasificaciones especiales no se muestran
-                             * jugadores que no cumplen el mínimo requerido.
-                             */
-                            return cumpleMinimoSerie(j, false);
-                        })
-                        .slice()
-                        .sort((a, b) => {
-                            if (!torneoTieneSerie()) {
-                                return compararJugadores(a, b);
-                            }
-
-                            if (criterioSerieSeleccionado === "dia") {
-                                return compararSeriePorRondaActual(a, b);
-                            }
-
-                            return compararClasificacionSerie(a, b, false);
-                        });
-
-                    /*
-                     * Las clasificaciones especiales muestran
-                     * únicamente los primeros 15 resultados.
-                     */
-                    if (
-                        torneoTieneSerie() &&
-                        criterioSerieSeleccionado !== "dia"
-                    ) {
-                        lista = lista.slice(0, 15);
+                    if (!unicosAmericana.has(key)) {
+                        unicosAmericana.set(key, j);
                     }
-
-                    if (!lista.length) return;
-
-                    renderTablaCategoria(cat.name, lista, false);
                 });
+
+                let listaAmericanaLegacy = Array.from(unicosAmericana.values())
+                    .filter(j => {
+                        if (
+                            !torneoTieneSerie() ||
+                            criterioSerieSeleccionado === "dia"
+                        ) {
+                            return true;
+                        }
+
+                        return cumpleMinimoSerie(j, false);
+                    })
+                    .slice()
+                    .sort((a, b) => {
+                        if (!torneoTieneSerie()) {
+                            return compararJugadores(a, b);
+                        }
+
+                        if (criterioSerieSeleccionado === "dia") {
+                            return compararSeriePorRondaActual(a, b);
+                        }
+
+                        return compararClasificacionSerie(a, b, false);
+                    });
+
+                if (
+                    torneoTieneSerie() &&
+                    criterioSerieSeleccionado !== "dia"
+                ) {
+                    listaAmericanaLegacy = listaAmericanaLegacy.slice(0, 15);
+                }
+
+                renderTablaCategoria(
+                    "General",
+                    listaAmericanaLegacy,
+                    false
+                );
+            } else {
+                categorias
+                    .slice()
+                    .sort((a, b) => {
+                        const usarOrdenHistorico =
+                            torneoActual?.legacy ||
+                            torneoUsaSistemaLegacyResultado();
+
+                        const oa = usarOrdenHistorico
+                            ? ordenCategoriaHistorica(a.name)
+                            : (a.display_order ?? 99);
+
+                        const ob = usarOrdenHistorico
+                            ? ordenCategoriaHistorica(b.name)
+                            : (b.display_order ?? 99);
+
+                        if (oa !== ob) return oa - ob;
+
+                        return String(a.name || "").localeCompare(String(b.name || ""), "es");
+                    })
+                    .forEach(cat => {
+
+                        const generoCat = generoCategoria(cat);
+
+                        if (generoCat === "male") renderScratch("male");
+                        if (generoCat === "female") renderScratch("female");
+
+                        let lista = jugadoresParaMostrar
+                            .filter(j => perteneceCategoriaSerie(j, cat))
+                            .filter(j => {
+                                /*
+                                 * El resultado del día conserva el funcionamiento actual.
+                                 */
+                                if (
+                                    !torneoTieneSerie() ||
+                                    criterioSerieSeleccionado === "dia"
+                                ) {
+                                    return true;
+                                }
+
+                                /*
+                                 * En las clasificaciones especiales no se muestran
+                                 * jugadores que no cumplen el mínimo requerido.
+                                 */
+                                return cumpleMinimoSerie(j, false);
+                            })
+                            .slice()
+                            .sort((a, b) => {
+                                if (!torneoTieneSerie()) {
+                                    return compararJugadores(a, b);
+                                }
+
+                                if (criterioSerieSeleccionado === "dia") {
+                                    return compararSeriePorRondaActual(a, b);
+                                }
+
+                                return compararClasificacionSerie(a, b, false);
+                            });
+
+                        /*
+                         * Las clasificaciones especiales muestran
+                         * únicamente los primeros 15 resultados.
+                         */
+                        if (
+                            torneoTieneSerie() &&
+                            criterioSerieSeleccionado !== "dia"
+                        ) {
+                            lista = lista.slice(0, 15);
+                        }
+
+                        if (!lista.length) return;
+
+                        renderTablaCategoria(cat.name, lista, false);
+                    });
+
+            }
 
             document.getElementById("contenido").innerHTML = html;
 
