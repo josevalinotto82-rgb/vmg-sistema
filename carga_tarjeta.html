@@ -658,12 +658,6 @@
 
     await exigirAdmin();
 
-    const COURSE_HOLES = {
-      1: { par: 4, hcp: 15 }, 2: { par: 4, hcp: 3 }, 3: { par: 3, hcp: 5 }, 4: { par: 4, hcp: 11 }, 5: { par: 3, hcp: 9 }, 6: { par: 4, hcp: 1 },
-      7: { par: 4, hcp: 13 }, 8: { par: 4, hcp: 7 }, 9: { par: 5, hcp: 17 }, 10: { par: 4, hcp: 8 }, 11: { par: 3, hcp: 14 }, 12: { par: 5, hcp: 10 },
-      13: { par: 3, hcp: 2 }, 14: { par: 4, hcp: 16 }, 15: { par: 4, hcp: 18 }, 16: { par: 4, hcp: 6 }, 17: { par: 5, hcp: 12 }, 18: { par: 4, hcp: 4 }
-    };
-
     const torneoSelect = document.getElementById("torneoSelect");
     const torneoFecha = document.getElementById("torneoFecha");
     const torneoModalidad = document.getElementById("torneoModalidad");
@@ -684,6 +678,7 @@
     let torneos = [];
     let torneoActual = null;
     let scorecards = [];
+    let categoriasTorneo = [];
     let scorecardActualId = null;
 
     torneoSelect.addEventListener("change", cargarScorecardsDelTorneo);
@@ -785,6 +780,147 @@
       return cargados > 0 ? String(sum) : "—";
     }
 
+    function categoriaTournamentScorecard(sc) {
+      const id = String(sc?.category_id || "").trim();
+
+      if (id) {
+        const porId = (categoriasTorneo || []).find(c =>
+          String(c?.id || "").trim() === id
+        );
+        if (porId) return porId;
+
+        // Compatibilidad por si alguna scorecard conserva el category_id maestro.
+        const porCategoryId = (categoriasTorneo || []).find(c =>
+          String(c?.category_id || "").trim() === id
+        );
+        if (porCategoryId) return porCategoryId;
+      }
+
+      const nombre = normalizarTexto(sc?.category_name);
+
+      if (nombre) {
+        const coincidencias = (categoriasTorneo || []).filter(c =>
+          normalizarTexto(c?.name) === nombre
+        );
+
+        if (coincidencias.length === 1) return coincidencias[0];
+      }
+
+      return null;
+    }
+
+    function reglaTeeTournamentScorecard(sc) {
+      const cat = categoriaTournamentScorecard(sc);
+      const reglas = Array.isArray(cat?.tee_rules) ? cat.tee_rules : [];
+
+      if (!reglas.length) return null;
+
+      /*
+       * Fourball Clásico / cualquier categoría con tee obligatorio:
+       * el playing_tee_aag_teeout_id del snapshot manda sobre la scorecard.
+       */
+      const playingTeeId = String(
+        cat?.playing_tee_aag_teeout_id || ""
+      ).trim();
+
+      if (playingTeeId) {
+        const reglaPlaying = reglas.find(r =>
+          String(r?.aag_teeout_id || "").trim() === playingTeeId
+        );
+        if (reglaPlaying) return reglaPlaying;
+      }
+
+      /*
+       * Para categorías normales, primero intentamos el UUID histórico
+       * del tee guardado en la scorecard.
+       */
+      const teeId = String(sc?.tee_id || "").trim();
+
+      if (teeId) {
+        const porId = reglas.find(r =>
+          String(r?.aag_teeout_id || "").trim() === teeId
+        );
+        if (porId) return porId;
+      }
+
+      /*
+       * Respaldo por nombre congelado.
+       */
+      const teeNombre = normalizarTexto(sc?.tee_name);
+
+      if (teeNombre) {
+        const exacta = reglas.find(r =>
+          normalizarTexto(r?.reference?.tee_name) === teeNombre
+        );
+        if (exacta) return exacta;
+      }
+
+      if (reglas.length === 1) return reglas[0];
+
+      return null;
+    }
+
+    function metadataHoyoTournamentCategory(sc, numeroHoyo) {
+      const regla = reglaTeeTournamentScorecard(sc);
+      const holes = Array.isArray(regla?.reference?.holes)
+        ? regla.reference.holes
+        : [];
+
+      const dato = holes.find(h =>
+        Number(
+          h?.hole ??
+          h?.HoleNumber ??
+          h?.hole_number ??
+          h?.number
+        ) === Number(numeroHoyo)
+      );
+
+      if (!dato) return null;
+
+      const par = Number(
+        dato?.par ??
+        dato?.Par ??
+        dato?.par_value
+      );
+
+      const hcp = Number(
+        dato?.handicap ??
+        dato?.Handicap ??
+        dato?.hole_handicap ??
+        dato?.hole_hcp ??
+        dato?.hcp ??
+        dato?.stroke_index
+      );
+
+      return {
+        par: Number.isFinite(par) ? par : null,
+        hcp: Number.isFinite(hcp) ? hcp : null,
+        yards: Number(
+          dato?.yards ??
+          dato?.Yards ??
+          dato?.yardage
+        )
+      };
+    }
+
+    function validarMetadataCanchaScorecard(sc) {
+      const faltantes = [];
+
+      for (let hole = 1; hole <= 18; hole++) {
+        const meta = metadataHoyoTournamentCategory(sc, hole);
+
+        if (
+          !meta ||
+          !Number.isFinite(meta.par) ||
+          !Number.isFinite(meta.hcp)
+        ) {
+          faltantes.push(hole);
+        }
+      }
+
+      return faltantes;
+    }
+
     function getStatus(sc) {
       const st = String(sc?.card_status || "npt").toLowerCase();
       if (st === "valid" || st === "cargada" || st === "loaded") return "valid";
@@ -879,6 +1015,26 @@
         torneoModalidad.value = torneoActual?.game_modes?.name || "";
         torneoSegmento.value = "";
 
+        const { data: categoriasData, error: categoriasError } = await supabase
+          .from("tournament_categories")
+          .select(`
+            id,
+            tournament_id,
+            category_id,
+            category_system,
+            name,
+            display_order,
+            hole_segment,
+            tee_rules,
+            playing_tee_aag_teeout_id
+          `)
+          .eq("tournament_id", torneoId)
+          .order("display_order", { ascending: true });
+
+        if (categoriasError) throw categoriasError;
+
+        categoriasTorneo = categoriasData || [];
+
         const { data, error } = await supabase
           .from("scorecards")
           .select(`
@@ -889,8 +1045,11 @@
             display_name,
             aag_member_number,
             playing_handicap,
+            category_id,
             category_name,
+            tee_id,
             tee_name,
+            player_gender,
             hole_segment,
             gross,
             net,
@@ -933,6 +1092,7 @@
     }
 
     function limpiarPantalla(msg) {
+      categoriasTorneo = [];
       listaJugadores.innerHTML = `<div class="empty">${msg}</div>`;
       panelTarjeta.innerHTML = `<div class="empty">${msg}</div>`;
       torneoFecha.value = "";
@@ -1029,6 +1189,30 @@
       const habilitadosSet = new Set(habilitados);
       const strokes = mapaStrokes(sc);
       const americana = esModalidadAmericana();
+      const faltantesMetadata = validarMetadataCanchaScorecard(sc);
+
+      if (faltantesMetadata.length) {
+        const cat = categoriaTournamentScorecard(sc);
+        const regla = reglaTeeTournamentScorecard(sc);
+
+        console.error("Faltan datos de cancha en tournament_categories", {
+          scorecard: sc,
+          tournament_category: cat,
+          tee_rule: regla,
+          holes_missing: faltantesMetadata
+        });
+
+        panelTarjeta.innerHTML = `
+          <div class="empty">
+            No se pudo obtener Par/HCP de la cancha desde <b>tournament_categories</b>
+            para ${sc.display_name || "esta tarjeta"}.
+            Faltan datos de los hoyos: ${faltantesMetadata.join(", ")}.
+            <br><br>
+            No se utilizarán valores hardcodeados del HTML.
+          </div>
+        `;
+        return;
+      }
 
       panelTarjeta.innerHTML = `
         <div class="score-header">
@@ -1067,7 +1251,7 @@
             ${Array.from({ length: 18 }, (_, idx) => {
         const hole = idx + 1;
         const enabled = habilitadosSet.has(hole);
-        const meta = COURSE_HOLES[hole];
+        const meta = metadataHoyoTournamentCategory(sc, hole);
         return `
                 <div class="hole ${enabled ? "" : "disabled"}">
                   <div class="hole-label">H${hole}</div>
@@ -1141,7 +1325,18 @@
         const input = document.getElementById(`h${hole}`);
         const raw = String(input?.value || "").trim();
         const strokes = raw === "" ? null : Number(raw);
-        const meta = COURSE_HOLES[hole];
+        const meta = metadataHoyoTournamentCategory(sc, hole);
+
+        if (
+          !meta ||
+          !Number.isFinite(meta.par) ||
+          !Number.isFinite(meta.hcp)
+        ) {
+          throw new Error(
+            `Falta Par/HCP del hoyo ${hole} en tournament_categories para ${sc.display_name || "la tarjeta"}.`
+          );
+        }
+
         holes.push({
           hole_number: hole,
           strokes: Number.isFinite(strokes) ? strokes : null,
@@ -1182,14 +1377,17 @@
     }
 
     function construirHoleScores(holes) {
+      /*
+       * La configuración de cancha NO se duplica en scorecards.
+       * tournament_categories conserva el snapshot histórico.
+       * hole_scores guarda solamente el resultado del jugador.
+       */
       const obj = {};
+
       for (const h of holes) {
-        obj[String(h.hole_number)] = {
-          strokes: h.strokes,
-          par_value: h.par_value,
-          hole_handicap: h.hole_handicap
-        };
+        obj[String(h.hole_number)] = h.strokes;
       }
+
       return obj;
     }
 

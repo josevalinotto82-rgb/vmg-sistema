@@ -798,26 +798,6 @@
         let hcpModalTimer = null;
 
         const adminReminders = {
-            Wednesday: `
-                <div class="reminder-icon" aria-hidden="true">✓</div>
-                <h2 id="adminReminderTitle">Recordatorio del miércoles</h2>
-                <p class="reminder-lead">
-                    Guardar y archivar los torneos abiertos que ya fueron jugados y cuyas tarjetas estén cargadas.
-                </p>
-                <div class="reminder-step">
-                    <strong>1. Guardar el torneo</strong>
-                    Entrá a <b>Admin Torneo</b>, elegí el torneo que deseás guardar y, una vez dentro,
-                    presioná <b>Guardar Torneo</b>. El torneo solamente podrá guardarse si están creadas
-                    todas las tarjetas de los jugadores.
-                </div>
-                <div class="reminder-step">
-                    <strong>2. Archivar el torneo</strong>
-                    Entrá a <b>Carga de Tarjetas</b> y presioná <b>Archivar Torneo</b>.
-                </div>
-                <p class="reminder-note">
-                    Al completar estos pasos, los torneos podrán ser enviados a la AAG.
-                </p>
-            `,
             Thursday: `
                 <div class="reminder-icon" aria-hidden="true">↻</div>
                 <h2 id="adminReminderTitle">Recordatorio del jueves</h2>
@@ -1041,128 +1021,240 @@
                 return;
             }
 
-            const teesBuscados = gender === "female"
-                ? ["ROJA"]
-                : ["NEGRA", "AMARILLA", "BLANCA"];
+            /*
+             * Consulta HCP:
+             * la fuente autoritativa es aag_teeouts.
+             *
+             * Canchas vigentes de VMGC:
+             * 1466 = cancha adultos
+             * 2048 = cancha junior
+             *
+             * Category AAG:
+             * 0 = Caballeros
+             * 1 = Damas
+             */
+            const categoryAAG = gender === "female" ? 1 : 0;
+            const fieldOrder = [1466, 2048];
 
-            const { data: tees, error: teesError } = await supabase
-                .from("tees")
-                .select("id, name")
-                .order("display_order", { ascending: true });
+            const { data: teesAAG, error: teesError } = await supabase
+                .from("aag_teeouts")
+                .select(`
+                    id,
+                    aag_field_id,
+                    aag_teeout_id,
+                    teeout_number,
+                    tee_name,
+                    category,
+                    slope_total,
+                    calification_total,
+                    holes
+                `)
+                .in("aag_field_id", fieldOrder)
+                .eq("category", categoryAAG);
 
             if (teesError) {
                 console.error(teesError);
-                hcpResultados.innerHTML = "Error cargando tees.";
+                hcpResultados.innerHTML = "Error cargando salidas AAG.";
                 return;
             }
 
-            const teesFiltrados = (tees || []).filter(t => {
-                const nombre = normalizarTexto(t.name);
-                return teesBuscados.some(busqueda => nombre.includes(busqueda));
-            });
+            const teesVigentes = (teesAAG || [])
+                .filter(t => fieldOrder.includes(Number(t.aag_field_id)))
+                .sort((a, b) => {
+                    const posA = fieldOrder.indexOf(Number(a.aag_field_id));
+                    const posB = fieldOrder.indexOf(Number(b.aag_field_id));
 
-            if (!teesFiltrados.length) {
-                hcpResultados.innerHTML = "No encontré las tees configuradas.";
+                    if (posA !== posB) return posA - posB;
+
+                    const nroA = toNumber(a.teeout_number);
+                    const nroB = toNumber(b.teeout_number);
+
+                    if (nroA != null && nroB != null && nroA !== nroB) {
+                        return nroA - nroB;
+                    }
+
+                    return String(a.tee_name || "").localeCompare(
+                        String(b.tee_name || ""),
+                        "es"
+                    );
+                });
+
+            if (!teesVigentes.length) {
+                hcpResultados.innerHTML =
+                    `No encontré salidas AAG vigentes para ` +
+                    `${gender === "female" ? "Damas" : "Caballeros"}.`;
                 return;
             }
 
-            const teeIds = teesFiltrados.map(t => t.id);
+            function parTotalDesdeHoles(holes) {
+                if (!Array.isArray(holes) || !holes.length) return null;
 
-            const { data: reglas, error: reglasError } = await supabase
-                .from("tee_handicap_rules")
-                .select("tee_id, gender, segment, slope, course_rating, par")
-                .in("tee_id", teeIds)
-                .eq("gender", gender)
-                .eq("segment", "18");
+                const valores = holes
+                    .map(h => toNumber(
+                        h?.Par ??
+                        h?.par ??
+                        h?.par_value
+                    ))
+                    .filter(v => v != null);
 
-            if (reglasError) {
-                console.error(reglasError);
-                hcpResultados.innerHTML = "Error cargando reglas de hándicap.";
-                return;
+                if (!valores.length) return null;
+
+                return valores.reduce((sum, par) => sum + par, 0);
             }
 
-            const reglasMap = new Map((reglas || []).map(r => [String(r.tee_id), r]));
+            function calcularHcpDesdeTeeAAG(indexJugador, tee) {
+                const slope = toNumber(tee?.slope_total);
+                const rating = toNumber(tee?.calification_total);
+                const par = parTotalDesdeHoles(tee?.holes);
 
-            function teeCorrespondienteCaballero(index) {
-                if (index <= 9) return "NEGRA";
-                if (index <= 15) return "AMARILLA";
-                return "BLANCA";
+                if (
+                    indexJugador == null ||
+                    slope == null ||
+                    rating == null ||
+                    par == null
+                ) {
+                    return null;
+                }
+
+                const hcp = roundHalfUp(
+                    (indexJugador * (slope / 113)) +
+                    (rating - par)
+                );
+
+                return Math.min(hcp, 54);
             }
 
-            const teeJugador =
+            /*
+             * Tee recomendado VMGC:
+             * solamente se marca dentro de la cancha adultos 1466.
+             * La cancha junior se muestra completa, sin forzar recomendación
+             * según esta escala de adultos.
+             */
+            function teeCorrespondienteCaballero(indexJugador) {
+                // Recomendación VMGC por Index:
+                // -10.0 a 9.0  -> Negro
+                //  9.1 a 15.0 -> Amarillo
+                // 15.1 a 54.0 -> Blanco
+                if (indexJugador >= -10 && indexJugador <= 9.0) return "NEGR";
+                if (indexJugador > 9.0 && indexJugador <= 15.0) return "AMARILL";
+                if (indexJugador > 15.0 && indexJugador <= 54.0) return "BLANC";
+                return null;
+            }
+
+            const teeJugadorAdultos =
                 gender === "male"
                     ? teeCorrespondienteCaballero(index)
-                    : "ROJA";
+                    : "ROJ";
 
-            const filas = teesFiltrados.map(tee => {
-                const rule = reglasMap.get(String(tee.id));
-                const hcp = rule ? calcularHcpJuego(index, rule) : null;
+            const filas = teesVigentes.map(tee => {
+                const slope = toNumber(tee.slope_total);
+                const rating = toNumber(tee.calification_total);
+                const par = parTotalDesdeHoles(tee.holes);
+                const hcp = calcularHcpDesdeTeeAAG(index, tee);
 
-                const nombreTee = String(tee.name || "").toUpperCase();
-                const esTeeJugador = nombreTee.includes(teeJugador);
+                const nombreTee = String(tee.tee_name || "").toUpperCase();
+
+                const recomendado =
+                    Number(tee.aag_field_id) === 1466 &&
+                    teeJugadorAdultos != null &&
+                    nombreTee.includes(teeJugadorAdultos);
 
                 return {
-                    tee: tee.name,
+                    tee: tee.tee_name || `Tee ${tee.aag_teeout_id}`,
                     hcp,
-                    slope: rule?.slope ?? "—",
-                    rating: rule?.course_rating ?? "—",
-                    par: rule?.par ?? "—",
-                    recomendado: esTeeJugador
+                    slope: slope ?? "—",
+                    rating: rating != null ? rating.toFixed(1) : "—",
+                    par: par ?? "—",
+                    recomendado,
+                    fieldId: Number(tee.aag_field_id),
+                    teeoutId: tee.aag_teeout_id
                 };
             });
 
-            const nombreJugador = jugador.full_name || `${jugador.last_name || ""}, ${jugador.first_name || ""}`;
+            const grupos = fieldOrder
+                .map(fieldId => ({
+                    fieldId,
+                    nombre:
+                        fieldId === 1466
+                            ? "Cancha Adultos"
+                            : fieldId === 2048
+                                ? "Cancha Junior"
+                                : `Cancha ${fieldId}`,
+                    filas: filas.filter(f => f.fieldId === fieldId)
+                }))
+                .filter(g => g.filas.length);
+
+            const nombreJugador =
+                jugador.full_name ||
+                `${jugador.last_name || ""}, ${jugador.first_name || ""}`;
+
             const clubJugador = jugador.club_name || "Club no informado";
 
-            const esVillaMaria = normalizarTexto(clubJugador).includes("VILLA MARIA GOLF") ||
+            const esVillaMaria =
+                normalizarTexto(clubJugador).includes("VILLA MARIA GOLF") ||
                 normalizarTexto(clubJugador).includes("VILLA MARÍA GOLF");
 
             const htmlHcp = `
                 <div class="hcp-presentacion">
                     <div class="hcp-presentacion-header">
                         ${esVillaMaria
-                    ? `<img src="escudo.png" class="hcp-escudo" alt="VMGC">`
-                    : `<div class="hcp-club-avatar">${inicialesClub(clubJugador)}</div>`
-                }
+                            ? `<img src="escudo.png" class="hcp-escudo" alt="VMGC">`
+                            : `<div class="hcp-club-avatar">${inicialesClub(clubJugador)}</div>`
+                        }
                         <div>
                             <div class="hcp-nombre">${nombreJugador}</div>
                             <div class="hcp-club">${clubJugador}</div>
                             <div class="hcp-club">
-                                Matrícula: ${jugador.enrollment_number || "—"} · Index: <b>${index.toFixed(1)}</b>
+                                Matrícula: ${jugador.enrollment_number || "—"} ·
+                                Index: <b>${index.toFixed(1)}</b>
                             </div>
                         </div>
                     </div>
 
                     <div class="hcp-tees-lista">
-                        ${filas.map(f => `
-                            <div class="hcp-tee-row ${f.recomendado ? "recomendado" : ""}">
-                                <div>
-                                    <div class="hcp-tee-nombre">${f.tee}</div>
-                                    ${f.recomendado
-                        ? `<div class="hcp-recomendado">TEE RECOMENDADO</div>`
-                        : ""}
-                                </div>
-
-                                <div class="hcp-mini hcp-destacado">
-                                    <span>HCP</span>
-                                    <b>${f.hcp ?? "—"}</b>
-                                </div>
-
-                                <div class="hcp-mini">
-                                    <span>Slope</span>
-                                    <b>${f.slope}</b>
-                                </div>
-
-                                <div class="hcp-mini">
-                                    <span>Rating</span>
-                                    <b>${f.rating}</b>
-                                </div>
-
-                                <div class="hcp-mini">
-                                    <span>Par</span>
-                                    <b>${f.par}</b>
-                                </div>
+                        ${grupos.map(grupo => `
+                            <div style="
+                                margin:10px 0 4px;
+                                padding:7px 4px 4px;
+                                font-size:12px;
+                                font-weight:900;
+                                color:#166534;
+                                border-bottom:1px solid #d1fae5;
+                            ">
+                                ${grupo.nombre}
                             </div>
+
+                            ${grupo.filas.map(f => `
+                                <div class="hcp-tee-row ${f.recomendado ? "recomendado" : ""}">
+                                    <div>
+                                        <div class="hcp-tee-nombre">${f.tee}</div>
+                                        ${f.recomendado
+                                            ? `<div class="hcp-recomendado">TEE RECOMENDADO</div>`
+                                            : ""
+                                        }
+                                    </div>
+
+                                    <div class="hcp-mini hcp-destacado">
+                                        <span>HCP</span>
+                                        <b>${f.hcp ?? "—"}</b>
+                                    </div>
+
+                                    <div class="hcp-mini">
+                                        <span>Slope</span>
+                                        <b>${f.slope}</b>
+                                    </div>
+
+                                    <div class="hcp-mini">
+                                        <span>Rating</span>
+                                        <b>${f.rating}</b>
+                                    </div>
+
+                                    <div class="hcp-mini">
+                                        <span>Par</span>
+                                        <b>${f.par}</b>
+                                    </div>
+                                </div>
+                            `).join("")}
                         `).join("")}
                     </div>
                 </div>

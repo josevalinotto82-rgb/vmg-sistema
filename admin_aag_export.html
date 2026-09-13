@@ -216,47 +216,12 @@
         <label><b>Torneo archivado</b></label><br><br>
 
         <select id="torneoSelect" style="min-width:360px;"></select>
-
-        <div style="margin-top:12px;">
-            <label><b>Salidas a exportar</b></label><br><br>
-
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-
-                <label>
-                    <input type="checkbox" class="teeExportCheck" value="negra" checked>
-                    Negras
-                </label>
-
-                <label>
-                    <input type="checkbox" class="teeExportCheck" value="amarilla" checked>
-                    Amarillas
-                </label>
-
-                <label>
-                    <input type="checkbox" class="teeExportCheck" value="blanca" checked>
-                    Blancas
-                </label>
-
-                <label>
-                    <input type="checkbox" class="teeExportCheck" value="roja" checked>
-                    Rojas
-                </label>
-
-                <label>
-                    <input type="checkbox" class="teeExportCheck" value="eagle" checked>
-                    Eagles
-                </label>
-
-                <label>
-                    <input type="checkbox" class="teeExportCheck" value="birdie" checked>
-                    Birdies
-                </label>
-
-                <label>
-                    <input type="checkbox" class="teeExportCheck" value="albatros" checked>
-                    Albatros
-                </label>
-
+        <div style="margin-top:12px; padding:12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px;">
+            <b>Salidas AAG</b>
+            <div style="margin-top:6px; color:#6b7280; font-size:13px;">
+                Las salidas se resuelven automáticamente desde la configuración histórica
+                del torneo y se vinculan con la salida vigente en <code>aag_teeouts</code>.
+                No hay tees ni IDs AAG definidos dentro de este HTML.
             </div>
         </div>
 
@@ -289,7 +254,7 @@
 
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
                 <button id="btnSyncFields" style="background:#6b7280;">
-                    Sincronizar campos AAG
+                    Sincronizar campos y salidas AAG
                 </button>
             </div>
         </details>
@@ -486,15 +451,105 @@
             }).join("");
         }
 
+        async function limpiarTeeoutsObsoletosAAG(idsVigentesAAG) {
+            /*
+             * SEGURIDAD:
+             * Sólo se ejecuta si el worker devolvió explícitamente la lista
+             * completa de IDs numéricos vigentes de AAG.
+             *
+             * Nunca inferimos qué borrar por nombre, UUID o fecha.
+             */
+            if (!Array.isArray(idsVigentesAAG) || !idsVigentesAAG.length) {
+                return {
+                    ok: false,
+                    skipped: true,
+                    reason: "El worker no devolvió la lista completa de aag_teeout_id vigentes."
+                };
+            }
+
+            const idsVigentes = new Set(
+                idsVigentesAAG
+                    .map(v => Number(v))
+                    .filter(Number.isFinite)
+            );
+
+            if (!idsVigentes.size) {
+                return {
+                    ok: false,
+                    skipped: true,
+                    reason: "La lista de teeouts vigentes recibida es inválida o está vacía."
+                };
+            }
+
+            const { data: locales, error: localesError } = await supabase
+                .from("aag_teeouts")
+                .select("id, aag_teeout_id, tee_name, aag_field_id");
+
+            if (localesError) throw localesError;
+
+            const obsoletos = (locales || []).filter(t =>
+                !idsVigentes.has(Number(t.aag_teeout_id))
+            );
+
+            if (!obsoletos.length) {
+                return {
+                    ok: true,
+                    deleted: 0,
+                    deleted_ids: []
+                };
+            }
+
+            const uuidsObsoletos = obsoletos
+                .map(t => t.id)
+                .filter(Boolean);
+
+            if (!uuidsObsoletos.length) {
+                return {
+                    ok: true,
+                    deleted: 0,
+                    deleted_ids: []
+                };
+            }
+
+            const { error: deleteError } = await supabase
+                .from("aag_teeouts")
+                .delete()
+                .in("id", uuidsObsoletos);
+
+            if (deleteError) throw deleteError;
+
+            return {
+                ok: true,
+                deleted: obsoletos.length,
+                deleted_ids: obsoletos.map(t => t.aag_teeout_id),
+                deleted_tees: obsoletos.map(t => ({
+                    aag_teeout_id: t.aag_teeout_id,
+                    tee_name: t.tee_name,
+                    aag_field_id: t.aag_field_id
+                }))
+            };
+        }
+
         document.getElementById("btnSyncFields").addEventListener("click", async () => {
             const out = document.getElementById("resultadoEnvio");
-            out.textContent = "Sincronizando campos AAG...";
+            out.textContent = "Sincronizando campos y salidas AAG...";
 
             try {
+                /*
+                 * Pedimos al worker que, además de sincronizar,
+                 * devuelva la lista COMPLETA de aag_teeout_id vigentes.
+                 *
+                 * Si el worker actual todavía no soporta return_teeout_ids,
+                 * la sincronización normal seguirá funcionando, pero NO
+                 * borraremos nada por seguridad.
+                 */
                 const res = await fetch(FUNCTION_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "sync_fields" })
+                    body: JSON.stringify({
+                        action: "sync_fields",
+                        return_teeout_ids: true
+                    })
                 });
 
                 const data = await res.json();
@@ -503,11 +558,55 @@
                     throw new Error(data.error || "Error desconocido");
                 }
 
-                out.textContent =
-                    `Campos: ${data.fields}\n` +
-                    `Tees / salidas: ${data.teeouts}`;
+                /*
+                 * Admitimos varios nombres posibles para no acoplar el HTML
+                 * a un único nombre de propiedad del worker.
+                 */
+                const idsVigentes =
+                    Array.isArray(data.teeout_ids)
+                        ? data.teeout_ids
+                        : Array.isArray(data.aag_teeout_ids)
+                            ? data.aag_teeout_ids
+                            : Array.isArray(data.teeouts_current_ids)
+                                ? data.teeouts_current_ids
+                                : null;
+
+                const limpieza =
+                    await limpiarTeeoutsObsoletosAAG(idsVigentes);
+
+                let mensaje =
+                    `Sincronización AAG completada.\n` +
+                    `Campos vigentes: ${data.fields ?? "-"}\n` +
+                    `Tees / salidas informados: ${data.teeouts ?? "-"}\n`;
+
+                if (limpieza.ok) {
+                    mensaje +=
+                        `Tees obsoletos eliminados: ${limpieza.deleted}\n`;
+
+                    if (limpieza.deleted_ids?.length) {
+                        mensaje +=
+                            `IDs eliminados: ${limpieza.deleted_ids.join(", ")}\n`;
+                    }
+
+                    mensaje +=
+                        `aag_teeouts quedó comparado contra la lista vigente de AAG.`;
+                } else {
+                    mensaje +=
+                        `LIMPIEZA NO EJECUTADA por seguridad.\n` +
+                        `${limpieza.reason}\n\n` +
+                        `El swift-worker debe devolver teeout_ids con TODOS ` +
+                        `los aag_teeout_id vigentes de AAG.`;
+                }
+
+                out.textContent = mensaje;
+
+                console.log("SYNC AAG RESULTADO", {
+                    worker: data,
+                    limpieza
+                });
 
             } catch (err) {
+                console.error("Error sincronizando AAG:", err);
                 out.textContent = "Error: " + (err.message || err);
             }
         });
@@ -802,35 +901,356 @@
             `).join("");
         }
 
-        function normalizarTeeParaAAG(teeName, gender) {
-            const t = String(teeName || "")
+        function normalizarTextoAAG(valor) {
+            return String(valor || "")
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, "")
-                .toLowerCase();
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, " ");
+        }
 
-            const g = String(gender || "").toLowerCase();
+        /*
+         * Normalización semántica del NOMBRE del tee.
+         *
+         * No contiene IDs ni datos de cancha.
+         * Sólo permite que nombres equivalentes provenientes de distintas
+         * pantallas coincidan:
+         *
+         *   "Amarillas"  <-> "Amarillo"
+         *   "Blancas"    <-> "Blanco"
+         *   "Negras"     <-> "Negro"
+         *   "Rojas"      <-> "Rojo"
+         *   "Eagles"     <-> "Eagle"
+         *
+         * Se hace por raíces de palabras, no por una tabla de IDs.
+         */
+        function claveNombreTeeAAG(valor) {
+            const texto = normalizarTextoAAG(valor);
 
-            if (t.includes("negra")) return "negro";
-            if (t.includes("amarilla")) return "amarillo";
-            if (t.includes("blanca")) return "blanco";
+            if (!texto) return "";
 
-            if (t.includes("roja")) {
-                return g === "female" ? "rojo damas" : "rojo caballeros";
+            /*
+             * Palabras que AAG puede agregar al nombre del tee para
+             * distinguir sexo/categoría, pero que no cambian el color/base
+             * de la salida:
+             *
+             * "Rojo Damas"       -> "roj"
+             * "Rojo Caballeros"  -> "roj"
+             * "Rojas"            -> "roj"
+             *
+             * Después la categoría AAG / género se usa para desambiguar.
+             */
+            const palabrasIgnoradas = new Set([
+                "dama",
+                "damas",
+                "mujer",
+                "mujeres",
+                "female",
+                "femenino",
+                "femenina",
+                "caballero",
+                "caballeros",
+                "hombre",
+                "hombres",
+                "male",
+                "masculino",
+                "masculina"
+            ]);
+
+            return texto
+                .split(" ")
+                .filter(Boolean)
+                .filter(p => !palabrasIgnoradas.has(p))
+                .map(palabra => {
+                    let p = palabra;
+
+                    // Plurales comunes.
+                    if (p.length > 4 && p.endsWith("es")) {
+                        p = p.slice(0, -2);
+                    } else if (p.length > 3 && p.endsWith("s")) {
+                        p = p.slice(0, -1);
+                    }
+
+                    // Variación gramatical a/o:
+                    // amarilla/amarillo -> amarill
+                    // blanca/blanco -> blanc
+                    // roja/rojo -> roj
+                    // negra/negro -> negr
+                    if (
+                        p.length > 4 &&
+                        (p.endsWith("a") || p.endsWith("o"))
+                    ) {
+                        p = p.slice(0, -1);
+                    }
+
+                    return p;
+                })
+                .filter(Boolean)
+                .join(" ");
+        }
+
+        function categoriaTournamentScorecard(sc, categoriasTorneo) {
+            const id = String(sc?.category_id || "").trim();
+
+            if (id) {
+                const porId = (categoriasTorneo || []).find(c =>
+                    String(c?.id || "").trim() === id
+                );
+                if (porId) return porId;
+
+                const porCategoryId = (categoriasTorneo || []).find(c =>
+                    String(c?.category_id || "").trim() === id
+                );
+                if (porCategoryId) return porCategoryId;
             }
 
-            if (t.includes("albatros")) {
-                return g === "female" ? "albatros damas" : "albatros caballeros";
+            const nombre = normalizarTextoAAG(sc?.category_name);
+
+            if (nombre) {
+                const coincidencias = (categoriasTorneo || []).filter(c =>
+                    normalizarTextoAAG(c?.name) === nombre
+                );
+
+                if (coincidencias.length === 1) {
+                    return coincidencias[0];
+                }
             }
 
-            if (t.includes("eagles") || t.includes("eagle")) {
-                return g === "female" ? "eagles damas" : "eagles caballeros";
+            return null;
+        }
+
+        function reglaSnapshotScorecard(sc, categoriasTorneo) {
+            const cat = categoriaTournamentScorecard(sc, categoriasTorneo);
+            const reglas = Array.isArray(cat?.tee_rules)
+                ? cat.tee_rules
+                : [];
+
+            if (!reglas.length) return null;
+
+            /*
+             * Fourball Clásico / categoría con tee obligatorio:
+             * ese tee es autoritativo para la cancha jugada.
+             */
+            const playingTeeId = String(
+                cat?.playing_tee_aag_teeout_id || ""
+            ).trim();
+
+            if (playingTeeId) {
+                const porPlaying = reglas.find(r =>
+                    String(r?.aag_teeout_id || "").trim() === playingTeeId
+                );
+
+                if (porPlaying) return porPlaying;
             }
 
-            if (t.includes("birdies") || t.includes("birdie")) {
-                return g === "female" ? "birdies damas" : "birdies caballeros";
+            /*
+             * Si la scorecard conserva el UUID del tee histórico,
+             * usarlo para identificar la regla exacta del snapshot.
+             */
+            const teeIdScorecard = String(sc?.tee_id || "").trim();
+
+            if (teeIdScorecard) {
+                const porId = reglas.find(r =>
+                    String(r?.aag_teeout_id || "").trim() === teeIdScorecard
+                );
+
+                if (porId) return porId;
             }
 
-            return t;
+            /*
+             * Respaldo por nombre congelado del tee.
+             */
+            const teeNombre = normalizarTextoAAG(sc?.tee_name);
+
+            if (teeNombre) {
+                const exacta = reglas.find(r =>
+                    normalizarTextoAAG(r?.reference?.tee_name) === teeNombre
+                );
+
+                if (exacta) return exacta;
+            }
+
+            if (reglas.length === 1) {
+                return reglas[0];
+            }
+
+            return null;
+        }
+
+        function resolverTeeVigenteAAG(sc, categoriasTorneo, teesAAG) {
+            const reglaSnapshot = reglaSnapshotScorecard(
+                sc,
+                categoriasTorneo
+            );
+
+            const ref = reglaSnapshot?.reference || {};
+
+            /*
+             * 1) Si el UUID histórico todavía existe en aag_teeouts,
+             * la salida sigue vigente.
+             */
+            const teeIdScorecard = String(sc?.tee_id || "").trim();
+
+            if (teeIdScorecard) {
+                const porUuidActual = (teesAAG || []).find(t =>
+                    String(t?.id || "").trim() === teeIdScorecard
+                );
+
+                if (porUuidActual) {
+                    return {
+                        tee: porUuidActual,
+                        snapshot: reglaSnapshot,
+                        metodo: "uuid_actual",
+                        candidatas: 1
+                    };
+                }
+            }
+
+            /*
+             * 2) AAG pudo reemplazar la fila completa.
+             *
+             * El snapshot identifica QUÉ salida era; aag_teeouts define
+             * CUÁL es hoy su ID vigente.
+             *
+             * Por eso primero buscamos por identidad semántica del nombre,
+             * tolerando singular/plural y Amarillas/Amarillo, etc.
+             */
+            const nombreHistorico =
+                ref?.tee_name ||
+                sc?.tee_name ||
+                "";
+
+            const claveHistorica =
+                claveNombreTeeAAG(nombreHistorico);
+
+            let candidatas = (teesAAG || []).filter(t =>
+                claveNombreTeeAAG(t?.tee_name) === claveHistorica
+            );
+
+            if (!candidatas.length) {
+                return {
+                    tee: null,
+                    snapshot: reglaSnapshot,
+                    metodo: "sin_coincidencia_nombre",
+                    candidatas: 0,
+                    nombre_historico: nombreHistorico,
+                    clave_historica: claveHistorica
+                };
+            }
+
+            /*
+             * 3) Si por nombre quedó una sola, ésa es la vigente.
+             * No importa que AAG haya cambiado su Field o TeeOut numérico:
+             * justamente tomaremos los actuales de esa fila.
+             */
+            if (candidatas.length === 1) {
+                return {
+                    tee: candidatas[0],
+                    snapshot: reglaSnapshot,
+                    metodo: "nombre_equivalente_unico",
+                    candidatas: 1
+                };
+            }
+
+            /*
+             * 4) Si hay más de una salida con el mismo nombre, desambiguar
+             * primero por Category AAG.
+             *
+             * El snapshot puede tener category. Si no la tiene, usamos
+             * player_gender como respaldo histórico de AAG:
+             * female -> 1 / resto -> 0.
+             */
+            const categorySnapshot =
+                ref?.category != null && ref?.category !== ""
+                    ? Number(ref.category)
+                    : null;
+
+            const generoJugador =
+                normalizarTextoAAG(sc?.player_gender);
+
+            let categoryJugador = null;
+
+            if (
+                ["female", "f", "dama", "damas", "mujer", "femenino", "femenina"]
+                    .includes(generoJugador)
+            ) {
+                categoryJugador = 1;
+            } else if (
+                ["male", "m", "caballero", "caballeros", "hombre", "masculino", "masculina"]
+                    .includes(generoJugador)
+            ) {
+                categoryJugador = 0;
+            }
+
+            const categoryObjetivo =
+                Number.isFinite(categorySnapshot)
+                    ? categorySnapshot
+                    : categoryJugador;
+
+            const porCategoria =
+                categoryObjetivo == null
+                    ? []
+                    : candidatas.filter(t =>
+                        Number(t?.category) === Number(categoryObjetivo)
+                    );
+
+            if (porCategoria.length === 1) {
+                return {
+                    tee: porCategoria[0],
+                    snapshot: reglaSnapshot,
+                    metodo: "nombre_categoria",
+                    candidatas: candidatas.length
+                };
+            }
+
+            if (porCategoria.length > 1) {
+                candidatas = porCategoria;
+            }
+
+            /*
+             * 5) El field histórico sólo se usa como DESAMBIGUADOR,
+             * nunca como requisito obligatorio. Si AAG reemplazó la cancha
+             * o salida y cambió el ID, eso no debe impedir exportar.
+             */
+            const fieldHistorico =
+                ref?.aag_field_id != null && ref?.aag_field_id !== ""
+                    ? Number(ref.aag_field_id)
+                    : null;
+
+            if (Number.isFinite(fieldHistorico)) {
+                const porField = candidatas.filter(t =>
+                    Number(t?.aag_field_id) === fieldHistorico
+                );
+
+                if (porField.length === 1) {
+                    return {
+                        tee: porField[0],
+                        snapshot: reglaSnapshot,
+                        metodo: "nombre_categoria_field",
+                        candidatas: candidatas.length
+                    };
+                }
+            }
+
+            /*
+             * No elegimos a ciegas cuando todavía hay varias candidatas.
+             */
+            return {
+                tee: null,
+                snapshot: reglaSnapshot,
+                metodo: "ambiguo",
+                candidatas: candidatas.length,
+                nombre_historico: nombreHistorico,
+                clave_historica: claveHistorica,
+                opciones: candidatas.map(t => ({
+                    id: t.id,
+                    aag_teeout_id: t.aag_teeout_id,
+                    aag_field_id: t.aag_field_id,
+                    tee_name: t.tee_name,
+                    category: t.category
+                }))
+            };
         }
 
         async function validarExportAAG(tournamentId) {
@@ -1020,109 +1440,77 @@
             return 1;
         }
 
-        function resolverTeeJuniorAAG(teeName, gender) {
-            const t = String(teeName || "")
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .toLowerCase();
-
-            const esDama = String(gender || "").toLowerCase() === "female";
-
-            if (t.includes("eagle") || t.includes("eagles")) {
-                return {
-                    aag_field_id: 2048,
-                    aag_teeout_id: esDama ? 6620 : 6619,
-                    category: esDama ? 1 : 0
-                };
-            }
-
-            if (t.includes("birdie") || t.includes("birdies")) {
-                return {
-                    aag_field_id: 2048,
-                    aag_teeout_id: esDama ? 7270 : 7269,
-                    category: esDama ? 1 : 0
-                };
-            }
-
-            if (t.includes("albatros")) {
-                return {
-                    aag_field_id: 2048,
-                    aag_teeout_id: esDama ? 6618 : 6617,
-                    category: esDama ? 1 : 0
-                };
-            }
-
-            return null;
-        }
-
         async function generarAagPayloadsDesdeTorneo(tournamentId) {
 
-            const { data: torneo } = await supabase
+            const { data: torneo, error: torneoError } = await supabase
                 .from("tournaments")
                 .select("*")
                 .eq("id", tournamentId)
                 .single();
 
-            const { data: scorecards } = await supabase
+            if (torneoError || !torneo) {
+                throw new Error("No se encontró torneo.");
+            }
+
+            const { data: scorecards, error: scorecardsError } = await supabase
                 .from("scorecards")
                 .select("*")
                 .eq("tournament_id", tournamentId)
                 .eq("export_ready", true);
 
-            console.log("SCORECARDS VALIDAS:", scorecards);
+            if (scorecardsError) throw scorecardsError;
 
-            // 👉 traer mapping AAG
+            /*
+             * Snapshot histórico del torneo.
+             * Acá está la identidad del tee que se usó al crear/oficializar
+             * el torneo. No se consulta categories actual.
+             */
+            const { data: categoriasTorneo, error: categoriasError } =
+                await supabase
+                    .from("tournament_categories")
+                    .select(`
+                        id,
+                        category_id,
+                        category_system,
+                        name,
+                        tee_rules,
+                        playing_tee_aag_teeout_id,
+                        hole_segment
+                    `)
+                    .eq("tournament_id", tournamentId);
+
+            if (categoriasError) throw categoriasError;
+
+            /*
+             * Fuente AUTORITATIVA ACTUAL para IDs AAG.
+             * Si AAG reemplazó una salida, acá debe existir solamente
+             * la salida vigente luego de sincronizar.
+             */
             const { data: teesAAG, error: teesError } = await supabase
                 .from("aag_teeouts")
-                .select("*");
+                .select(`
+                    id,
+                    aag_teeout_id,
+                    aag_field_id,
+                    tee_name,
+                    category
+                `);
 
             if (teesError) throw teesError;
 
-            const { data: fieldsAAG, error: fieldsError } = await supabase
-                .from("aag_fields")
-                .select("aag_field_id, holes_amount, field_name");
+            console.log("SCORECARDS VALIDAS:", scorecards);
+            console.log("TOURNAMENT_CATEGORIES:", categoriasTorneo);
+            console.log("AAG_TEEOUTS VIGENTES:", teesAAG);
 
-            if (fieldsError) throw fieldsError;
+            /*
+             * Primero resolvemos cada scorecard contra el tee AAG VIGENTE.
+             * No hay listas de colores, juniors ni IDs definidos en HTML.
+             */
+            const grupos = new Map();
 
-            const fieldById = new Map(
-                (fieldsAAG || []).map(f => [
-                    Number(f.aag_field_id),
-                    f
-                ])
-            );
-
-            if (teesError) throw teesError;
-
-            console.log("TEES AAG:", teesAAG);
-
-            // 👉 agrupar por tee + género
-            const grupos = {};
-
-            const teesSeleccionados = Array.from(
-                document.querySelectorAll(".teeExportCheck:checked")
-            ).map(el => el.value);
-
-            for (const sc of scorecards) {
+            for (const sc of scorecards || []) {
 
                 if (!sc.aag_member_number || !sc.hole_scores) continue;
-
-                const teeNormalizado = String(sc.tee_name || "")
-                    .normalize("NFD")
-                    .replace(/[\u0300-\u036f]/g, "")
-                    .toLowerCase();
-
-                const esJunior =
-                    teeNormalizado.includes("eagle") ||
-                    teeNormalizado.includes("eagles") ||
-                    teeNormalizado.includes("birdie") ||
-                    teeNormalizado.includes("birdies") ||
-                    teeNormalizado.includes("albatros");
-
-                const exportarEsteTee = esJunior || teesSeleccionados.some(t =>
-                    teeNormalizado.includes(t)
-                );
-
-                if (!exportarEsteTee) continue;
 
                 let jugables = 0;
 
@@ -1143,63 +1531,92 @@
                 if (hoyosTorneo === 18 && jugables < 18) continue;
                 if (hoyosTorneo === 9 && jugables < 9) continue;
 
-                const key = `${sc.tee_id}_${sc.player_gender}`;
-
-                if (!grupos[key]) grupos[key] = [];
-                grupos[key].push(sc);
-            }
-
-            console.log("GRUPOS ARMADOS:", grupos);
-
-            const payloads = [];
-
-            for (const key of Object.keys(grupos)) {
-
-                const grupo = grupos[key];
-                const ejemplo = grupo[0];
-
-                // 👉 buscar tee AAG por nombre + género
-                const teeBuscado = normalizarTeeParaAAG(
-                    ejemplo.tee_name,
-                    ejemplo.player_gender
+                const resolucion = resolverTeeVigenteAAG(
+                    sc,
+                    categoriasTorneo || [],
+                    teesAAG || []
                 );
 
-                const hoyosTorneo = Number(torneo.hole_count || 18);
+                console.log("RESOLUCION TEE AAG", {
+                    jugador: sc.display_name,
+                    tee_scorecard: sc.tee_name,
+                    clave_scorecard: claveNombreTeeAAG(sc.tee_name),
+                    genero: sc.player_gender,
+                    metodo: resolucion.metodo,
+                    tee_resuelto: resolucion.tee?.tee_name || null,
+                    aag_teeout_id: resolucion.tee?.aag_teeout_id || null,
+                    aag_field_id: resolucion.tee?.aag_field_id || null,
+                    category: resolucion.tee?.category ?? null,
+                    opciones: resolucion.opciones || null
+                });
 
-                let teeMatch = resolverTeeJuniorAAG(
-                    ejemplo.tee_name,
-                    ejemplo.player_gender
-                );
+                if (!resolucion.tee) {
+                    const snapshotNombre =
+                        resolucion.snapshot?.reference?.tee_name ||
+                        sc.tee_name ||
+                        "SIN TEE";
 
-                if (!teeMatch) {
-                    teeMatch = teesAAG.find(t => {
-                        const nombreAag = String(t.tee_name || "")
-                            .normalize("NFD")
-                            .replace(/[\u0300-\u036f]/g, "")
-                            .toLowerCase();
+                    const detalleOpciones =
+                        Array.isArray(resolucion.opciones) &&
+                        resolucion.opciones.length
+                            ? ` Opciones: ${resolucion.opciones
+                                .map(o =>
+                                    `${o.tee_name} ` +
+                                    `(Field ${o.aag_field_id}, ` +
+                                    `TeeOut ${o.aag_teeout_id}, ` +
+                                    `Category ${o.category})`
+                                )
+                                .join(" | ")}`
+                            : "";
 
-                        const field = fieldById.get(Number(t.aag_field_id));
+                    throw new Error(
+                        `No se pudo resolver el tee AAG vigente para ` +
+                        `${sc.display_name || "SIN NOMBRE"} · ${snapshotNombre}. ` +
+                        `Método: ${resolucion.metodo}.` +
+                        detalleOpciones
+                    );
+                }
 
-                        const holesField = Number(
-                            field?.holes_amount || 18
-                        );
+                const teeActual = resolucion.tee;
 
-                        return Number(t.category) === (ejemplo.player_gender === "female" ? 1 : 0)
-                            && nombreAag.includes(teeBuscado)
-                            && (
-                                holesField === hoyosTorneo ||
-                                (hoyosTorneo === 9 && holesField === 18)
-                            );
+                const key = [
+                    String(teeActual.id || ""),
+                    String(teeActual.aag_field_id ?? ""),
+                    String(teeActual.aag_teeout_id ?? ""),
+                    String(teeActual.category ?? "")
+                ].join("|");
+
+                if (!grupos.has(key)) {
+                    grupos.set(key, {
+                        teeActual,
+                        resolucion,
+                        scorecards: []
                     });
                 }
 
-                if (!teeMatch) {
-                    throw new Error(
-                        `No se encontró salida AAG compatible para ${ejemplo.tee_name} ` +
-                        `(${ejemplo.player_gender}) jugando ${torneo.hole_count || 18} hoyos. ` +
-                        `Revisá si AAG tiene cargada una cancha/salida de ${torneo.hole_count || 18} hoyos para ese tee.`
-                    );
-                }
+                grupos.get(key).scorecards.push(sc);
+            }
+
+            console.log(
+                "GRUPOS AAG RESUELTOS:",
+                [...grupos.values()].map(g => ({
+                    tee_name: g.teeActual?.tee_name,
+                    aag_field_id: g.teeActual?.aag_field_id,
+                    aag_teeout_id: g.teeActual?.aag_teeout_id,
+                    category: g.teeActual?.category,
+                    metodo: g.resolucion?.metodo,
+                    clave_nombre: claveNombreTeeAAG(g.teeActual?.tee_name),
+                    jugadores: g.scorecards.map(sc => sc.display_name)
+                }))
+            );
+
+            const payloads = [];
+
+            for (const grupoInfo of grupos.values()) {
+
+                const grupo = grupoInfo.scorecards;
+                const teeMatch = grupoInfo.teeActual;
+                const ejemplo = grupo[0];
 
                 const scoreCards = grupo.map(sc => {
 
@@ -1217,8 +1634,11 @@
                         }
                     }
 
-                    const tiene1a9 = hoyosConScore.some(h => h >= 1 && h <= 9);
-                    const tiene10a18 = hoyosConScore.some(h => h >= 10 && h <= 18);
+                    const tiene1a9 =
+                        hoyosConScore.some(h => h >= 1 && h <= 9);
+
+                    const tiene10a18 =
+                        hoyosConScore.some(h => h >= 10 && h <= 18);
 
                     let iniHole = 1;
 
@@ -1233,8 +1653,9 @@
                     };
 
                     for (let i = 1; i <= 18; i++) {
-                        card[`ScoreGrossHole${String(i).padStart(2, "0")}`] =
-                            holeValue(sc.hole_scores, i);
+                        card[
+                            `ScoreGrossHole${String(i).padStart(2, "0")}`
+                        ] = holeValue(sc.hole_scores, i);
                     }
 
                     card.ScoreGrossTotal = null;
@@ -1244,6 +1665,10 @@
                     return card;
                 });
 
+                /*
+                 * Field / TeeOut / Category salen DIRECTAMENTE del
+                 * aag_teeouts vigente. El HTML no conoce IDs de AAG.
+                 */
                 const payload = {
                     Title: torneo.name,
                     SubTitle: "Resultados oficiales",
@@ -1266,17 +1691,13 @@
                     payload,
 
                     meta: {
-                        tee_name:
-                            ejemplo.tee_name,
-
-                        gender:
-                            ejemplo.player_gender,
-
-                        aag_teeout_id:
-                            teeMatch.aag_teeout_id,
-
-                        aag_field_id:
-                            teeMatch.aag_field_id
+                        // Mantener exactamente el formato histórico del meta.
+                        // Los datos extra de resolución quedan sólo en consola
+                        // y nunca forman parte de lo que se guarda como meta.
+                        tee_name: ejemplo.tee_name,
+                        gender: ejemplo.player_gender || null,
+                        aag_teeout_id: teeMatch.aag_teeout_id,
+                        aag_field_id: teeMatch.aag_field_id
                     }
                 });
             }

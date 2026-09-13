@@ -1601,19 +1601,12 @@
     let torneoActual = null;
     let registrations = [];
     let categorias = [];
-    let tees = [];
 
-    // Reglas de tee usadas para calcular el HCP individual
-    // en Fourball Clásico.
+    // Sólo se usan para torneos legacy. Los torneos nuevos resuelven todo
+    // desde tournament_categories.tee_rules.
+    let tees = [];
     let teeHandicapRules = [];
     let teeHandicapRulesMap = new Map();
-
-    const TEE_CLASICO_IDS = {
-      damasRojas: "8737a42b-ef86-408a-9280-20c9e744264a",
-      caballerosBlancas: "6d962f3b-787e-47b7-bdb9-ac78f2dc94a5",
-      caballerosAmarillas: "8a2abefe-e1bd-4dfc-95f1-db52cf7a7262",
-      caballerosNegras: "9f08b519-a40c-4776-83b5-3c50ae10f370"
-    };
 
     let regMap = new Map();
     let categoriaMap = new Map();
@@ -2237,10 +2230,211 @@
       }).join("");
     }
 
+    function esCategoriaNueva(categoria) {
+      return String(categoria?.category_system || "legacy") === "new" && Array.isArray(categoria?.tee_rules);
+    }
+
+    function generoDesdeCategoryAAG(valor) {
+      return Number(valor) === 1 ? "female" : "male";
+    }
+
+    function reglaTeeCoincide(rule, indexManual, genderValor) {
+      const idx = toNumber(indexManual);
+      if (idx == null || !rule) return false;
+
+      const min = toNumber(rule.index_min);
+      const max = toNumber(rule.index_max);
+      if (min == null || max == null || idx < min || idx > max) return false;
+
+      const generoJugador = normalizarGenero(genderValor);
+      const generoRegla = generoDesdeCategoryAAG(rule?.reference?.category);
+      return !generoJugador || generoJugador === generoRegla;
+    }
+
+    function datosSegmentoDesdeReferencia(reference, holeSegment) {
+      if (!reference) return null;
+      const seg = normalizarSegmento(holeSegment || "18");
+
+      if (seg === "front9" || seg === "9") {
+        return {
+          slope: toNumber(reference.slope_in),
+          course_rating: toNumber(reference.rating_in),
+          par: toNumber(reference.par_in)
+        };
+      }
+
+      if (seg === "back9") {
+        return {
+          slope: toNumber(reference.slope_out),
+          course_rating: toNumber(reference.rating_out),
+          par: toNumber(reference.par_out)
+        };
+      }
+
+      return {
+        slope: toNumber(reference.slope_total),
+        course_rating: toNumber(reference.rating_total),
+        par: toNumber(reference.par_total)
+      };
+    }
+
+    function resolverCategoriaConTee(categoria, indexManual, genderValor) {
+      if (!categoria) return null;
+      if (!esCategoriaNueva(categoria)) return categoria;
+
+      const rule = (categoria.tee_rules || []).find(r => reglaTeeCoincide(r, indexManual, genderValor));
+      if (!rule?.reference) return null;
+
+      const datosSeg = datosSegmentoDesdeReferencia(rule.reference, categoria.hole_segment);
+      if (!datosSeg || [datosSeg.slope, datosSeg.course_rating, datosSeg.par].some(v => v == null)) return null;
+
+      return {
+        ...categoria,
+        tee_rule: rule,
+        tee_id: String(rule.aag_teeout_id || ""), // identificador operativo interno, no FK legacy
+        tee_name: rule.reference.tee_name || "",
+        aag_teeout_id: String(rule.aag_teeout_id || ""),
+        tee_reference: rule.reference,
+        slope: datosSeg.slope,
+        course_rating: datosSeg.course_rating,
+        par: datosSeg.par
+      };
+    }
+
+    function reglasTeeCategoriaPorGenero(categoria, genderValor) {
+      if (!categoria || !esCategoriaNueva(categoria)) return [];
+      const generoJugador = normalizarGenero(genderValor);
+      return (categoria.tee_rules || []).filter((rule) => {
+        const generoRegla = generoDesdeCategoryAAG(rule?.reference?.category);
+        return !generoJugador || generoRegla === generoJugador;
+      });
+    }
+
+    function resolverCategoriaConTeeExplicito(categoria, teeAagId, indexManual, genderValor) {
+      if (!categoria) return null;
+      if (!esCategoriaNueva(categoria)) return categoria;
+
+      const reglasGenero = reglasTeeCategoriaPorGenero(categoria, genderValor);
+      const idBuscado = String(teeAagId || "").trim();
+      let rule = idBuscado
+        ? reglasGenero.find(r => String(r?.aag_teeout_id || "") === idBuscado)
+        : null;
+
+      if (!rule) {
+        rule = reglasGenero.find(r => reglaTeeCoincide(r, indexManual, genderValor)) || reglasGenero[0] || null;
+      }
+      if (!rule?.reference) return null;
+
+      const datosSeg = datosSegmentoDesdeReferencia(rule.reference, categoria.hole_segment);
+      if (!datosSeg || [datosSeg.slope, datosSeg.course_rating, datosSeg.par].some(v => v == null)) return null;
+
+      return {
+        ...categoria,
+        tee_rule: rule,
+        tee_id: String(rule.aag_teeout_id || ""),
+        tee_name: rule.reference.tee_name || "",
+        aag_teeout_id: String(rule.aag_teeout_id || ""),
+        tee_reference: rule.reference,
+        slope: datosSeg.slope,
+        course_rating: datosSeg.course_rating,
+        par: datosSeg.par
+      };
+    }
+
+    function resolverTeeJuegoCategoria(categoria) {
+      if (!categoria) return null;
+      if (!esCategoriaNueva(categoria)) return categoria;
+
+      const teeJuegoId = String(categoria?.playing_tee_aag_teeout_id || "").trim();
+      if (!teeJuegoId) return null;
+
+      const rule = (categoria.tee_rules || []).find(
+        r => String(r?.aag_teeout_id || "").trim() === teeJuegoId
+      );
+      if (!rule?.reference) return null;
+
+      const datosSeg = datosSegmentoDesdeReferencia(rule.reference, categoria.hole_segment);
+      if (!datosSeg || [datosSeg.slope, datosSeg.course_rating, datosSeg.par].some(v => v == null)) {
+        return null;
+      }
+
+      return {
+        ...categoria,
+        tee_rule: rule,
+        tee_id: teeJuegoId,
+        tee_name: rule.reference.tee_name || "",
+        aag_teeout_id: teeJuegoId,
+        tee_reference: rule.reference,
+        slope: datosSeg.slope,
+        course_rating: datosSeg.course_rating,
+        par: datosSeg.par
+      };
+    }
+
+    function teeAagGuardadoParaCategoria(reg, categoria) {
+      if (!reg || !categoria || !esCategoriaNueva(categoria)) return "";
+      const score = extraerScorecard(reg);
+      const teeName = String(score?.tee_name || "").trim().toLowerCase();
+      if (!teeName) return "";
+      const rule = reglasTeeCategoriaPorGenero(categoria, reg?.player?.gender)
+        .find(r => String(r?.reference?.tee_name || "").trim().toLowerCase() === teeName);
+      return String(rule?.aag_teeout_id || "");
+    }
+
+    function nombreVisibleTee(nombre) {
+      const limpio = String(nombre || "").trim().replace(/\s+/g, " ");
+      if (!limpio) return "";
+      return limpio.split(" ")[0];
+    }
+
+    function teeOptionsNuevaCategoria(categoria, genderValor, selectedId = "") {
+      const reglas = reglasTeeCategoriaPorGenero(categoria, genderValor);
+      if (!reglas.length) return `<option value="">Sin tee disponible</option>`;
+      return reglas.map(rule => {
+        const id = String(rule?.aag_teeout_id || "");
+        const nombre = nombreVisibleTee(rule?.reference?.tee_name || "Tee AAG");
+        return `<option value="${id}" ${id === String(selectedId || "") ? "selected" : ""}>${nombre}</option>`;
+      }).join("");
+    }
+
+    function categoriaCumpleHcpJuego(categoria, hcpJuego) {
+      if (!categoria || hcpJuego == null) return false;
+      const min = toNumber(categoria.playing_handicap_min);
+      const max = toNumber(categoria.playing_handicap_max);
+      if (min == null && max == null) return true;
+      if (min != null && hcpJuego < min) return false;
+      if (max != null && hcpJuego > max) return false;
+      return true;
+    }
+
+    function resolverTeeJugadorNuevo(indexManual, genderValor) {
+      for (const cat of categorias) {
+        if (!esCategoriaNueva(cat)) continue;
+        const resuelta = resolverCategoriaConTee(cat, indexManual, genderValor);
+        if (resuelta) return resuelta;
+      }
+      return null;
+    }
+
     function rebuildIndexes() {
       regMap = new Map(registrations.map((r) => [String(r.id), r]));
       categoriaMap = new Map(categorias.map((c) => [String(c.id), c]));
       teeMap = new Map(tees.map((t) => [String(t.id), t]));
+
+      // Para torneos nuevos agregamos al mapa los tees AAG snapshot del torneo.
+      for (const cat of categorias) {
+        if (!esCategoriaNueva(cat)) continue;
+        for (const rule of (cat.tee_rules || [])) {
+          const id = String(rule?.aag_teeout_id || "");
+          if (!id || teeMap.has(id)) continue;
+          teeMap.set(id, {
+            id,
+            name: rule?.reference?.tee_name || "Tee AAG",
+            reference: rule?.reference || null
+          });
+        }
+      }
+
       filasVistaCache = null;
     }
 
@@ -2255,12 +2449,14 @@
 
     function getTeeName(teeId) {
       if (!teeId) return "—";
-      return teeMap.get(String(teeId))?.name || "—";
+      return nombreVisibleTee(teeMap.get(String(teeId))?.name || "") || "—";
     }
 
     function categoriaTeeName(categoriaId) {
       const categoria = getCategoriaById(categoriaId);
-      if (!categoria?.tee_id) return "—";
+      if (!categoria) return "—";
+      if (esCategoriaNueva(categoria)) return nombreVisibleTee(categoria.tee_name) || "—";
+      if (!categoria.tee_id) return "—";
       return getTeeName(categoria.tee_id);
     }
 
@@ -2307,13 +2503,9 @@
       const slope = toNumber(categoria.slope);
       const courseRating = toNumber(categoria.course_rating);
       const par = toNumber(categoria.par);
-
       if ([slope, courseRating, par].some(v => v == null)) return null;
 
-      // IMPORTANTE:
-      // Devuelve el Handicap de Cancha EXACTO, sin redondear.
-      // Medal redondea este valor.
-      // Americana aplica 85% sobre este valor exacto y recién después redondea.
+      // En torneos de 9 hoyos el índice que llega acá ya está dividido por 2.
       return (idx * (slope / 113)) + (courseRating - par);
     }
 
@@ -2325,14 +2517,7 @@
     function calcularHcpAmericana(indexJugador, categoria) {
       const hcpBase = calcularHcpBasePorTee(indexJugador, categoria);
       if (hcpBase == null) return null;
-
-      // Fourball Americana:
-      // 1. Calcular el HCP de cancha exacto según el tee del jugador.
-      // 2. Aplicar el 85% sin redondear previamente.
-      // 3. Redondear el resultado final: 0,5 hacia arriba.
-      const hcpConPorcentaje = hcpBase * 0.85;
-
-      return Math.min(roundHalfUp(hcpConPorcentaje), 54);
+      return Math.min(roundHalfUp(hcpBase * 0.85), 54);
     }
 
     function calcularIndiceManualAmericana(indiceAAG, categoria) {
@@ -2348,268 +2533,164 @@
       return redondearIndiceUnDecimal(indexBase);
     }
 
+    function sugerirCategoriaNueva(indexManual, genderValor, modo = "medal") {
+      const idx = toNumber(indexManual);
+      if (idx == null) return null;
+
+      for (const cat of categorias) {
+        if (!esCategoriaNueva(cat)) continue;
+        const resuelta = resolverCategoriaConTee(cat, idx, genderValor);
+        if (!resuelta) continue;
+
+        const hcpJuego = modo === "americana"
+          ? calcularHcpAmericana(idx, resuelta)
+          : calcularHcpMedal(idx, resuelta);
+
+        if (categoriaCumpleHcpJuego(cat, hcpJuego)) return resuelta;
+      }
+
+      return null;
+    }
+
     function sugerirCategoriaAmericanaDesdeAAG(indiceAAG, genderValor) {
       const indexParaCategoria = calcularIndiceCategoriaAmericana(indiceAAG, genderValor);
+      if ((categorias || []).some(esCategoriaNueva)) {
+        return sugerirCategoriaNueva(indexParaCategoria, genderValor, "americana");
+      }
       return sugerirCategoria(indexParaCategoria, genderValor);
     }
 
     function calcularIndiceManualClasico(indiceAAG1, indiceAAG2) {
       const maxGap = 5;
       const [aj1, aj2] = ajustarPorBrechaMaxima(indiceAAG1, indiceAAG2, maxGap);
-
       if (aj1 == null || aj2 == null) return null;
-
-      // Referencia informativa: 3/8 sobre índices ajustados.
-      // NO se usa para el HCP de juego del Fourball Clásico.
       return (aj1 + aj2) * 0.375;
     }
 
     function categoriaClasicoJugadorPorIndex(indexAjustado, reg = null) {
       const idx = redondearIndiceUnDecimal(indexAjustado);
       const genero = reg?.player?.gender || null;
-
-      return (
-        sugerirCategoria(idx, genero) ||
-        sugerirCategoriaSinGenero(idx) ||
-        null
-      );
+      if ((categorias || []).some(esCategoriaNueva)) return resolverTeeJugadorNuevo(idx, genero);
+      return sugerirCategoria(idx, genero) || sugerirCategoriaSinGenero(idx) || null;
     }
 
     function obtenerReglaTeeClasico(indexJugador, genderValor) {
       const idx = toNumber(indexJugador);
       if (idx == null) return null;
 
+      if ((categorias || []).some(esCategoriaNueva)) {
+        // Para 9 hoyos el tee_rules del torneo ya está expresado en índice / 2.
+        const segmento = obtenerSegmentoReferencia(genderValor);
+        const idxRegla = ajustarIndicePorSegmento(idx, segmento);
+        return resolverTeeJugadorNuevo(redondearIndiceUnDecimal(idxRegla), genderValor);
+      }
+
+      // Fallback legacy: conserva el comportamiento previo a tee_rules.
       const genero = normalizarGenero(genderValor);
-
-      let reglaId = null;
-
-      // Todas las damas calculan su HCP individual desde Rojas.
-      if (genero === "female") {
-        reglaId = TEE_CLASICO_IDS.damasRojas;
-      }
-
-      // Caballeros hasta 9,0: Negras.
-      else if (genero === "male" && idx <= 9.0) {
-        reglaId = TEE_CLASICO_IDS.caballerosNegras;
-      }
-
-      // Caballeros de 9,1 a 15,0: Amarillas.
-      else if (genero === "male" && idx <= 15.0) {
-        reglaId = TEE_CLASICO_IDS.caballerosAmarillas;
-      }
-
-      // Caballeros desde 15,1: Blancas.
-      else if (genero === "male") {
-        reglaId = TEE_CLASICO_IDS.caballerosBlancas;
-      }
-
-      if (!reglaId) {
-        console.warn(
-          "No se pudo determinar la regla de tee del jugador.",
-          {
-            indexJugador,
-            genderValor,
-            genero
-          }
-        );
-
-        return null;
-      }
-
-      const regla = teeHandicapRulesMap.get(String(reglaId)) || null;
-
-      if (!regla) {
-        console.warn(
-          "No se encontró la regla de tee en tee_handicap_rules.",
-          {
-            reglaId,
-            indexJugador,
-            genero
-          }
-        );
-      }
-
-      return regla;
+      const candidatas = teeHandicapRules.filter(Boolean);
+      if (!candidatas.length) return null;
+      if (genero === "female") return candidatas.find(r => normalizarGenero(r.gender) === "female") || candidatas[0];
+      return candidatas.find(r => normalizarGenero(r.gender) === "male") || candidatas[0];
     }
 
     function categoriaClasicoParejaPorHcp(hcpJuego, reg1 = null, reg2 = null) {
       const hcp = toNumber(hcpJuego);
       if (hcp == null) return null;
 
+      const nuevas = categorias.filter(esCategoriaNueva);
+      if (nuevas.length) {
+        return nuevas.find(c => categoriaCumpleHcpJuego(c, hcp)) || nuevas[0] || null;
+      }
+
       const genero1 = normalizarGenero(reg1?.player?.gender);
       const genero2 = normalizarGenero(reg2?.player?.gender);
       const generoPareja = genero1 && genero1 === genero2 ? genero1 : null;
-
-      return (
-        (generoPareja ? sugerirCategoria(hcp, generoPareja) : null) ||
-        sugerirCategoriaSinGenero(hcp) ||
-        null
-      );
+      return (generoPareja ? sugerirCategoria(hcp, generoPareja) : null) || sugerirCategoriaSinGenero(hcp) || null;
     }
 
     function calcularDatosClasico(reg1, reg2) {
       const idxBase1 = obtenerIndexBaseParaCalculo(reg1);
       const idxBase2 = obtenerIndexBaseParaCalculo(reg2);
-
       if (idxBase1 == null || idxBase2 == null) return null;
 
-      /*
-       * PASO 1
-       * Seleccionar la regla habitual de cada jugador.
-       *
-       * Damas:
-       * - Siempre Rojas.
-       *
-       * Caballeros:
-       * - Hasta 9,0: Negras.
-       * - De 9,1 a 15,0: Amarillas.
-       * - Desde 15,1: Blancas.
-       *
-       * Estas reglas salen de tee_handicap_rules,
-       * no de tournament_categories.
-       */
-      const reglaTeeJugador1 = obtenerReglaTeeClasico(
-        idxBase1,
-        reg1?.player?.gender
-      );
+      // ETAPA 1 — HCP inicial de cada jugador.
+      // Cada uno usa el tee que le corresponde por SU índice y género.
+      // Estos tees sirven únicamente para calcular el HCP de cancha individual.
+      const reglaTeeJugador1 = obtenerReglaTeeClasico(idxBase1, reg1?.player?.gender);
+      const reglaTeeJugador2 = obtenerReglaTeeClasico(idxBase2, reg2?.player?.gender);
 
-      const reglaTeeJugador2 = obtenerReglaTeeClasico(
-        idxBase2,
-        reg2?.player?.gender
-      );
+      const idxCalculo1 = esCategoriaNueva(reglaTeeJugador1)
+        ? ajustarIndicePorSegmento(idxBase1, reglaTeeJugador1.hole_segment)
+        : idxBase1;
+      const idxCalculo2 = esCategoriaNueva(reglaTeeJugador2)
+        ? ajustarIndicePorSegmento(idxBase2, reglaTeeJugador2.hole_segment)
+        : idxBase2;
 
-      /*
-       * PASO 2
-       * Calcular el Handicap de Cancha exacto de cada jugador,
-       * usando slope, course rating y par de su tee habitual.
-       */
-      const hcpCanchaExacto1 = calcularHcpBasePorTee(
-        idxBase1,
-        reglaTeeJugador1
-      );
-
-      const hcpCanchaExacto2 = calcularHcpBasePorTee(
-        idxBase2,
-        reglaTeeJugador2
-      );
+      const hcpCanchaExacto1 = calcularHcpBasePorTee(idxCalculo1, reglaTeeJugador1);
+      const hcpCanchaExacto2 = calcularHcpBasePorTee(idxCalculo2, reglaTeeJugador2);
 
       if (hcpCanchaExacto1 == null || hcpCanchaExacto2 == null) {
         return {
-          idxBase1,
-          idxBase2,
-
-          reglaTeeJugador1,
-          reglaTeeJugador2,
-
-          hcpCanchaExacto1,
-          hcpCanchaExacto2,
-
-          hcpCancha1: null,
-          hcpCancha2: null,
-
-          hcpAjustado1: null,
-          hcpAjustado2: null,
-
-          hcpExacto: null,
-          playingHandicap: null,
-          categoriaPareja: null
+          idxBase1, idxBase2,
+          reglaTeeJugador1, reglaTeeJugador2,
+          hcpCanchaExacto1, hcpCanchaExacto2,
+          hcpCancha1: null, hcpCancha2: null,
+          hcpAjustado1: null, hcpAjustado2: null,
+          hcpExacto: null, playingHandicap: null,
+          categoriaPareja: null,
+          teeJuegoCategoria: null
         };
       }
 
-      /*
-       * PASO 3
-       * Redondear el Handicap de Cancha individual.
-       */
-      const [hcpAjustadoExacto1, hcpAjustadoExacto2] =
-        ajustarPorBrechaMaxima(
-          hcpCanchaExacto1,
-          hcpCanchaExacto2,
-          5
-        );
+      // ETAPA 2 — Regla Fourball Clásico.
+      // Brecha máxima de 5 golpes entre HCP de cancha y luego 3/8 de la suma.
+      const [hcpAjustado1, hcpAjustado2] =
+        ajustarPorBrechaMaxima(hcpCanchaExacto1, hcpCanchaExacto2, 5);
 
-      const hcpCancha1 = roundHalfUp(hcpCanchaExacto1);
-      const hcpCancha2 = roundHalfUp(hcpCanchaExacto2);
+      const hcpExacto = (hcpAjustado1 + hcpAjustado2) * 0.375;
+      const playingHandicap = Math.min(roundHalfUp(hcpExacto), 54);
 
-      const hcpAjustado1 = hcpAjustadoExacto1;
-      const hcpAjustado2 = hcpAjustadoExacto2;
-
-      /*
-       * PASO 5
-       * Aplicar 3/8 a la suma de los handicaps ajustados.
-       */
-      const hcpExacto =
-        (hcpAjustado1 + hcpAjustado2) * 0.375;
-
-      /*
-       * PASO 6
-       * Redondear el HCP final de la pareja.
-       */
-      const playingHandicap = Math.min(
-        roundHalfUp(hcpExacto),
-        54
-      );
-
-      /*
-       * PASO 7
-       * Recién ahora se usa tournament_categories
-       * para determinar la categoría y tee final de la pareja.
-       */
+      // ETAPA 3 — El HCP FINAL de pareja determina la categoría.
       const categoriaPareja = categoriaClasicoParejaPorHcp(
         playingHandicap,
         reg1,
         reg2
       );
 
+      // ETAPA 4 — La categoría determina el TEE OBLIGATORIO DE JUEGO.
+      // No se recalcula el HCP después de asignarlo.
+      const teeJuegoCategoria = esCategoriaNueva(categoriaPareja)
+        ? resolverTeeJuegoCategoria(categoriaPareja)
+        : categoriaPareja;
+
       return {
         idxBase1,
         idxBase2,
-
         reglaTeeJugador1,
         reglaTeeJugador2,
 
         hcpCanchaExacto1,
         hcpCanchaExacto2,
-
-        hcpCancha1,
-        hcpCancha2,
+        hcpCancha1: roundHalfUp(hcpCanchaExacto1),
+        hcpCancha2: roundHalfUp(hcpCanchaExacto2),
 
         hcpAjustado1,
         hcpAjustado2,
-
         hcpExacto,
         playingHandicap,
-        categoriaPareja
+
+        categoriaPareja,
+        teeJuegoCategoria
       };
     }
 
     function calcularHcpClasico(indiceAAG1, indiceAAG2) {
       const idx1 = toNumber(indiceAAG1);
       const idx2 = toNumber(indiceAAG2);
-
       if (idx1 == null || idx2 == null) return null;
-
-      /*
-       * Como esta función no recibe registros ni género,
-       * busca las categorías únicamente por rango de índice.
-       */
-      const categoria1 =
-        sugerirCategoriaSinGenero(redondearIndiceUnDecimal(idx1));
-
-      const categoria2 =
-        sugerirCategoriaSinGenero(redondearIndiceUnDecimal(idx2));
-
-      const hcpExacto1 = calcularHcpBasePorTee(idx1, categoria1);
-      const hcpExacto2 = calcularHcpBasePorTee(idx2, categoria2);
-
-      if (hcpExacto1 == null || hcpExacto2 == null) return null;
-
-      const [hcpAjustado1, hcpAjustado2] =
-        ajustarPorBrechaMaxima(hcpExacto1, hcpExacto2, 5);
-
-      return Math.min(
-        roundHalfUp((hcpAjustado1 + hcpAjustado2) * 0.375),
-        54
-      );
+      const [aj1, aj2] = ajustarPorBrechaMaxima(idx1, idx2, 5);
+      if (aj1 == null || aj2 == null) return null;
+      return Math.min(roundHalfUp((aj1 + aj2) * 0.375), 54);
     }
 
     function calcularHcpDesdeCategoria(indiceManual, categoria) {
@@ -2619,19 +2700,20 @@
     function sugerirCategoria(indexManual, genderValor) {
       const idx = toNumber(indexManual);
       if (idx == null) return null;
-      const genderNormalizado = normalizarGenero(genderValor);
 
+      if ((categorias || []).some(esCategoriaNueva)) {
+        return sugerirCategoriaNueva(idx, genderValor, "medal");
+      }
+
+      const genderNormalizado = normalizarGenero(genderValor);
       const porGenero = categorias.find((c) => {
         const min = toNumber(c.index_min);
         const max = toNumber(c.index_max);
         const categoriaGender = normalizarGenero(c.gender);
         return min != null && max != null && idx >= min && idx <= max && categoriaGender === genderNormalizado;
       });
-
       if (porGenero) return porGenero;
 
-      // Fallback: si el jugador no trae gender o la categoría no lo tiene normalizado,
-      // igual intenta ubicar por rango de index.
       return categorias.find((c) => {
         const min = toNumber(c.index_min);
         const max = toNumber(c.index_max);
@@ -2642,7 +2724,9 @@
     function sugerirCategoriaSinGenero(indexManual) {
       const idx = toNumber(indexManual);
       if (idx == null) return null;
-
+      if ((categorias || []).some(esCategoriaNueva)) {
+        return categorias.find(c => categoriaCumpleHcpJuego(c, idx)) || categorias[0] || null;
+      }
       return categorias.find((c) => {
         const min = toNumber(c.index_min);
         const max = toNumber(c.index_max);
@@ -3018,7 +3102,7 @@
 
           supabase
             .from("tournament_categories")
-            .select("id, name, index_min, index_max, tee_id, display_order, gender, slope, course_rating, par, hole_segment")
+            .select("id, category_id, category_system, name, index_min, index_max, tee_id, display_order, gender, slope, course_rating, par, hole_segment, tee_rules, playing_handicap_min, playing_handicap_max, playing_tee_aag_teeout_id")
             .eq("tournament_id", torneo.id)
             .order("display_order", { ascending: true }),
 
@@ -3029,14 +3113,7 @@
 
           supabase
             .from("tee_handicap_rules")
-            .select(`
-              id,
-              tee_id,
-              slope,
-              course_rating,
-              par
-            `)
-            .in("id", Object.values(TEE_CLASICO_IDS)),
+            .select("id, tee_id, slope, course_rating, par"),
 
           supabase
             .from("registrations")
@@ -3229,14 +3306,9 @@
       const line = extraerLinea(reg);
       const scorecard = extraerScorecard(reg);
       const indiceAAG = obtenerIndiceAAG(reg);
-      const indiceManualParaCategoria = calcularIndiceManualMedal(indiceAAG, { hole_segment: obtenerSegmentoReferencia(reg.player?.gender) });
-      const categoriaSugerida = sugerirCategoria(redondearIndiceUnDecimal(indiceManualParaCategoria ?? indiceAAG), reg.player?.gender);
-      const categoriaSeleccionadaId = scorecard?.category_id || categoriaSugerida?.id || reg.category_id || "";
-      const categoriaSeleccionada = getCategoriaById(categoriaSeleccionadaId);
-      const indiceManual = jugadorSinIndexAAG(reg)
-        ? calcularIndiceManualMedal(obtenerIndexBaseParaCalculo(reg), categoriaSeleccionada)
-        : calcularIndiceManualMedal(indiceAAG, categoriaSeleccionada);
-      const hcpJuego = calcularHcpDesdeCategoria(indiceManual, categoriaSeleccionada);
+      const datosSingle = obtenerDatosFilaSingle(reg.id);
+      const categoriaSeleccionada = datosSingle?.categoria || getCategoriaById(datosSingle?.categoriaId);
+      const hcpJuego = datosSingle?.playingHandicap;
       const pago = pagosMap.get(String(reg.id));
       const horario = `${horaTexto(line?.line_time) || "—"} ${hoyoSalidaTexto(line) ? "· " + hoyoSalidaTexto(line) : ""}`;
       const estadoPago = pago?.payment_method && pago.payment_method !== "pending"
@@ -3257,7 +3329,7 @@
           </td>
           <td class="col-center">${formatIndexAAG(indiceAAG) || "—"}</td>
           <td class="col-center">${categoriaSeleccionada?.name || "Revisar"}</td>
-          <td class="col-center">${categoriaSeleccionada ? getTeeName(categoriaSeleccionada.tee_id) : "—"}</td>
+          <td class="col-center">${datosSingle?.teeName || obtenerTeeNombreDesdeCategoria(categoriaSeleccionada) || "—"}</td>
           <td class="col-center">${hcpJuego ?? "—"}</td>
           <td class="col-center">${scorecard?.id ? "Tarjeta creada" : "Pendiente"}</td>
           <td class="col-center">${estadoPago}</td>
@@ -3351,6 +3423,7 @@
 
     function categoriaFallbackPorGenero(genderValor, categoriaIdActual = "") {
       if (categoriaIdActual) return categoriaIdActual;
+      if ((categorias || []).some(esCategoriaNueva)) return categorias[0]?.id || "";
       const genero = normalizarGenero(genderValor);
       return categorias.find(c => normalizarGenero(c.gender) === genero)?.id || categorias[0]?.id || "";
     }
@@ -3373,16 +3446,15 @@
         const datosClasico = calcularDatosClasico(reg1, reg2);
         const categoria = datosClasico?.categoriaPareja || null;
         catTxt = categoria?.name || "Revisar";
-        teeTxt = categoria ? getTeeName(categoria.tee_id) : "—";
+        teeTxt = obtenerTeeNombreDesdeCategoria(datosClasico?.teeJuegoCategoria) || "Revisar";
         hcpTxt = datosClasico?.playingHandicap ?? "—";
       } else {
-        const cat1 = getCategoriaById(pairScore?.category_id || sugerirCategoriaAmericanaDesdeAAG(idxBase1, reg1.player?.gender)?.id || reg1.category_id || "");
-        const cat2 = getCategoriaById(sugerirCategoriaAmericanaDesdeAAG(idxBase2, reg2.player?.gender)?.id || reg2.category_id || "");
-        const hcp1 = calcularHcpAmericana(idxBase1, cat1)
-        const hcp2 = calcularHcpAmericana(idxBase2, cat2)
+        const datosAmericana = obtenerDatosFilaPair(reg1, reg2);
+        const cat1 = datosAmericana?.categoria1 || null;
+        const cat2 = datosAmericana?.categoria2 || null;
         catTxt = `${cat1?.name || "Revisar"} / ${cat2?.name || "Revisar"}`;
-        teeTxt = `${cat1 ? getTeeName(cat1.tee_id) : "—"} / ${cat2 ? getTeeName(cat2.tee_id) : "—"}`;
-        hcpTxt = `${hcp1 ?? "—"} / ${hcp2 ?? "—"}`;
+        teeTxt = `${obtenerTeeNombreDesdeCategoria(cat1) || "—"} / ${obtenerTeeNombreDesdeCategoria(cat2) || "—"}`;
+        hcpTxt = `${datosAmericana?.playingHandicap1 ?? "—"} / ${datosAmericana?.playingHandicap2 ?? "—"}`;
       }
 
       const estadoPago1 = pago1?.payment_method && pago1.payment_method !== "pending" ? `<span class="paid">${money(pago1.amount)}</span>` : `<span class="unpaid">Pend.</span>`;
@@ -3767,11 +3839,14 @@
       const sinIndexAAG = jugadorSinIndexAAG(reg);
 
       let categoriaId = catEl.value || null;
-      let categoria = getCategoriaById(categoriaId);
+      let categoriaBase = getCategoriaById(categoriaId);
 
       let indiceManual = sinIndexAAG
         ? obtenerIndexManualEditable(reg.id)
-        : calcularIndiceManualMedal(indiceAAG, categoria);
+        : calcularIndiceManualMedal(indiceAAG, categoriaBase);
+      let categoria = esCategoriaNueva(categoriaBase)
+        ? resolverCategoriaConTee(categoriaBase, indiceManual, reg.player?.gender)
+        : categoriaBase;
 
       // Si no trae Index AAG y escribiste un index manual,
       // busca automáticamente la categoría correspondiente.
@@ -3782,7 +3857,10 @@
           catEl.value = categoriaAuto.id;
 
           categoriaId = categoriaAuto.id;
-          categoria = categoriaAuto;
+          categoriaBase = getCategoriaById(categoriaAuto.id) || categoriaAuto;
+          categoria = esCategoriaNueva(categoriaBase)
+            ? resolverCategoriaConTee(categoriaBase, indiceManual, reg.player?.gender)
+            : categoriaBase;
         }
 
         autoCategoriaDesdeIndexManual = false;
@@ -3790,13 +3868,16 @@
 
       // Si tiene Index AAG, recalcula el index manual según la categoría actual.
       if (!sinIndexAAG) {
-        indiceManual = calcularIndiceManualMedal(indiceAAG, categoria);
+        indiceManual = calcularIndiceManualMedal(indiceAAG, categoriaBase);
         idxEl.value = formatIndexManual(indiceManual);
+        categoria = esCategoriaNueva(categoriaBase)
+          ? resolverCategoriaConTee(categoriaBase, indiceManual, reg.player?.gender)
+          : categoriaBase;
       }
 
       const hcpJuego = calcularHcpDesdeCategoria(indiceManual, categoria);
 
-      teeEl.value = categoria ? getTeeName(categoria.tee_id) : "";
+      teeEl.value = obtenerTeeNombreDesdeCategoria(categoria);
       hcpEl.value = hcpJuego ?? "";
     }
 
@@ -3835,18 +3916,20 @@
 
       const categoriaId1 = document.getElementById(`cat-pair-${reg1.id}`)?.value || null;
       const categoriaId2 = document.getElementById(`cat-pair-${reg2.id}`)?.value || null;
-      const categoria1 = getCategoriaById(categoriaId1);
-      const categoria2 = getCategoriaById(categoriaId2);
-      const indiceManual1 = calcularIndiceManualAmericana(idxBase1, categoria1);
-      const indiceManual2 = calcularIndiceManualAmericana(idxBase2, categoria2);
+      const categoriaBase1 = getCategoriaById(categoriaId1);
+      const categoriaBase2 = getCategoriaById(categoriaId2);
+      const indiceManual1 = calcularIndiceManualAmericana(idxBase1, categoriaBase1);
+      const indiceManual2 = calcularIndiceManualAmericana(idxBase2, categoriaBase2);
+      const categoria1 = esCategoriaNueva(categoriaBase1) ? resolverCategoriaConTee(categoriaBase1, indiceManual1, reg1.player?.gender) : categoriaBase1;
+      const categoria2 = esCategoriaNueva(categoriaBase2) ? resolverCategoriaConTee(categoriaBase2, indiceManual2, reg2.player?.gender) : categoriaBase2;
       const hcpJuego1 = calcularHcpAmericana(indiceManual1, categoria1);
       const hcpJuego2 = calcularHcpAmericana(indiceManual2, categoria2);
       const teeEl1 = document.getElementById(`tee-pair-${reg1.id}`);
       const teeEl2 = document.getElementById(`tee-pair-${reg2.id}`);
       const manualCell = document.querySelector(`#cat-pair-${reg1.id}`)?.closest("tr")?.children[5];
 
-      if (teeEl1) teeEl1.value = categoria1 ? getTeeName(categoria1.tee_id) : "";
-      if (teeEl2) teeEl2.value = categoria2 ? getTeeName(categoria2.tee_id) : "";
+      if (teeEl1) teeEl1.value = obtenerTeeNombreDesdeCategoria(categoria1);
+      if (teeEl2) teeEl2.value = obtenerTeeNombreDesdeCategoria(categoria2);
       if (manualCell) {
         manualCell.innerHTML = `
           <div class="stack-compact">
@@ -3963,6 +4046,9 @@
     }
 
     function categoriaOptionsPorGenero(gender, selectedId = "") {
+      if ((categorias || []).some(esCategoriaNueva)) {
+        return `<option value="">Seleccionar</option>` + optionTags(categorias, selectedId);
+      }
       const genero = normalizarGenero(gender);
       const lista = categorias.filter(c => normalizarGenero(c.gender) === genero);
       const base = lista.length ? lista : categorias;
@@ -4023,16 +4109,20 @@
       if (esMetodoAmericana()) {
         const sugerida = categoriaSugeridaDesdeIndexManual(reg, indexBase);
         const categoriaId = score?.category_id || sugerida?.id || reg.category_id || "";
-        const categoria = getCategoriaById(categoriaId);
-        const manualIndex = calcularIndiceManualAmericana(indexBase, categoria);
+        const categoriaBase = getCategoriaById(categoriaId);
+        const manualIndex = calcularIndiceManualAmericana(indexBase, categoriaBase);
+        const teeGuardado = esCategoriaNueva(categoriaBase) ? teeAagGuardadoParaCategoria(reg, categoriaBase) : "";
+        const categoria = esCategoriaNueva(categoriaBase) ? resolverCategoriaConTeeExplicito(categoriaBase, teeGuardado, manualIndex, reg.player?.gender) : categoriaBase;
         const hcp = calcularHcpAmericana(manualIndex, categoria);
         return { categoriaId, categoria, officialIndex: indiceAAG, indexBase, manualIndex, hcp, sinIndex };
       }
 
       const sugerida = categoriaSugeridaDesdeIndexManual(reg, indexBase ?? indiceAAG);
       const categoriaId = score?.category_id || sugerida?.id || reg.category_id || "";
-      const categoria = getCategoriaById(categoriaId);
-      const manualIndex = sinIndex ? indexBase : calcularIndiceManualMedal(indiceAAG, categoria);
+      const categoriaBase = getCategoriaById(categoriaId);
+      const manualIndex = sinIndex ? ajustarIndicePorSegmento(indexBase, categoriaBase?.hole_segment) : calcularIndiceManualMedal(indiceAAG, categoriaBase);
+      const teeGuardado = esCategoriaNueva(categoriaBase) ? teeAagGuardadoParaCategoria(reg, categoriaBase) : "";
+      const categoria = esCategoriaNueva(categoriaBase) ? resolverCategoriaConTeeExplicito(categoriaBase, teeGuardado, manualIndex, reg.player?.gender) : categoriaBase;
       const hcp = calcularHcpDesdeCategoria(manualIndex, categoria);
       return { categoriaId, categoria, officialIndex: indiceAAG, indexBase, manualIndex, hcp, sinIndex };
     }
@@ -4045,6 +4135,12 @@
       const ayudaIndex = sinIndex
         ? "Cargá el index manual y se autocompleta categoría, tee y HCP."
         : (esMetodoAmericana() ? `Cálculo 85%: ${formatIndexManual(d.manualIndex) || "—"}` : "Index AAG tomado automáticamente.");
+      const teeSeleccionado = esCategoriaNueva(getCategoriaById(d.categoriaId))
+        ? (teeAagGuardadoParaCategoria(reg, getCategoriaById(d.categoriaId)) || d.categoria?.aag_teeout_id || "")
+        : "";
+      const teeControl = esCategoriaNueva(getCategoriaById(d.categoriaId))
+        ? `<select id="${prefix}Tee">${teeOptionsNuevaCategoria(getCategoriaById(d.categoriaId), reg.player?.gender, teeSeleccionado)}</select>`
+        : `<input id="${prefix}Tee" value="${obtenerTeeNombreDesdeCategoria(d.categoria)}" readonly>`;
       return `
         <div class="fact-player-card">
           <div class="fact-section-title">${titulo}: ${reg.display_name || "Sin nombre"}</div>
@@ -4059,7 +4155,7 @@
             <div class="field"><label>HCP juego</label><input id="${prefix}Hcp" value="${d.hcp ?? ""}" readonly></div>
           </div>
           <div class="fact-grid two">
-            <div class="field"><label>Tee</label><input id="${prefix}Tee" value="${d.categoria ? getTeeName(d.categoria.tee_id) : ""}" readonly></div>
+            <div class="field"><label>Tee</label>${teeControl}<div class="fact-sub">Podés cambiar el tee manualmente; el HCP se recalcula con slope/rating/par de ese tee.</div></div>
             <div class="field"><label>Estado</label><input value="${extraerScorecard(reg)?.id ? "Scorecard guardada" : "Pendiente de guardar"}" readonly></div>
           </div>
         </div>
@@ -4102,7 +4198,12 @@
                 <div class="field"><label>HCP exacto</label><input id="pairManual" value="${formatDecimal(datosClasico?.hcpExacto, 2)}" readonly></div>
                 <div class="field"><label>HCP pareja</label><input id="pairHcp" value="${datosClasico?.playingHandicap ?? ""}" readonly></div>
               </div>
-              <div class="field"><label>Tee</label><input id="pairTee" value="${categoria ? getTeeName(categoria.tee_id) : ""}" readonly></div>
+              ${(categorias || []).some(esCategoriaNueva) ? `
+              <div class="fact-grid three">
+                <div class="field"><label>Tee cálculo ${reg1.display_name || "Jugador 1"}</label><input value="${obtenerTeeNombreDesdeCategoria(datosClasico?.reglaTeeJugador1) || "—"}" readonly></div>
+                <div class="field"><label>Tee cálculo ${reg2.display_name || "Jugador 2"}</label><input value="${obtenerTeeNombreDesdeCategoria(datosClasico?.reglaTeeJugador2) || "—"}" readonly></div>
+                <div class="field"><label>Tee de juego de la categoría</label><input id="pairTee" value="${obtenerTeeNombreDesdeCategoria(datosClasico?.teeJuegoCategoria) || "REVISAR"}" readonly></div>
+              </div>` : `<div class="field"><label>Tee referencia</label><input id="pairTee" value="${obtenerTeeNombreDesdeCategoria(datosClasico?.reglaTeeJugador1 || categoria)}" readonly></div>`}
             </div>`;
         } else {
           jugadoresHtml = `<div class="fact-grid two">${renderPlayerEditor(reg1, "m1", "Jugador 1")}${renderPlayerEditor(reg2, "m2", "Jugador 2")}</div>`;
@@ -4177,15 +4278,43 @@
           idxCalculo = sinIndex ? ajustarIndicePorSegmento(indexBase, cat?.hole_segment) : calcularIndiceManualMedal(indexBase, cat);
         }
 
-        if (teeEl) teeEl.value = cat ? getTeeName(cat.tee_id) : "";
-        if (hcpEl) hcpEl.value = calcularHcpDesdeCategoria(idxCalculo, cat) ?? "";
+        let catResuelta = cat;
+        if (esCategoriaNueva(cat)) {
+          const teeSeleccionado = teeEl?.value || "";
+          catResuelta = resolverCategoriaConTeeExplicito(cat, teeSeleccionado, idxCalculo, reg?.player?.gender);
+          if (teeEl && teeEl.tagName === "SELECT") {
+            const idFinal = catResuelta?.aag_teeout_id || "";
+            if (!teeSeleccionado || !Array.from(teeEl.options).some(o => o.value === teeSeleccionado)) {
+              teeEl.innerHTML = teeOptionsNuevaCategoria(cat, reg?.player?.gender, idFinal);
+            }
+            teeEl.value = idFinal;
+          }
+        } else if (teeEl) {
+          teeEl.value = cat ? getTeeName(cat.tee_id) : "";
+        }
+
+        const hcpCalculado = esMetodoAmericana()
+          ? calcularHcpAmericana(idxCalculo, catResuelta)
+          : calcularHcpDesdeCategoria(idxCalculo, catResuelta);
+        if (hcpEl) hcpEl.value = hcpCalculado ?? "";
       };
 
       ["m1", "m2"].forEach(prefix => {
         const catEl = document.getElementById(`${prefix}Cat`);
         const manualEl = document.getElementById(`${prefix}Manual`);
 
-        catEl?.addEventListener("change", () => recalcSingle(prefix));
+        catEl?.addEventListener("change", () => {
+          const reg = regParaPrefix(prefix);
+          const cat = getCategoriaById(catEl.value || "");
+          const teeEl = document.getElementById(`${prefix}Tee`);
+          if (teeEl && teeEl.tagName === "SELECT" && esCategoriaNueva(cat)) {
+            teeEl.innerHTML = teeOptionsNuevaCategoria(cat, reg?.player?.gender, "");
+            teeEl.value = "";
+          }
+          recalcSingle(prefix);
+        });
+
+        document.getElementById(`${prefix}Tee`)?.addEventListener("change", () => recalcSingle(prefix));
 
         manualEl?.addEventListener("input", () => {
           const reg = regParaPrefix(prefix);
@@ -4211,7 +4340,7 @@
         if (pairCatEl && cat?.id) pairCatEl.value = cat.id;
         if (pairManualEl) pairManualEl.value = formatDecimal(datosClasico?.hcpExacto, 2) || "";
         if (pairHcpEl) pairHcpEl.value = datosClasico?.playingHandicap ?? "";
-        if (pairTeeEl) pairTeeEl.value = cat ? getTeeName(cat.tee_id) : "";
+        if (pairTeeEl) pairTeeEl.value = obtenerTeeNombreDesdeCategoria(datosClasico?.reglaTeeJugador1 || cat);
       };
 
       const factMetodo = document.getElementById("factMetodo");
@@ -4228,6 +4357,8 @@
       }
 
       document.getElementById("pairCat")?.addEventListener("change", recalcPairClasico);
+      document.getElementById("m1TeeClasico")?.addEventListener("change", recalcPairClasico);
+      document.getElementById("m2TeeClasico")?.addEventListener("change", recalcPairClasico);
       ["m1Manual", "m2Manual"].forEach(id => {
         document.getElementById(id)?.addEventListener("input", recalcPairClasico);
         document.getElementById(id)?.addEventListener("blur", recalcPairClasico);
@@ -4256,7 +4387,7 @@
 
     function leerDatosModalSingle(reg, prefix = "m1") {
       const categoriaId = document.getElementById(`${prefix}Cat`)?.value || null;
-      const categoria = getCategoriaById(categoriaId);
+      const categoriaBase = getCategoriaById(categoriaId);
       const indiceAAG = obtenerIndiceAAG(reg);
       const sinIndex = jugadorSinIndexAAG(reg);
       const indexBase = sinIndex
@@ -4265,14 +4396,23 @@
 
       let manualIndex = null;
       if (esMetodoAmericana()) {
-        manualIndex = calcularIndiceManualAmericana(indexBase, categoria);
+        manualIndex = calcularIndiceManualAmericana(indexBase, categoriaBase);
       } else {
-        manualIndex = sinIndex ? ajustarIndicePorSegmento(indexBase, categoria?.hole_segment) : calcularIndiceManualMedal(indexBase, categoria);
+        manualIndex = sinIndex ? ajustarIndicePorSegmento(indexBase, categoriaBase?.hole_segment) : calcularIndiceManualMedal(indexBase, categoriaBase);
       }
+
+      const teeSeleccionado = esCategoriaNueva(categoriaBase)
+        ? (document.getElementById(`${prefix}Tee`)?.value || "")
+        : "";
+      const categoria = esCategoriaNueva(categoriaBase)
+        ? resolverCategoriaConTeeExplicito(categoriaBase, teeSeleccionado, manualIndex, reg.player?.gender)
+        : categoriaBase;
 
       return {
         categoriaId,
         teeId: categoria?.tee_id || null,
+        teeDbId: esCategoriaNueva(categoriaBase) ? null : (categoria?.tee_id || null),
+        teeName: obtenerTeeNombreDesdeCategoria(categoria),
         officialIndex: sinIndex ? indexBase : indiceAAG,
         manualIndex,
         playingHandicap: esMetodoAmericana()
@@ -4314,7 +4454,7 @@
         const line = extraerLinea(reg);
         await upsertScorecardIndividual(reg, {
           category_id: datos.categoriaId,
-          tee_id: datos.teeId,
+          tee_id: datos.teeDbId ?? null,
           official_index: datos.officialIndex,
           playing_handicap: datos.playingHandicap,
           starting_time: line?.line_time || null,
@@ -4334,10 +4474,12 @@
         const categoriaId = categoria?.id || null;
         const manualIndex = datosClasico?.hcpExacto ?? null;
         const playingHandicap = datosClasico?.playingHandicap ?? null;
-        if (!categoriaId || !categoria?.tee_id || manualIndex == null || playingHandicap == null) throw new Error("Revisá los datos de la pareja.");
+        if (!categoriaId || !datosClasico?.teeJuegoCategoria?.tee_id || manualIndex == null || playingHandicap == null) {
+          throw new Error("Revisá la categoría de la pareja y su tee de juego obligatorio.");
+        }
         await upsertScorecardPareja(reg1, reg2, {
           category_id: categoriaId,
-          tee_id: categoria.tee_id,
+          tee_id: esCategoriaNueva(categoria) ? null : categoria.tee_id,
           official_index: manualIndex,
           playing_handicap: playingHandicap,
           starting_time: line?.line_time || null,
@@ -4356,7 +4498,7 @@
       if (!d1.categoriaId || !d2.categoriaId || d1.playingHandicap == null || d2.playingHandicap == null) throw new Error("Revisá los datos de la pareja Americana.");
       await upsertScorecardPareja(reg1, reg2, {
         category_id: d1.categoriaId,
-        tee_id: d1.teeId,
+        tee_id: d1.teeDbId ?? null,
         official_index: d1.manualIndex,
         playing_handicap: d1.playingHandicap,
         starting_time: line?.line_time || null,
@@ -4474,18 +4616,31 @@
       if (!reg) return null;
 
       const prefix = String(facturaActual?.regId || "") === String(reg.id) ? "m1" : "";
-      const categoria = obtenerCategoriaSeleccionadaSingle(reg);
+      const categoriaBase = obtenerCategoriaSeleccionadaSingle(reg);
       const esManual = jugadorSinIndexAAG(reg);
       const indiceAAG = esManual ? null : obtenerIndiceAAG(reg);
-      const manualIndex = obtenerManualSingleDesdePantalla(reg, categoria, prefix);
-      const playingHandicap = calcularHcpDesdeCategoria(manualIndex, categoria);
+      const manualIndex = obtenerManualSingleDesdePantalla(reg, categoriaBase, prefix);
+      let teeOverride = "";
+      if (esCategoriaNueva(categoriaBase)) {
+        const teeModal = prefix ? valorElemento(`${prefix}Tee`) : "";
+        teeOverride = teeModal || teeAagGuardadoParaCategoria(reg, categoriaBase) || "";
+      }
+      const categoria = esCategoriaNueva(categoriaBase)
+        ? resolverCategoriaConTeeExplicito(categoriaBase, teeOverride, manualIndex, reg.player?.gender)
+        : categoriaBase;
+      const playingHandicap = esMetodoAmericana()
+        ? calcularHcpAmericana(manualIndex, categoria)
+        : calcularHcpDesdeCategoria(manualIndex, categoria);
 
       return {
-        categoriaId: categoria?.id || null,
+        categoriaId: categoriaBase?.id || null,
         teeId: categoria?.tee_id || null,
+        teeDbId: esCategoriaNueva(categoriaBase) ? null : (categoria?.tee_id || null),
+        teeName: categoria?.tee_name || (categoria?.tee_id ? getTeeName(categoria.tee_id) : null),
         officialIndex: esManual ? obtenerIndexBaseParaCalculo(reg) : indiceAAG,
         manualIndex,
-        playingHandicap
+        playingHandicap,
+        categoria
       };
     }
 
@@ -4516,39 +4671,59 @@
         const manualIndex = datosClasico?.hcpExacto ?? null;
         const playingHandicap = datosClasico?.playingHandicap ?? null;
 
+        const teeJuegoCategoria = datosClasico?.teeJuegoCategoria || null;
+
         return {
           modo: "clasico",
           categoriaId: categoria?.id || null,
-          teeId: categoria?.tee_id || null,
+          teeId: teeJuegoCategoria?.tee_id || null,
+          teeDbId: esCategoriaNueva(categoria) ? null : (teeJuegoCategoria?.tee_id || categoria?.tee_id || null),
           officialIndex1: idxBase1,
           officialIndex2: idxBase2,
           manualIndex,
-          playingHandicap
+          playingHandicap,
+
+          // Se conservan para auditoría del cálculo inicial.
+          reglaTeeJugador1: datosClasico?.reglaTeeJugador1 || null,
+          reglaTeeJugador2: datosClasico?.reglaTeeJugador2 || null,
+
+          // Tee real desde donde juega la pareja.
+          teeJuegoCategoria,
+          categoriaPareja: categoria
         };
       }
 
       const prefix1 = prefixModalParaRegistro(reg1);
       const prefix2 = prefixModalParaRegistro(reg2);
 
-      const categoria1 = obtenerCategoriaSeleccionadaAmericana(reg1);
-      const categoria2 = obtenerCategoriaSeleccionadaAmericana(reg2);
-      const manualIndex1 = obtenerManualAmericanaDesdePantalla(reg1, categoria1, prefix1);
-      const manualIndex2 = obtenerManualAmericanaDesdePantalla(reg2, categoria2, prefix2);
+      const categoriaBase1 = obtenerCategoriaSeleccionadaAmericana(reg1);
+      const categoriaBase2 = obtenerCategoriaSeleccionadaAmericana(reg2);
+      const manualIndex1 = obtenerManualAmericanaDesdePantalla(reg1, categoriaBase1, prefix1);
+      const manualIndex2 = obtenerManualAmericanaDesdePantalla(reg2, categoriaBase2, prefix2);
+      const teeOverride1 = esCategoriaNueva(categoriaBase1)
+        ? ((prefix1 ? valorElemento(`${prefix1}Tee`) : "") || teeAagGuardadoParaCategoria(reg1, categoriaBase1) || "")
+        : "";
+      const teeOverride2 = esCategoriaNueva(categoriaBase2)
+        ? ((prefix2 ? valorElemento(`${prefix2}Tee`) : "") || teeAagGuardadoParaCategoria(reg2, categoriaBase2) || "")
+        : "";
+      const categoria1 = esCategoriaNueva(categoriaBase1) ? resolverCategoriaConTeeExplicito(categoriaBase1, teeOverride1, manualIndex1, reg1.player?.gender) : categoriaBase1;
+      const categoria2 = esCategoriaNueva(categoriaBase2) ? resolverCategoriaConTeeExplicito(categoriaBase2, teeOverride2, manualIndex2, reg2.player?.gender) : categoriaBase2;
       const playingHandicap1 = calcularHcpAmericana(manualIndex1, categoria1);
       const playingHandicap2 = calcularHcpAmericana(manualIndex2, categoria2);
 
       return {
         modo: "americana",
-        categoriaId1: categoria1?.id || null,
-        categoriaId2: categoria2?.id || null,
+        categoriaId1: categoriaBase1?.id || null,
+        categoriaId2: categoriaBase2?.id || null,
         teeId1: categoria1?.tee_id || null,
         teeId2: categoria2?.tee_id || null,
+        teeDbId1: esCategoriaNueva(categoriaBase1) ? null : (categoria1?.tee_id || null),
+        teeDbId2: esCategoriaNueva(categoriaBase2) ? null : (categoria2?.tee_id || null),
+        categoria1, categoria2,
         officialIndex1: idxBase1,
         officialIndex2: idxBase2,
-        manualIndex1,
-        manualIndex2,
-        playingHandicap1,
-        playingHandicap2
+        manualIndex1, manualIndex2,
+        playingHandicap1, playingHandicap2
       };
     }
 
@@ -4594,7 +4769,7 @@
     function datosCategoriaParaScorecard(categoria) {
       return {
         category_name: categoria?.name || null,
-        tee_name: categoria?.tee_id ? getTeeName(categoria.tee_id) : null,
+        tee_name: categoria?.tee_name || (categoria?.tee_id ? getTeeName(categoria.tee_id) : null),
         hole_segment: categoria?.hole_segment || null,
         slope: categoria?.slope ?? null,
         course_rating: categoria?.course_rating ?? null,
@@ -4759,10 +4934,10 @@
       }
 
       const line = extraerLinea(reg);
-      const categoria = getCategoriaById(datos.categoriaId);
+      const categoria = datos.categoria || getCategoriaById(datos.categoriaId);
       const payload = {
         category_id: datos.categoriaId,
-        tee_id: datos.teeId,
+        tee_id: datos.teeDbId ?? null,
         official_index: datos.officialIndex,
         playing_handicap: datos.playingHandicap,
         starting_time: line?.line_time || null,
@@ -4815,7 +4990,9 @@
         ? `${reg1.display_name} / ${reg2.display_name}`
         : `${reg1.display_name} (${datos.playingHandicap1}) / ${reg2.display_name} (${datos.playingHandicap2})`;
 
-      const categoriaPrincipal = getCategoriaById(datos.modo === "clasico" ? datos.categoriaId : datos.categoriaId1);
+      const categoriaPrincipal = datos.modo === "clasico"
+        ? (datos.teeJuegoCategoria || getCategoriaById(datos.categoriaId))
+        : (datos.categoria1 || getCategoriaById(datos.categoriaId1));
 
       await upsertScorecardPareja(reg1, reg2, {
         category_id:
@@ -4825,8 +5002,8 @@
 
         tee_id:
           datos.modo === "clasico"
-            ? datos.teeId
-            : datos.teeId1,
+            ? (datos.teeDbId ?? null)
+            : (datos.teeDbId1 ?? null),
 
         official_index:
           datos.modo === "clasico"
@@ -4887,7 +5064,7 @@
 
           if (datos?.modo === "clasico") {
             if (!datos.categoriaId) errores.push(`Revisar categoría de la pareja ${reg1.display_name} / ${reg2.display_name}`);
-            if (!datos.teeId) errores.push(`Revisar tee de la pareja ${reg1.display_name} / ${reg2.display_name}`);
+            if (!datos.teeId) errores.push(`Revisar tee de juego de la categoría de ${reg1.display_name} / ${reg2.display_name}`);
             if (datos.manualIndex == null) errores.push(`Revisar índice manual de la pareja ${reg1.display_name} / ${reg2.display_name}`);
             if (datos.playingHandicap == null) errores.push(`Falta HCP de juego de la pareja ${reg1.display_name} / ${reg2.display_name}`);
           }
@@ -5050,7 +5227,7 @@
 
           if (datos?.modo === "clasico") {
             if (!datos.categoriaId) motivos.push("categoría de pareja");
-            if (!datos.teeId) motivos.push("tee de pareja");
+            if (!datos.teeId) motivos.push("tee de juego de la categoría");
             if (datos.manualIndex == null) motivos.push("index de juego de pareja");
             if (datos.playingHandicap == null) motivos.push("HCP de juego de pareja");
           } else if (datos?.modo === "americana") {
@@ -5486,17 +5663,12 @@
 
     function obtenerTeeNombreDesdeCategoria(categoria) {
       if (!categoria) return "";
-
-      return (
-        categoria.tee_name ||
-        tees.find((t) => String(t.id) === String(categoria.tee_id))?.name ||
-        ""
-      );
+      return nombreVisibleTee(categoria.tee_name) || getTeeName(categoria.tee_id) || "";
     }
 
     function obtenerTeeNombreSingle(reg) {
-      const categoria = obtenerCategoriaSeleccionadaSingle(reg);
-      return obtenerTeeNombreDesdeCategoria(categoria);
+      const datos = obtenerDatosFilaSingle(reg.id);
+      return datos?.teeName || obtenerTeeNombreDesdeCategoria(datos?.categoria || obtenerCategoriaSeleccionadaSingle(reg));
     }
 
     function obtenerCategoriaSeleccionadaPair(reg1, reg2) {
@@ -5578,13 +5750,15 @@
       return String(nombre || "").trim().replace(/\s+/g, " ");
     }
 
-    function datosSalidaTexto({ hora, tee, tee2, hoyo }) {
+    function datosSalidaTexto({ hora, tee, tee2, hoyo, mostrarDosTees = false }) {
       let teeTxt = "";
 
-      if (tee && tee2 && tee !== tee2) {
-        teeTxt = `Tee: ${tee} / ${tee2}`;
+      if (mostrarDosTees && tee && tee2) {
+        teeTxt = `${nombreVisibleTee(tee)}/${nombreVisibleTee(tee2)}`;
+      } else if (tee && tee2 && tee !== tee2) {
+        teeTxt = `Tee: ${nombreVisibleTee(tee)} / ${nombreVisibleTee(tee2)}`;
       } else {
-        teeTxt = `Tee: ${tee || tee2 || "—"}`;
+        teeTxt = `Tee: ${nombreVisibleTee(tee || tee2) || "—"}`;
       }
 
       return `${hora ? hora + " hs." : "—"} / ${teeTxt} / ${hoyo || "—"}`;
@@ -6106,11 +6280,6 @@
 
     // Impresion de tarjeta en pareja americana
 
-    const HCP_HOYOS_VMGC = {
-      1: 15, 2: 3, 3: 5, 4: 11, 5: 9, 6: 1, 7: 13, 8: 7, 9: 17,
-      10: 8, 11: 14, 12: 10, 13: 2, 14: 16, 15: 18, 16: 6, 17: 12, 18: 4
-    };
-
     const LEFT_GOLPES_HOYOS = {
       1: 32.5, 2: 39, 3: 46, 4: 52.5, 5: 59.5, 6: 66.5, 7: 73, 8: 80, 9: 86,
       10: 102, 11: 108.5, 12: 115, 13: 122, 14: 128.5, 15: 135, 16: 141.5, 17: 148, 18: 155
@@ -6141,15 +6310,22 @@
       return golpes > 0 ? `+${Math.min(golpes, 3)}` : "";
     }
 
-    function htmlGolpesAmericana(hcpJugadorA, hcpJugadorB) {
+    function hcpHoyoDesdeCategoria(categoria, hoyo) {
+      const holes = categoria?.tee_reference?.holes || categoria?.tee_rule?.reference?.holes || [];
+      const dato = (holes || []).find(h => Number(h?.hole ?? h?.HoleNumber) === Number(hoyo));
+      return toNumber(dato?.handicap ?? dato?.Handicap);
+    }
+
+    function htmlGolpesAmericana(hcpJugadorA, hcpJugadorB, categoriaA = null, categoriaB = null) {
       let html = "";
 
       for (let hoyo = 1; hoyo <= 18; hoyo++) {
         const left = LEFT_GOLPES_HOYOS[hoyo];
-        const hcpHoyo = HCP_HOYOS_VMGC[hoyo];
+        const hcpHoyoA = hcpHoyoDesdeCategoria(categoriaA, hoyo);
+        const hcpHoyoB = hcpHoyoDesdeCategoria(categoriaB || categoriaA, hoyo);
 
-        const golpesA = golpesEnHoyo(hcpJugadorA, hcpHoyo);
-        const golpesB = golpesEnHoyo(hcpJugadorB, hcpHoyo);
+        const golpesA = golpesEnHoyo(hcpJugadorA, hcpHoyoA);
+        const golpesB = golpesEnHoyo(hcpJugadorB, hcpHoyoB);
 
         if (golpesA) {
           html += `<div class="tj-golpe-hoyo" style="left:${left}mm; top:125mm;">${golpesA}</div>`;
@@ -6589,22 +6765,24 @@
           let tee2 = "";
 
           if (params.method === "individual_percentage") {
-            tee = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaAmericana(reg1));
-            tee2 = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaAmericana(reg2));
+            tee = obtenerTeeNombreDesdeCategoria(datosPair?.categoria1);
+            tee2 = obtenerTeeNombreDesdeCategoria(datosPair?.categoria2);
           } else {
-            tee = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaPair(reg1, reg2));
+            tee = obtenerTeeNombreDesdeCategoria(datosPair?.teeJuegoCategoria);
+            tee2 = "";
           }
 
           const datos = datosSalidaTexto({
             hora,
             tee,
             tee2,
-            hoyo
+            hoyo,
+            mostrarDosTees: false
           });
 
           const golpesAmericana =
             params.method === "individual_percentage"
-              ? htmlGolpesAmericana(datosPair?.playingHandicap1, datosPair?.playingHandicap2)
+              ? htmlGolpesAmericana(datosPair?.playingHandicap1, datosPair?.playingHandicap2, datosPair?.categoria1, datosPair?.categoria2)
               : "";
 
           tarjetas.push(buildTarjetaNuevaHTML({
@@ -6633,20 +6811,27 @@
         return;
       }
 
+      // Guardamos las scorecards ANTES de abrir el diálogo de impresión.
+      // Así, aunque el usuario imprima y salga inmediatamente de la página,
+      // las tarjetas ya quedaron persistidas en Supabase.
+      let scorecardsGeneradas = 0;
+      for (const fila of validas) {
+        if (fila.tipo === "single") {
+          await guardarOficializacionSingle(fila.jugadores[0].id, true);
+        } else {
+          await guardarOficializacionPair(fila.jugadores[0].id, fila.jugadores[1].id, true);
+        }
+        scorecardsGeneradas++;
+      }
+
       printRoot.innerHTML = cssTarjetaLaser(true) + tarjetas.join("");
 
       setTimeout(() => {
         window.print();
-
-        setTimeout(() => {
-          printRoot.innerHTML = "";
-        }, 1000);
-
-        setTimeout(() => {
-          generarScorecardsEnSegundoPlano();
-        }, 400);
-
+        setTimeout(() => { printRoot.innerHTML = ""; }, 1000);
       }, 80);
+
+      setEstado(`Tarjetas listas para imprimir y ${scorecardsGeneradas} scorecard(s) guardadas.`, pendientes.length ? "warn" : "ok");
     }
 
     async function imprimirTarjeta(regId, refrescarAntes = true) {
@@ -6744,17 +6929,24 @@
       let tee2 = "";
 
       if (params.method === "individual_percentage") {
-        tee = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaAmericana(reg1));
-        tee2 = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaAmericana(reg2));
+        tee = obtenerTeeNombreDesdeCategoria(datos?.categoria1);
+        tee2 = obtenerTeeNombreDesdeCategoria(datos?.categoria2);
       } else {
-        tee = obtenerTeeNombreDesdeCategoria(obtenerCategoriaSeleccionadaPair(reg1, reg2));
+        tee = obtenerTeeNombreDesdeCategoria(datos?.teeJuegoCategoria);
+        tee2 = "";
       }
 
-      const datosSalida = datosSalidaTexto({ hora, tee, tee2, hoyo });
+      const datosSalida = datosSalidaTexto({
+        hora,
+        tee,
+        tee2,
+        hoyo,
+        mostrarDosTees: false
+      });
 
       const golpesAmericana =
         params.method === "individual_percentage"
-          ? htmlGolpesAmericana(datos?.playingHandicap1, datos?.playingHandicap2)
+          ? htmlGolpesAmericana(datos?.playingHandicap1, datos?.playingHandicap2, datos?.categoria1, datos?.categoria2)
           : "";
 
       imprimirLaserTarjeta(buildTarjetaNuevaHTML({

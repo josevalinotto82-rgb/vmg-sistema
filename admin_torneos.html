@@ -295,18 +295,21 @@
       /* usamos spacing, no padding */
     }
 
-    /* ===== TABLA GRILLA ===== */
-    .tabla-grilla {
+    /* ===== TABLA ÚLTIMOS TORNEOS ARCHIVADOS ===== */
+    .tabla-archivados {
       border-collapse: separate;
       border-spacing: 40px 1px;
-      /* 👈 más compacta */
       width: auto;
     }
 
-    .tabla-grilla td,
-    .tabla-grilla th {
-      text-align: center;
+    .tabla-archivados td,
+    .tabla-archivados th {
+      text-align: left;
       padding: 0;
+    }
+
+    .tabla-archivados td:first-child {
+      font-weight: bold;
     }
 
     .tabla-torneos td:first-child {
@@ -378,6 +381,329 @@
     .switch input:checked+.slider::before {
       transform: translateX(16px);
     }
+
+    /* ===== NUEVO SISTEMA DE CATEGORÍAS ===== */
+    .category-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .category-actions button {
+      padding: 7px 9px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .btn-cat-primary {
+      background: #166534;
+      color: white;
+    }
+
+    .btn-cat-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-cat-warning {
+      background: #f59e0b;
+      color: #111827;
+    }
+
+    .category-validation {
+      margin-top: 6px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .category-validation.ok {
+      color: #166534;
+    }
+
+    .category-validation.warning {
+      color: #b45309;
+    }
+
+    .category-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.48);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 10020;
+    }
+
+    .category-modal.hidden {
+      display: none;
+    }
+
+    .category-modal-card {
+      width: min(980px, 96vw);
+      max-height: 92vh;
+      overflow: auto;
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.25);
+    }
+
+    .category-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .category-modal-header h2 {
+      margin: 0;
+    }
+
+    .category-close {
+      border: none;
+      background: #e5e7eb;
+      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .category-form-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 800px) {
+      .category-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .tee-rules-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+
+    .tee-rules-table th,
+    .tee-rules-table td {
+      padding: 8px 6px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .tee-rules-table select,
+    .tee-rules-table input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 9px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+    }
+
+    .tee-rule-info {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #6b7280;
+      line-height: 1.3;
+    }
+
+    .tee-rule-missing {
+      color: #b91c1c;
+      font-weight: 700;
+    }
+
+    .btn-rule-remove {
+      border: none;
+      background: #fee2e2;
+      color: #991b1b;
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .category-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .category-modal-footer button {
+      border: none;
+      border-radius: 9px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .category-alert {
+      padding: 10px 12px;
+      border-radius: 9px;
+      background: #fff7ed;
+      color: #9a3412;
+      margin-bottom: 12px;
+      display: none;
+      white-space: pre-line;
+    }
+
+    .category-alert.show {
+      display: block;
+    }
+
+    .btn-category-selector {
+      width: 100%;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 10px;
+      background: #166534;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .btn-category-selector:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .category-summary {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-height: 22px;
+      align-items: center;
+    }
+
+    .category-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: #166534;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .category-selector-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.48);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 10010;
+    }
+
+    .category-selector-modal.hidden {
+      display: none;
+    }
+
+    .category-selector-card {
+      width: min(760px, 96vw);
+      max-height: 90vh;
+      overflow: hidden;
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.25);
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .category-selector-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 12px 0;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .category-selector-card > .category-modal-header,
+    .category-selector-card > .muted,
+    .category-selector-card > .category-selector-toolbar,
+    .category-selector-card > .category-modal-footer {
+      flex-shrink: 0;
+    }
+
+    .category-selector-card > .category-modal-footer {
+      padding-top: 14px;
+      border-top: 1px solid #e5e7eb;
+      background: #fff;
+    }
+
+    .category-selector-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #fff;
+    }
+
+    .category-selector-row:hover {
+      background: #f9fafb;
+    }
+
+    .category-selector-row.focused {
+      border-color: #166534;
+      box-shadow: inset 0 0 0 1px #166534;
+      background: #f0fdf4;
+    }
+
+    .category-selector-row.invalid {
+      background: #fff7ed;
+      border-color: #fed7aa;
+    }
+
+    .category-selector-row input {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+    }
+
+    .category-selector-row-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .category-selector-row-title {
+      font-weight: 700;
+    }
+
+    .category-selector-row-sub {
+      margin-top: 3px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .category-selector-toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+    }
+
   </style>
 </head>
 
@@ -409,7 +735,7 @@
     <div id="datosTorneoGrid" class="form-grid">
       <div class="field">
         <label for="nombre">Nombre</label>
-        <input id="nombre" />
+        <input id="nombre" autocapitalize="characters" style="text-transform: uppercase;" />
       </div>
 
       <div class="field">
@@ -423,8 +749,13 @@
       </div>
 
       <div class="field">
-        <label for="categorias">Categorías del torneo</label>
-        <select id="categorias" multiple size="6"></select>
+        <label>Categorías del torneo</label>
+        <select id="categorias" multiple size="6" style="display:none;"></select>
+        <button type="button" id="btnSeleccionarCategorias" class="btn-category-selector">Seleccionar categorías</button>
+        <div id="categoriasResumen" class="category-summary muted">Ninguna categoría seleccionada.</div>
+        <div id="categoriaValidacion" class="category-validation muted">
+          Validando categorías contra AAG...
+        </div>
       </div>
 
       <div class="field">
@@ -581,19 +912,121 @@
   </div>
 
   <div class="card">
-    <h2 class="section-title">Grilla del torneo</h2>
+    <h2 class="section-title">Últimos torneos archivados</h2>
 
-    <table class="tabla-grilla">
+    <table class="tabla-archivados">
       <thead>
         <tr>
-          <th>Bloque</th>
-          <th>Hora</th>
-          <th>Hoyo</th>
-          <th>Capacidad</th>
+          <th>Torneo</th>
+          <th>Fecha</th>
+          <th>Acción</th>
         </tr>
       </thead>
-      <tbody id="grilla"></tbody>
+      <tbody id="torneosArchivadosLista"></tbody>
     </table>
+    <div id="sinTorneosArchivados" class="muted" style="display:none; margin-top:10px;">
+      No hay torneos archivados.
+    </div>
+  </div>
+
+
+  <!-- ===== MODAL SELECTOR DE CATEGORÍAS DEL TORNEO ===== -->
+  <div id="modalSeleccionCategorias" class="category-selector-modal hidden">
+    <div class="category-selector-card">
+      <div class="category-modal-header">
+        <h2>Seleccionar categorías</h2>
+        <button type="button" id="btnCerrarSeleccionCategorias" class="category-close">×</button>
+      </div>
+
+      <div class="muted" style="font-size:12px;">
+        Marcá las categorías que tendrá este torneo. Para editar una categoría, tocá su fila y después usá “Editar”.
+      </div>
+
+      <div id="listaSeleccionCategorias" class="category-selector-list"></div>
+
+      <div class="category-selector-toolbar">
+        <button type="button" id="btnNuevaCategoria" class="btn-cat-primary">+ Nueva</button>
+        <button type="button" id="btnEditarCategoria" class="btn-cat-secondary">✏ Editar</button>
+        <button type="button" id="btnValidarCategorias" class="btn-cat-warning">↻ Validar AAG</button>
+      </div>
+
+      <div class="category-modal-footer">
+        <button type="button" id="btnCancelarSeleccionCategorias" class="btn-secondary">Cancelar</button>
+        <button type="button" id="btnAceptarSeleccionCategorias" class="btn-cat-primary">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL CREADOR / EDITOR DE CATEGORÍAS ===== -->
+  <div id="modalCategoria" class="category-modal hidden">
+    <div class="category-modal-card">
+      <div class="category-modal-header">
+        <h2 id="modalCategoriaTitulo">Nueva categoría</h2>
+        <button type="button" id="btnCerrarCategoria" class="category-close">×</button>
+      </div>
+
+      <div id="categoriaModalAlerta" class="category-alert"></div>
+
+      <div class="category-form-grid">
+        <div class="field">
+          <label for="categoriaNombre">Nombre</label>
+          <input id="categoriaNombre" placeholder="Ej: MIXTO 0 a 15" />
+        </div>
+
+        <div class="field">
+          <label for="categoriaHcpMin">HCP juego mín.</label>
+          <input id="categoriaHcpMin" type="number" step="1" placeholder="Opcional" />
+        </div>
+
+        <div class="field">
+          <label for="categoriaHcpMax">HCP juego máx.</label>
+          <input id="categoriaHcpMax" type="number" step="1" placeholder="Opcional" />
+        </div>
+
+        <div class="field">
+          <label for="categoriaOrden">Orden</label>
+          <input id="categoriaOrden" type="number" step="1" min="0" value="0" />
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:16px;">
+        <label for="categoriaPlayingTee">Tee de juego de la categoría</label>
+        <select id="categoriaPlayingTee">
+          <option value="">Sin tee obligatorio</option>
+        </select>
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Opcional. Se usa en modalidades como Fourball Clásico cuando, una vez determinada la categoría de la pareja,
+          todos deben jugar desde una piedra específica. Las reglas de tee de abajo siguen usándose para calcular
+          el HCP inicial de cada jugador según su índice y género.
+        </div>
+      </div>
+
+      <h3 style="margin-bottom:4px;">Reglas de tee</h3>
+      <div class="muted" style="font-size:12px;">
+        Cada regla define qué tee corresponde al jugador según su índice. El sexo se obtiene directamente del tee AAG.
+      </div>
+
+      <table class="tee-rules-table">
+        <thead>
+          <tr>
+            <th style="width:50%;">Tee AAG</th>
+            <th style="width:17%;">Índice mín.</th>
+            <th style="width:17%;">Índice máx.</th>
+            <th style="width:16%;"></th>
+          </tr>
+        </thead>
+        <tbody id="teeRulesBody"></tbody>
+      </table>
+
+      <div class="category-actions" style="margin-top:10px;">
+        <button type="button" id="btnAgregarRegla" class="btn-cat-secondary">+ Agregar tee</button>
+      </div>
+
+      <div class="category-modal-footer">
+        <button type="button" id="btnCancelarCategoria" class="btn-secondary">Cancelar</button>
+        <button type="button" id="btnGuardarCategoria" class="btn-cat-primary">Guardar categoría</button>
+      </div>
+    </div>
   </div>
 
   <div id="modalConfirm" class="modal-confirm hidden">
@@ -642,6 +1075,7 @@
     await exigirAdmin();
 
     const torneosListaEl = document.getElementById("torneosLista");
+    const filtroEstadoEl = document.getElementById("filtroEstado");
 
     const tipoSalidaEl = document.getElementById("tipoSalida");
     const configSecuencialEl = document.getElementById("configSecuencial");
@@ -658,15 +1092,23 @@
     const params = new URLSearchParams(window.location.search);
     const torneoIdEdicion = params.get("torneo_id");
 
-    const grillaEl = document.getElementById("grilla");
+    const torneosArchivadosListaEl = document.getElementById("torneosArchivadosLista");
+    const sinTorneosArchivadosEl = document.getElementById("sinTorneosArchivados");
+
+    const modalSeleccionCategoriasEl = document.getElementById("modalSeleccionCategorias");
+    const listaSeleccionCategoriasEl = document.getElementById("listaSeleccionCategorias");
+    let categoriasSeleccionTemporal = new Set();
+    let categoriaFocoId = null;
+    let categoriasInicialesAplicadas = false;
 
     async function cargarTorneos() {
-      const filtro = document.getElementById("filtroEstado").value;
+      const filtro = filtroEstadoEl.value;
 
       let query = supabase
         .from("tournaments")
         .select("id, name, tournament_date, status")
-        .order("tournament_date", { ascending: true });
+        .order("tournament_date", { ascending: true })
+        .order("name", { ascending: true });
 
       if (filtro === "todos") {
         query = query.in("status", ["open", "closed"]); // 👈 SOLO estos dos
@@ -675,10 +1117,6 @@
       }
 
       const { data, error } = await query;
-
-      document.getElementById("filtroEstado").addEventListener("change", () => {
-        cargarTorneos();
-      });
 
       torneosListaEl.innerHTML = (data || [])
         .map(t => {
@@ -703,6 +1141,45 @@
                 </button>
                 <button class="btn-danger" onclick="eliminarTorneo('${t.id}', '${String(t.name).replace(/'/g, "\\'")}')">
                   Eliminar
+                </button>
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+    }
+
+    async function cargarTorneosArchivados() {
+      const { data, error } = await supabase
+        .from("tournaments")
+        .select("id, name, tournament_date")
+        .eq("status", "archived")
+        .order("tournament_date", { ascending: false })
+        .order("name", { ascending: true })
+        .limit(5);
+
+      if (error) {
+        console.error("Error cargando torneos archivados:", error);
+        torneosArchivadosListaEl.innerHTML = "";
+        sinTorneosArchivadosEl.style.display = "block";
+        sinTorneosArchivadosEl.textContent = "No se pudieron cargar los torneos archivados.";
+        return;
+      }
+
+      const archivados = data || [];
+      sinTorneosArchivadosEl.style.display = archivados.length ? "none" : "block";
+      sinTorneosArchivadosEl.textContent = "No hay torneos archivados.";
+
+      torneosArchivadosListaEl.innerHTML = archivados
+        .map(t => {
+          const fecha = String(t.tournament_date || "").split("-").reverse().join("/");
+          return `
+            <tr>
+              <td>${t.name}</td>
+              <td>${fecha}</td>
+              <td>
+                <button class="btn-status btn-status-open" onclick="reabrirTorneo('${t.id}')">
+                  Volver a abrir
                 </button>
               </td>
             </tr>
@@ -805,11 +1282,18 @@
         series_id,
         series_round_number,
         tournament_categories (
+          id,
+          category_id,
+          category_system,
           name,
           index_min,
           index_max,
           gender,
           tee_id,
+          tee_rules,
+          playing_handicap_min,
+          playing_handicap_max,
+          playing_tee_aag_teeout_id,
           display_order,
           hole_segment,
           slope,
@@ -857,6 +1341,10 @@
 
       // Marcar categorías seleccionadas
       const categoriasDelTorneo = torneo.tournament_categories || [];
+      const categoriasLegacy = categoriasDelTorneo.filter(c => (c.category_system || "legacy") === "legacy");
+      const categoriasNuevasTorneo = categoriasDelTorneo.filter(c => c.category_system === "new" && c.category_id);
+
+      window.torneoEdicionTieneCategoriasLegacy = categoriasLegacy.length > 0;
 
       let segmentoDetectado = "18";
 
@@ -868,20 +1356,24 @@
 
       segmentoJuegoEl.value = segmentoDetectado;
 
+      const selectedIds = new Set(categoriasNuevasTorneo.map(c => c.category_id));
+
       Array.from(categoriasEl.options).forEach(opt => {
-        const catBase = window.categoriasBase[Number(opt.value)];
-        if (!catBase) return;
-
-        const match = categoriasDelTorneo.find(c =>
-          c.name === catBase.name &&
-          c.index_min === catBase.index_min &&
-          c.index_max === catBase.index_max &&
-          c.gender === catBase.gender &&
-          c.tee_id === catBase.tee_id
-        );
-
-        opt.selected = !!match;
+        opt.selected = selectedIds.has(opt.value);
       });
+      actualizarResumenCategorias();
+
+      if (window.torneoEdicionTieneCategoriasLegacy && categoriasNuevasTorneo.length === 0) {
+        categoriasEl.disabled = true;
+        document.getElementById("btnSeleccionarCategorias").disabled = true;
+        const validacionEl = document.getElementById("categoriaValidacion");
+        validacionEl.textContent =
+          "ℹ Este torneo usa categorías del sistema anterior. Se conservarán sin modificar.";
+        validacionEl.className = "category-validation warning";
+      } else {
+        categoriasEl.disabled = false;
+        document.getElementById("btnSeleccionarCategorias").disabled = false;
+      }
 
       // Cargar bloques
       const { data: blocks, error: errorBlocks } = await supabase
@@ -1120,60 +1612,270 @@
       }
     }
 
-    async function cargarGrilla() {
-      if (!torneoIdEdicion) return;
+    function normalizarTeeRule(rule) {
+      return {
+        ...rule,
+        aag_teeout_id: String(rule?.aag_teeout_id || rule?.tee_uuid || "").trim()
+      };
+    }
 
-      const { data, error } = await supabase
-        .from("starting_lines")
-        .select(`
-          id,
-          line_time,
-          starting_hole,
-          label,
-          capacity,
-          starting_blocks!inner (
-            name,
-            display_order
-          )
-        `)
-        .eq("starting_blocks.tournament_id", torneoIdEdicion)
-        .order("line_time", { ascending: true });
+    function parSegmentoTee(tee, segmento = "total") {
+      const holes = Array.isArray(tee?.holes) ? tee.holes : [];
 
-      if (error) {
-        console.error("Error cargando grilla:", error);
-        return;
+      return holes.reduce((acc, h) => {
+        const nro = Number(h?.HoleNumber ?? h?.hole_number ?? 0);
+        const par = Number(h?.Par ?? h?.par ?? 0);
+
+        if (segmento === "in" && (nro < 1 || nro > 9)) return acc;
+        if (segmento === "out" && (nro < 10 || nro > 18)) return acc;
+
+        return acc + par;
+      }, 0);
+    }
+
+    function parTotalTee(tee) {
+      return parSegmentoTee(tee, "total");
+    }
+
+    function generoAagTexto(category) {
+      return Number(category) === 1 ? "Damas" : "Caballeros";
+    }
+
+    function holesSnapshotDesdeTee(tee) {
+      const holes = Array.isArray(tee?.holes) ? tee.holes : [];
+
+      return holes
+        .map((h) => {
+          const hole = Number(h?.HoleNumber ?? h?.hole_number ?? h?.hole ?? 0);
+          const par = Number(h?.Par ?? h?.par ?? 0);
+          const handicapRaw = h?.Handicap ?? h?.handicap ?? h?.Hcp ?? h?.hcp ?? null;
+          const handicap = handicapRaw == null || handicapRaw === "" ? null : Number(handicapRaw);
+
+          return {
+            hole,
+            par: Number.isFinite(par) ? par : null,
+            handicap: Number.isFinite(handicap) ? handicap : null
+          };
+        })
+        .filter((h) => Number.isInteger(h.hole) && h.hole >= 1 && h.hole <= 18)
+        .sort((a, b) => a.hole - b.hole);
+    }
+
+    function referenciaDesdeTee(tee) {
+      return {
+        aag_field_id: tee.aag_field_id ?? null,
+        aag_id: tee.aag_teeout_id ?? null,
+        tee_name: tee.tee_name ?? "",
+        category: tee.category ?? null,
+
+        slope_in: tee.slope_in ?? null,
+        slope_out: tee.slope_out ?? null,
+        slope_total: tee.slope_total ?? null,
+
+        rating_in: tee.calification_in ?? null,
+        rating_out: tee.calification_out ?? null,
+        rating_total: tee.calification_total ?? null,
+
+        par_in: parSegmentoTee(tee, "in"),
+        par_out: parSegmentoTee(tee, "out"),
+        par_total: parTotalTee(tee),
+
+        // Snapshot deportivo del tee para que el torneo no dependa de
+        // futuros cambios de AAG al imprimir/calcular resultados.
+        holes: holesSnapshotDesdeTee(tee)
+      };
+    }
+
+    function roundHalfUpUnDecimal(valor) {
+      const n = Number(valor);
+      if (!Number.isFinite(n)) return null;
+      return Math.round((n + Number.EPSILON) * 10) / 10;
+    }
+
+    function ajustarLimiteIndexParaSegmento(valor, segmentoJuego) {
+      const n = Number(valor);
+      if (!Number.isFinite(n)) return valor;
+
+      // Las categorías maestras siempre están expresadas con index completo
+      // (18 hoyos). Para 9 hoyos usamos medio index, pero conservamos
+      // cualquier límite negativo tal como fue definido (-10 sigue siendo -10).
+      if (segmentoJuego === "front9" || segmentoJuego === "back9") {
+        if (n < 0) return n;
+        return roundHalfUpUnDecimal(n / 2);
       }
 
-      const lineasOrdenadas = (data || []).slice().sort((a, b) => {
-        const bloqueA = Number(a.starting_blocks?.display_order || 0);
-        const bloqueB = Number(b.starting_blocks?.display_order || 0);
-        if (bloqueA !== bloqueB) return bloqueA - bloqueB;
+      return n;
+    }
 
-        const horaA = String(a.line_time || "");
-        const horaB = String(b.line_time || "");
-        if (horaA !== horaB) return horaA.localeCompare(horaB);
+    function teeRulesSnapshotParaTorneo(teeRules, segmentoJuego) {
+      const esNueve = segmentoJuego === "front9" || segmentoJuego === "back9";
 
-        const hoyoA = Number(a.starting_hole || 0);
-        const hoyoB = Number(b.starting_hole || 0);
-        if (hoyoA !== hoyoB) return hoyoA - hoyoB;
+      return (Array.isArray(teeRules) ? teeRules : []).map((raw) => {
+        const rule = normalizarTeeRule(raw);
+        const minOriginal = Number(rule.index_min);
+        const maxOriginal = Number(rule.index_max);
 
-        const esBisA = String(a.label || "").includes("BIS") ? 1 : 0;
-        const esBisB = String(b.label || "").includes("BIS") ? 1 : 0;
-        return esBisA - esBisB;
+        return {
+          ...rule,
+          // Guardamos también el rango maestro para auditoría/histórico.
+          source_index_min: Number.isFinite(minOriginal) ? minOriginal : rule.index_min,
+          source_index_max: Number.isFinite(maxOriginal) ? maxOriginal : rule.index_max,
+          index_min: esNueve ? ajustarLimiteIndexParaSegmento(rule.index_min, segmentoJuego) : rule.index_min,
+          index_max: esNueve ? ajustarLimiteIndexParaSegmento(rule.index_max, segmentoJuego) : rule.index_max
+        };
       });
+    }
 
-      grillaEl.innerHTML = lineasOrdenadas
-        .map(l => {
-          return `
-        <tr>
-          <td>${l.starting_blocks?.name || ""}</td>
-          <td>${l.line_time}</td>
-          <td>${l.label || `Hoyo ${l.starting_hole}`}</td>
-          <td>${l.capacity}</td>
-        </tr>
-      `;
+    function describirTee(tee) {
+      if (!tee) return "Tee no disponible";
+      const campo = tee.aag_field_id != null ? `Campo ${tee.aag_field_id}` : "Campo ?";
+      const sexo = generoAagTexto(tee.category);
+      return `${tee.tee_name || "Sin nombre"} · ${sexo} · ${campo}`;
+    }
+
+    async function cargarTeeoutsAAG() {
+      const { data, error } = await supabase
+        .from("aag_teeouts")
+        .select("id, aag_teeout_id, aag_field_id, tee_name, category, slope_in, slope_out, slope_total, calification_in, calification_out, calification_total, holes")
+        .order("aag_field_id", { ascending: true })
+        .order("category", { ascending: true })
+        .order("tee_name", { ascending: true });
+
+      if (error) throw error;
+
+      window.teeoutsAAG = data || [];
+      window.teeoutsAAGMap = new Map((data || []).map(t => [String(t.id), t]));
+      return window.teeoutsAAG;
+    }
+
+    function estadoCategoria(cat) {
+      const reglas = Array.isArray(cat?.tee_rules) ? cat.tee_rules.map(normalizarTeeRule) : [];
+      const faltantes = reglas.filter(r => !r.aag_teeout_id || !window.teeoutsAAGMap?.has(r.aag_teeout_id));
+
+      const playingTeeId = String(cat?.playing_tee_aag_teeout_id || "").trim();
+      const playingTeeEnReglas = !playingTeeId || reglas.some(r => String(r.aag_teeout_id || "") === playingTeeId);
+      const playingTeeVigente = !playingTeeId || window.teeoutsAAGMap?.has(playingTeeId);
+      const playingTeeInvalido = !!playingTeeId && (!playingTeeEnReglas || !playingTeeVigente);
+
+      return {
+        valida: reglas.length > 0 && faltantes.length === 0 && !playingTeeInvalido,
+        faltantes,
+        playingTeeInvalido
+      };
+    }
+
+    async function completarReferenciasCategorias() {
+      // Completa/actualiza la referencia sólo EN MEMORIA con los datos AAG vivos.
+      // No escribe silenciosamente en categories: la actualización permanente
+      // de las categorías maestras se hace de forma controlada por SQL o al
+      // guardar explícitamente una categoría desde el editor.
+      for (const cat of (window.categoriasBase || [])) {
+        const reglas = Array.isArray(cat.tee_rules) ? cat.tee_rules : [];
+
+        cat.tee_rules = reglas.map(raw => {
+          const rule = normalizarTeeRule(raw);
+          const tee = window.teeoutsAAGMap?.get(rule.aag_teeout_id);
+
+          if (!tee) return rule;
+
+          return {
+            ...rule,
+            reference: referenciaDesdeTee(tee)
+          };
+        });
+      }
+    }
+
+    function renderCategorias() {
+      const seleccionadas = new Set(Array.from(categoriasEl.selectedOptions || []).map(o => o.value));
+
+      categoriasEl.innerHTML = (window.categoriasBase || [])
+        .map(c => {
+          const est = estadoCategoria(c);
+          const hcp = (c.playing_handicap_min != null && c.playing_handicap_max != null)
+            ? ` | HCP ${c.playing_handicap_min} a ${c.playing_handicap_max}`
+            : "";
+          const marca = est.valida ? "✅" : "⚠ REVISAR";
+          return `<option value="${c.id}" ${seleccionadas.has(c.id) ? "selected" : ""}>${marca} ${c.name}${hcp}</option>`;
         })
         .join("");
+
+      const invalidas = (window.categoriasBase || []).filter(c => !estadoCategoria(c).valida);
+      const validacionEl = document.getElementById("categoriaValidacion");
+
+      if (invalidas.length === 0) {
+        validacionEl.textContent = "✅ Todas las categorías están vinculadas a tees AAG vigentes.";
+        validacionEl.className = "category-validation ok";
+      } else {
+        validacionEl.textContent =
+          `⚠ ${invalidas.length} categoría(s) requieren revisión: ` +
+          invalidas.map(c => c.name).join(", ");
+        validacionEl.className = "category-validation warning";
+      }
+
+      actualizarResumenCategorias();
+      if (!modalSeleccionCategoriasEl.classList.contains("hidden")) {
+        renderListaSeleccionCategorias();
+      }
+    }
+
+    function seleccionarCincoCategoriasPorDefecto() {
+      const idsPorDefecto = new Set(
+        (window.categoriasBase || [])
+          .filter(c => {
+            const orden = Number(c.display_order);
+            return orden >= 1 && orden <= 5;
+          })
+          .slice(0, 5)
+          .map(c => c.id)
+      );
+
+      Array.from(categoriasEl.options).forEach(opt => {
+        opt.selected = idsPorDefecto.has(opt.value);
+      });
+
+      actualizarResumenCategorias();
+    }
+
+    async function cargarCategoriasNuevas() {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, active, display_order, playing_handicap_min, playing_handicap_max, playing_tee_aag_teeout_id, tee_rules")
+        .eq("active", true)
+        .order("display_order", { ascending: true })
+        .order("name", { ascending: true });
+
+      if (error) throw error;
+
+      window.categoriasBase = data || [];
+      await completarReferenciasCategorias();
+      renderCategorias();
+
+      if (!torneoIdEdicion && !categoriasInicialesAplicadas) {
+        seleccionarCincoCategoriasPorDefecto();
+        categoriasInicialesAplicadas = true;
+      }
+    }
+
+    async function validarCategoriasContraAAG({ recargar = true } = {}) {
+      const validacionEl = document.getElementById("categoriaValidacion");
+
+      try {
+        validacionEl.textContent = "Validando categorías contra AAG...";
+        validacionEl.className = "category-validation muted";
+
+        if (recargar || !window.teeoutsAAGMap) {
+          await cargarTeeoutsAAG();
+        }
+        await cargarCategoriasNuevas();
+
+        return (window.categoriasBase || []).every(c => estadoCategoria(c).valida);
+      } catch (error) {
+        console.error("Error validando categorías:", error);
+        validacionEl.textContent = "No se pudo validar categorías contra AAG.";
+        validacionEl.className = "category-validation warning";
+        return false;
+      }
     }
 
     async function cargarModalidades() {
@@ -1190,47 +1892,14 @@
         .map(m => `<option value="${m.id}">${m.name}</option>`)
         .join("");
 
-      const { data: categoriasData, error: errorCategorias } = await supabase
-        .from("category_template_items")
-        .select("*")
-        .order("display_order", { ascending: true });
-
-      console.log("Tabla consultada: category_templates_items");
-
-      if (errorCategorias) {
-        console.error("Error cargando categorías base:", JSON.stringify(errorCategorias, null, 2));
-        estado.textContent = "No se pudieron cargar las categorías base.";
+      try {
+        await cargarTeeoutsAAG();
+        await cargarCategoriasNuevas();
+      } catch (errorCategorias) {
+        console.error("Error cargando categorías nuevas:", errorCategorias);
+        estado.textContent = "No se pudieron cargar las categorías.";
         estado.className = "error";
-        return;
       }
-
-      const categoriasUnicas = [];
-      const categoriasMap = new Map();
-
-      (categoriasData || []).forEach((c) => {
-        const key = [
-          c.name,
-          c.index_min,
-          c.index_max,
-          c.gender,
-          c.tee_id,
-          c.display_order
-        ].join("|");
-
-        if (!categoriasMap.has(key)) {
-          categoriasMap.set(key, true);
-          categoriasUnicas.push(c);
-        }
-      });
-
-      categoriasEl.innerHTML = categoriasUnicas
-        .map((c, i) => {
-          const rango = `${c.index_min} a ${c.index_max}`;
-          return `<option value="${i}">${c.name} | ${rango}</option>`;
-        })
-        .join("");
-
-      window.categoriasBase = categoriasUnicas;
     }
 
     async function cargarSeries() {
@@ -1290,8 +1959,472 @@
       usaSerieEl.addEventListener("change", actualizarCamposSerie);
     }
 
+
+    // ===== SELECTOR DE CATEGORÍAS DEL TORNEO =====
+    function idsCategoriasSeleccionadasActuales() {
+      return new Set(Array.from(categoriasEl.selectedOptions || []).map(o => o.value));
+    }
+
+    function actualizarResumenCategorias() {
+      const resumenEl = document.getElementById("categoriasResumen");
+      const ids = idsCategoriasSeleccionadasActuales();
+      const categorias = (window.categoriasBase || []).filter(c => ids.has(c.id));
+
+      if (categorias.length === 0) {
+        resumenEl.textContent = "Ninguna categoría seleccionada.";
+        resumenEl.className = "category-summary muted";
+        return;
+      }
+
+      resumenEl.className = "category-summary";
+      resumenEl.innerHTML = categorias
+        .map(c => `<span class="category-chip">${c.name}</span>`)
+        .join("");
+    }
+
+    function renderListaSeleccionCategorias() {
+      const categorias = window.categoriasBase || [];
+
+      listaSeleccionCategoriasEl.innerHTML = categorias.map(c => {
+        const est = estadoCategoria(c);
+        const marcada = categoriasSeleccionTemporal.has(c.id);
+        const focused = categoriaFocoId === c.id;
+        const hcp = (c.playing_handicap_min != null && c.playing_handicap_max != null)
+          ? `HCP ${c.playing_handicap_min} a ${c.playing_handicap_max}`
+          : "Sin límite de HCP de juego";
+        const playingTeeId = String(c.playing_tee_aag_teeout_id || "");
+        const playingRule = (c.tee_rules || []).map(normalizarTeeRule)
+          .find(r => String(r.aag_teeout_id || "") === playingTeeId);
+        const playingTeeTxt = playingRule?.reference?.tee_name
+          ? ` · Tee juego: ${playingRule.reference.tee_name}`
+          : "";
+
+        const estadoTxt = est.valida
+          ? `✅ Tees AAG vigentes${playingTeeTxt}`
+          : (est.playingTeeInvalido
+              ? "⚠ Requiere revisión: el tee de juego ya no es válido"
+              : `⚠ Requiere revisión: ${est.faltantes.length} tee(s) ya no existen en AAG`);
+
+        return `
+          <div class="category-selector-row ${focused ? "focused" : ""} ${est.valida ? "" : "invalid"}" data-category-id="${c.id}">
+            <input type="checkbox" class="category-selector-check" value="${c.id}"
+              ${marcada ? "checked" : ""} ${est.valida ? "" : "disabled"}>
+            <div class="category-selector-row-main">
+              <div class="category-selector-row-title">${c.name}</div>
+              <div class="category-selector-row-sub">${hcp} · ${estadoTxt}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      listaSeleccionCategoriasEl.querySelectorAll(".category-selector-row").forEach(row => {
+        row.addEventListener("click", (e) => {
+          categoriaFocoId = row.dataset.categoryId;
+          const check = row.querySelector(".category-selector-check");
+
+          if (e.target === check) return;
+
+          if (check && !check.disabled) {
+            check.checked = !check.checked;
+            check.dispatchEvent(new Event("change", { bubbles: true }));
+          } else {
+            renderListaSeleccionCategorias();
+          }
+        });
+      });
+
+      listaSeleccionCategoriasEl.querySelectorAll(".category-selector-check").forEach(check => {
+        check.addEventListener("change", () => {
+          categoriaFocoId = check.value;
+          if (check.checked) categoriasSeleccionTemporal.add(check.value);
+          else categoriasSeleccionTemporal.delete(check.value);
+          renderListaSeleccionCategorias();
+        });
+      });
+    }
+
+    function abrirSelectorCategorias() {
+      if (categoriasEl.disabled) return;
+      categoriasSeleccionTemporal = idsCategoriasSeleccionadasActuales();
+      categoriaFocoId = null;
+      renderListaSeleccionCategorias();
+      modalSeleccionCategoriasEl.classList.remove("hidden");
+    }
+
+    function cerrarSelectorCategorias({ guardar = false } = {}) {
+      if (guardar) {
+        Array.from(categoriasEl.options).forEach(opt => {
+          opt.selected = categoriasSeleccionTemporal.has(opt.value);
+        });
+        actualizarResumenCategorias();
+      }
+      modalSeleccionCategoriasEl.classList.add("hidden");
+      categoriaFocoId = null;
+    }
+
+    // ===== CREADOR / EDITOR DE CATEGORÍAS =====
+    const modalCategoriaEl = document.getElementById("modalCategoria");
+    const teeRulesBodyEl = document.getElementById("teeRulesBody");
+    let categoriaEditandoId = null;
+
+    function cerrarModalCategoria() {
+      modalCategoriaEl.classList.add("hidden");
+      categoriaEditandoId = null;
+    }
+
+    function mostrarAlertaCategoria(texto = "") {
+      const el = document.getElementById("categoriaModalAlerta");
+      el.textContent = texto;
+      el.classList.toggle("show", !!texto);
+    }
+
+    function encontrarSugerenciaTee(reference) {
+      if (!reference) return null;
+
+      const tees = window.teeoutsAAG || [];
+
+      const exactoNombre = tees.filter(t =>
+        String(t.aag_field_id) === String(reference.aag_field_id) &&
+        Number(t.category) === Number(reference.category) &&
+        String(t.tee_name || "").trim().toLowerCase() === String(reference.tee_name || "").trim().toLowerCase()
+      );
+
+      if (exactoNombre.length === 1) return exactoNombre[0];
+
+      return null;
+    }
+
+    function opcionesTeeHTML(valorActual = "", reference = null) {
+      const teeActualExiste = !!window.teeoutsAAGMap?.has(String(valorActual || ""));
+      const sugerido = !teeActualExiste ? encontrarSugerenciaTee(reference) : null;
+
+      let html = `<option value="">Seleccionar tee...</option>`;
+
+      if (!teeActualExiste && valorActual) {
+        const nombreAnterior = reference?.tee_name || "Tee anterior";
+        html += `<option value="" disabled>⚠ ${nombreAnterior} ya no existe en AAG</option>`;
+      }
+
+      const teesOrdenados = (window.teeoutsAAG || []).slice().sort((a, b) => {
+        if (sugerido) {
+          if (a.id === sugerido.id && b.id !== sugerido.id) return -1;
+          if (b.id === sugerido.id && a.id !== sugerido.id) return 1;
+        }
+        return describirTee(a).localeCompare(describirTee(b));
+      });
+
+      for (const tee of teesOrdenados) {
+        const selected = String(tee.id) === String(valorActual) ? "selected" : "";
+        const marca = sugerido && tee.id === sugerido.id ? "⭐ SUGERIDO · " : "";
+        html += `<option value="${tee.id}" ${selected}>${marca}${describirTee(tee)}</option>`;
+      }
+
+      return html;
+    }
+
+    function actualizarInfoRegla(tr) {
+      const select = tr.querySelector(".rule-tee");
+      const info = tr.querySelector(".tee-rule-info");
+      const tee = window.teeoutsAAGMap?.get(select.value);
+
+      if (!tee) {
+        const nombreAnterior = tr.dataset.oldTeeName || "";
+        info.innerHTML = nombreAnterior
+          ? `<span class="tee-rule-missing">⚠ El tee anterior "${nombreAnterior}" ya no existe. Elegí su reemplazo.</span>`
+          : "Seleccioná un tee AAG.";
+        return;
+      }
+
+      info.textContent =
+        `${generoAagTexto(tee.category)} · Campo ${tee.aag_field_id} · AAG ID ${tee.aag_teeout_id} · ` +
+        `18h: Slope ${tee.slope_total ?? "?"}, Rating ${tee.calification_total ?? "?"}, Par ${parTotalTee(tee) || "?"} · ` +
+        `Ida: Slope ${tee.slope_in ?? "?"}, Rating ${tee.calification_in ?? "?"}, Par ${parSegmentoTee(tee, "in") || "?"} · ` +
+        `Vta: Slope ${tee.slope_out ?? "?"}, Rating ${tee.calification_out ?? "?"}, Par ${parSegmentoTee(tee, "out") || "?"}`;
+    }
+
+    function opcionesPlayingTeeDesdeReglas(valorActual = "") {
+      const filas = Array.from(teeRulesBodyEl.querySelectorAll("tr"));
+      const vistos = new Set();
+      const opciones = [];
+
+      for (const tr of filas) {
+        const teeUuid = String(tr.querySelector(".rule-tee")?.value || "").trim();
+        if (!teeUuid || vistos.has(teeUuid)) continue;
+        vistos.add(teeUuid);
+
+        const tee = window.teeoutsAAGMap?.get(teeUuid);
+        if (!tee) continue;
+
+        opciones.push({
+          id: teeUuid,
+          nombre: tee.tee_name || "Tee AAG",
+          genero: generoAagTexto(tee.category)
+        });
+      }
+
+      let html = `<option value="">Sin tee obligatorio</option>`;
+      html += opciones.map(o => {
+        const selected = String(o.id) === String(valorActual || "") ? "selected" : "";
+        return `<option value="${o.id}" ${selected}>${o.nombre} · ${o.genero}</option>`;
+      }).join("");
+
+      return html;
+    }
+
+    function actualizarSelectorPlayingTee(valorPreferido = null) {
+      const select = document.getElementById("categoriaPlayingTee");
+      if (!select) return;
+
+      const actual = valorPreferido != null ? String(valorPreferido || "") : String(select.value || "");
+      select.innerHTML = opcionesPlayingTeeDesdeReglas(actual);
+
+      if (actual && Array.from(select.options).some(o => o.value === actual)) {
+        select.value = actual;
+      } else {
+        select.value = "";
+      }
+    }
+
+    function agregarFilaRegla(rule = null) {
+      const normal = normalizarTeeRule(rule || {});
+      const teeExiste = !!window.teeoutsAAGMap?.has(normal.aag_teeout_id);
+      const reference = normal.reference || null;
+      const sugerido = !teeExiste ? encontrarSugerenciaTee(reference) : null;
+
+      const tr = document.createElement("tr");
+      tr.dataset.oldTeeUuid = normal.aag_teeout_id || "";
+      tr.dataset.oldTeeName = reference?.tee_name || "";
+      tr.dataset.reference = reference ? JSON.stringify(reference) : "";
+
+      tr.innerHTML = `
+        <td>
+          <select class="rule-tee">
+            ${opcionesTeeHTML(teeExiste ? normal.aag_teeout_id : "", reference)}
+          </select>
+          <div class="tee-rule-info"></div>
+          ${sugerido ? `<div class="tee-rule-info">⭐ Sugerencia encontrada: ${describirTee(sugerido)}</div>` : ""}
+        </td>
+        <td><input class="rule-index-min" type="number" step="0.1" value="${normal.index_min ?? ""}"></td>
+        <td><input class="rule-index-max" type="number" step="0.1" value="${normal.index_max ?? ""}"></td>
+        <td><button type="button" class="btn-rule-remove">Eliminar</button></td>
+      `;
+
+      tr.querySelector(".rule-tee").addEventListener("change", () => {
+        actualizarInfoRegla(tr);
+        actualizarSelectorPlayingTee();
+      });
+      tr.querySelector(".btn-rule-remove").addEventListener("click", () => {
+        tr.remove();
+        actualizarSelectorPlayingTee();
+      });
+
+      teeRulesBodyEl.appendChild(tr);
+      actualizarInfoRegla(tr);
+      actualizarSelectorPlayingTee();
+    }
+
+    function abrirModalCategoria(categoria = null) {
+      categoriaEditandoId = categoria?.id || null;
+
+      const ultimoOrden = Math.max(
+        0,
+        ...(window.categoriasBase || []).map(c => Number(c.display_order) || 0)
+      );
+      const siguienteOrden = ultimoOrden + 1;
+
+      document.getElementById("modalCategoriaTitulo").textContent =
+        categoria ? `Editar categoría: ${categoria.name}` : "Nueva categoría";
+
+      document.getElementById("categoriaNombre").value = categoria?.name || "";
+      document.getElementById("categoriaHcpMin").value = categoria?.playing_handicap_min ?? "";
+      document.getElementById("categoriaHcpMax").value = categoria?.playing_handicap_max ?? "";
+      document.getElementById("categoriaOrden").value = categoria?.display_order ?? siguienteOrden;
+
+      teeRulesBodyEl.innerHTML = "";
+      mostrarAlertaCategoria("");
+
+      const reglas = Array.isArray(categoria?.tee_rules) ? categoria.tee_rules : [];
+
+      if (reglas.length) {
+        reglas.forEach(agregarFilaRegla);
+
+        const estadoActual = estadoCategoria(categoria);
+        const faltantes = estadoActual.faltantes;
+        if (faltantes.length || estadoActual.playingTeeInvalido) {
+          const motivos = [];
+          if (faltantes.length) motivos.push(`${faltantes.length} tee(s) guardado(s) ya no existen en AAG`);
+          if (estadoActual.playingTeeInvalido) motivos.push("el tee de juego de la categoría ya no es válido");
+          mostrarAlertaCategoria(
+            `Esta categoría requiere revisión porque ${motivos.join(" y ")}. ` +
+            `Seleccioná los reemplazos correctos y guardá la categoría.`
+          );
+        }
+      } else {
+        agregarFilaRegla();
+      }
+
+      actualizarSelectorPlayingTee(categoria?.playing_tee_aag_teeout_id || "");
+      modalCategoriaEl.classList.remove("hidden");
+    }
+
+    function leerReglasDelModal() {
+      const filas = Array.from(teeRulesBodyEl.querySelectorAll("tr"));
+
+      if (filas.length === 0) {
+        throw new Error("Agregá al menos una regla de tee.");
+      }
+
+      return filas.map((tr, i) => {
+        const teeUuid = tr.querySelector(".rule-tee").value;
+        const indexMinTxt = tr.querySelector(".rule-index-min").value;
+        const indexMaxTxt = tr.querySelector(".rule-index-max").value;
+
+        if (!teeUuid) {
+          throw new Error(`Seleccioná el tee de la regla ${i + 1}.`);
+        }
+
+        if (indexMinTxt === "" || indexMaxTxt === "") {
+          throw new Error(`Completá índice mínimo y máximo de la regla ${i + 1}.`);
+        }
+
+        const indexMin = Number(indexMinTxt);
+        const indexMax = Number(indexMaxTxt);
+
+        if (!Number.isFinite(indexMin) || !Number.isFinite(indexMax) || indexMin > indexMax) {
+          throw new Error(`El rango de índice de la regla ${i + 1} no es válido.`);
+        }
+
+        const tee = window.teeoutsAAGMap?.get(teeUuid);
+        if (!tee) {
+          throw new Error(`El tee de la regla ${i + 1} ya no existe en AAG.`);
+        }
+
+        return {
+          index_min: indexMin,
+          index_max: indexMax,
+          aag_teeout_id: teeUuid,
+          reference: referenciaDesdeTee(tee)
+        };
+      });
+    }
+
+    async function guardarCategoriaDesdeModal() {
+      try {
+        mostrarAlertaCategoria("");
+
+        const name = document.getElementById("categoriaNombre").value.trim();
+        const hcpMinTxt = document.getElementById("categoriaHcpMin").value;
+        const hcpMaxTxt = document.getElementById("categoriaHcpMax").value;
+        const displayOrder = Number(document.getElementById("categoriaOrden").value || 0);
+
+        if (!name) throw new Error("Ingresá el nombre de la categoría.");
+
+        const unoVacio = (hcpMinTxt === "") !== (hcpMaxTxt === "");
+        if (unoVacio) {
+          throw new Error("Completá ambos límites de HCP de juego o dejá ambos vacíos.");
+        }
+
+        const hcpMin = hcpMinTxt === "" ? null : Number(hcpMinTxt);
+        const hcpMax = hcpMaxTxt === "" ? null : Number(hcpMaxTxt);
+
+        if (hcpMin != null && (!Number.isInteger(hcpMin) || !Number.isInteger(hcpMax) || hcpMin > hcpMax)) {
+          throw new Error("El rango de HCP de juego debe usar enteros y mínimo ≤ máximo.");
+        }
+
+        const teeRules = leerReglasDelModal();
+        const playingTeeAagTeeoutId = String(document.getElementById("categoriaPlayingTee")?.value || "").trim() || null;
+
+        if (playingTeeAagTeeoutId) {
+          const existeEnReglas = teeRules.some(r => String(r.aag_teeout_id || "") === playingTeeAagTeeoutId);
+          if (!existeEnReglas) {
+            throw new Error("El tee de juego de la categoría debe ser uno de los tees configurados en sus reglas.");
+          }
+          if (!window.teeoutsAAGMap?.has(playingTeeAagTeeoutId)) {
+            throw new Error("El tee de juego seleccionado ya no existe en AAG.");
+          }
+        }
+
+        const payload = {
+          name,
+          active: true,
+          display_order: Number.isFinite(displayOrder) ? displayOrder : 0,
+          playing_handicap_min: hcpMin,
+          playing_handicap_max: hcpMax,
+          playing_tee_aag_teeout_id: playingTeeAagTeeoutId,
+          tee_rules: teeRules
+        };
+
+        const estabaEditando = !!categoriaEditandoId;
+
+        if (categoriaEditandoId) {
+          const { error } = await supabase
+            .from("categories")
+            .update(payload)
+            .eq("id", categoriaEditandoId);
+
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("categories")
+            .insert(payload);
+
+          if (error) throw error;
+        }
+
+        cerrarModalCategoria();
+        await validarCategoriasContraAAG({ recargar: true });
+
+        estado.textContent = estabaEditando ? "Categoría actualizada." : "Categoría creada.";
+        estado.className = "ok";
+      } catch (error) {
+        console.error("Error guardando categoría:", error);
+        mostrarAlertaCategoria(error?.message || "No se pudo guardar la categoría.");
+      }
+    }
+
+    document.getElementById("btnSeleccionarCategorias").addEventListener("click", abrirSelectorCategorias);
+    document.getElementById("btnCerrarSeleccionCategorias").addEventListener("click", () => cerrarSelectorCategorias());
+    document.getElementById("btnCancelarSeleccionCategorias").addEventListener("click", () => cerrarSelectorCategorias());
+    document.getElementById("btnAceptarSeleccionCategorias").addEventListener("click", () => cerrarSelectorCategorias({ guardar: true }));
+
+    modalSeleccionCategoriasEl.addEventListener("click", (e) => {
+      if (e.target === modalSeleccionCategoriasEl) cerrarSelectorCategorias();
+    });
+
+    document.getElementById("btnNuevaCategoria").addEventListener("click", () => {
+      abrirModalCategoria(null);
+    });
+
+    document.getElementById("btnEditarCategoria").addEventListener("click", () => {
+      if (!categoriaFocoId) {
+        estado.textContent = "Tocá una categoría de la lista y después elegí Editar.";
+        estado.className = "error";
+        return;
+      }
+
+      const categoria = (window.categoriasBase || []).find(c => c.id === categoriaFocoId);
+      if (!categoria) return;
+
+      abrirModalCategoria(categoria);
+    });
+
+    document.getElementById("btnValidarCategorias").addEventListener("click", async () => {
+      await validarCategoriasContraAAG({ recargar: true });
+    });
+
+    document.getElementById("btnAgregarRegla").addEventListener("click", () => agregarFilaRegla());
+    document.getElementById("btnGuardarCategoria").addEventListener("click", guardarCategoriaDesdeModal);
+    document.getElementById("btnCerrarCategoria").addEventListener("click", cerrarModalCategoria);
+    document.getElementById("btnCancelarCategoria").addEventListener("click", cerrarModalCategoria);
+
+    modalCategoriaEl.addEventListener("click", (e) => {
+      if (e.target === modalCategoriaEl) cerrarModalCategoria();
+    });
+
     document.getElementById("crear").addEventListener("click", async () => {
-      const nombre = document.getElementById("nombre").value.trim();
+      const nombreInputEl = document.getElementById("nombre");
+      const nombre = nombreInputEl.value.trim().toLocaleUpperCase("es-AR");
+      nombreInputEl.value = nombre;
       const fecha = document.getElementById("fecha").value;
       const modalidad = modalidadEl.value;
 
@@ -1320,9 +2453,11 @@
       const horasSimultaneas = [horaSimultanea1, horaSimultanea2].filter(Boolean);
       const holeCount = segmentoJuego === "18" ? 18 : 9;
 
-      const categoriasSeleccionadasBase = Array.from(categoriasEl.selectedOptions)
-        .map(opt => window.categoriasBase[Number(opt.value)])
-        .filter(Boolean);
+      const idsCategoriasSeleccionadas = Array.from(categoriasEl.selectedOptions)
+        .map(opt => opt.value);
+
+      const categoriasSeleccionadasBase = (window.categoriasBase || [])
+        .filter(c => idsCategoriasSeleccionadas.includes(c.id));
 
       function setError(msg) {
         estado.textContent = msg;
@@ -1341,16 +2476,6 @@
 
       let series_id = null;
       let series_round_number = null;
-
-      function claveCategoria(c) {
-        return [
-          c.name ?? "",
-          c.index_min ?? "",
-          c.index_max ?? "",
-          c.gender ?? "",
-          c.tee_id ?? ""
-        ].join("|");
-      }
 
       function sumarMinutos(horaTexto, minutos) {
         const fecha = new Date(`1970-01-01T${horaTexto}:00`);
@@ -1409,67 +2534,29 @@
         if (error) throw error;
       }
 
-      async function obtenerReglasHandicapParaCategorias(categoriasBase, segmentoJuego) {
-        const teeIds = [...new Set(categoriasBase.map(c => c.tee_id).filter(Boolean))];
-        const genders = [...new Set(categoriasBase.map(c => c.gender).filter(Boolean))];
-
-        if (teeIds.length === 0 || genders.length === 0) {
-          return new Map();
-        }
-
-        const { data, error } = await supabase
-          .from("tee_handicap_rules")
-          .select("tee_id, gender, segment, slope, course_rating, par")
-          .in("tee_id", teeIds)
-          .in("gender", genders)
-          .eq("segment", segmentoJuego);
-
-        if (error) throw error;
-
-        const mapa = new Map();
-
-        for (const regla of (data || [])) {
-          const clave = `${regla.tee_id}|${regla.gender}|${regla.segment}`;
-          mapa.set(clave, regla);
-        }
-
-        return mapa;
-      }
-
       async function syncCategorias(torneoId) {
-        console.log("ENTRO A syncCategorias", torneoId);
+        console.log("ENTRO A syncCategorias NUEVO", torneoId);
+
+        // Seguridad: un torneo legacy no se convierte automáticamente.
+        if (torneoIdEdicion && window.torneoEdicionTieneCategoriasLegacy) {
+          console.log("Categorías legacy preservadas sin cambios.");
+          return;
+        }
 
         const { data: categoriasActuales, error: errorActuales } = await supabase
           .from("tournament_categories")
-          .select("id, name, index_min, index_max, gender, tee_id, display_order, hole_segment, slope, course_rating, par")
+          .select("id, category_id, category_system")
           .eq("tournament_id", torneoId);
 
         if (errorActuales) throw errorActuales;
 
-        const actualesOriginal = categoriasActuales || [];
+        const actualesNuevas = (categoriasActuales || [])
+          .filter(c => c.category_system === "new" && c.category_id);
 
-        const mapa = new Map();
+        const idsSeleccionadas = categoriasSeleccionadasBase.map(c => c.id);
 
-        for (const cat of actualesOriginal) {
-          const clave = claveCategoria(cat);
-
-          if (!mapa.has(clave)) {
-            mapa.set(clave, cat);
-          } else {
-            await supabase
-              .from("tournament_categories")
-              .delete()
-              .eq("id", cat.id);
-          }
-        }
-
-        const actuales = Array.from(mapa.values());
-
-        const clavesSeleccionadas = categoriasSeleccionadasBase.map(claveCategoria);
-        const clavesActuales = actuales.map(claveCategoria);
-
-        const idsABorrar = actuales
-          .filter(c => !clavesSeleccionadas.includes(claveCategoria(c)))
+        const idsABorrar = actualesNuevas
+          .filter(c => !idsSeleccionadas.includes(c.category_id))
           .map(c => c.id);
 
         if (idsABorrar.length > 0) {
@@ -1481,69 +2568,52 @@
           if (error) throw error;
         }
 
-        const reglasMap = await obtenerReglasHandicapParaCategorias(categoriasSeleccionadasBase, segmentoJuego);
+        for (const base of categoriasSeleccionadasBase) {
+          const est = estadoCategoria(base);
 
-        const categoriasAInsertar = categoriasSeleccionadasBase
-          .filter(c => !clavesActuales.includes(claveCategoria(c)))
-          .map(c => {
-            const claveRegla = `${c.tee_id}|${c.gender}|${segmentoJuego}`;
-            const regla = reglasMap.get(claveRegla);
-
-            if (!regla) {
-              throw new Error(
-                `No existe tee_handicap_rule para tee_id=${c.tee_id}, gender=${c.gender}, segment=${segmentoJuego}`
-              );
-            }
-
-            return {
-              tournament_id: torneoId,
-              name: c.name,
-              index_min: c.index_min,
-              index_max: c.index_max,
-              gender: c.gender,
-              tee_id: c.tee_id,
-              display_order: c.display_order ?? 0,
-              hole_segment: segmentoJuego,
-              slope: regla.slope,
-              course_rating: regla.course_rating,
-              par: regla.par
-            };
-          });
-
-        if (categoriasAInsertar.length > 0) {
-          const { error } = await supabase
-            .from("tournament_categories")
-            .insert(categoriasAInsertar);
-
-          if (error) throw error;
-        }
-
-        // También actualizar las existentes por si cambió el segmento
-        for (const cat of actuales.filter(c => clavesSeleccionadas.includes(claveCategoria(c)))) {
-          const base = categoriasSeleccionadasBase.find(c => claveCategoria(c) === claveCategoria(cat));
-          if (!base) continue;
-
-          const claveRegla = `${base.tee_id}|${base.gender}|${segmentoJuego}`;
-          const regla = reglasMap.get(claveRegla);
-
-          if (!regla) {
+          if (!est.valida) {
             throw new Error(
-              `No existe tee_handicap_rule para tee_id=${base.tee_id}, gender=${base.gender}, segment=${segmentoJuego}`
+              `La categoría "${base.name}" tiene uno o más tees AAG que ya no existen. Revisala antes de guardar el torneo.`
             );
           }
 
-          const { error } = await supabase
-            .from("tournament_categories")
-            .update({
-              display_order: base.display_order ?? 0,
-              hole_segment: segmentoJuego,
-              slope: regla.slope,
-              course_rating: regla.course_rating,
-              par: regla.par
-            })
-            .eq("id", cat.id);
+          const snapshot = {
+            name: base.name,
+            // La categoría maestra permanece siempre en escala de 18 hoyos.
+            // El torneo guarda su propia copia: si es de 9 hoyos, los rangos
+            // de index de cada tee se convierten a medio index con 1 decimal.
+            // Ej.: -10..9 => -10..4.5 | 9.1..15 => 4.6..7.5.
+            tee_rules: teeRulesSnapshotParaTorneo(base.tee_rules, segmentoJuego),
+            playing_handicap_min: base.playing_handicap_min,
+            playing_handicap_max: base.playing_handicap_max,
+            // Tee obligatorio de juego de la categoría (si aplica, p.ej. Fourball Clásico).
+            // Es un UUID AAG operativo congelado junto con el snapshot del torneo.
+            playing_tee_aag_teeout_id: base.playing_tee_aag_teeout_id || null,
+            display_order: base.display_order ?? 0,
+            hole_segment: segmentoJuego,
+            category_system: "new"
+          };
 
-          if (error) throw error;
+          const actual = actualesNuevas.find(c => c.category_id === base.id);
+
+          if (actual) {
+            const { error } = await supabase
+              .from("tournament_categories")
+              .update(snapshot)
+              .eq("id", actual.id);
+
+            if (error) throw error;
+          } else {
+            const { error } = await supabase
+              .from("tournament_categories")
+              .insert({
+                tournament_id: torneoId,
+                category_id: base.id,
+                ...snapshot
+              });
+
+            if (error) throw error;
+          }
         }
       }
 
@@ -2007,9 +3077,23 @@
           return;
         }
 
-        if (categoriasSeleccionadasBase.length === 0) {
+        const editandoLegacySinMigrar =
+          !!torneoIdEdicion && window.torneoEdicionTieneCategoriasLegacy === true;
+
+        if (!editandoLegacySinMigrar && categoriasSeleccionadasBase.length === 0) {
           setError("Seleccioná al menos una categoría.");
           return;
+        }
+
+        if (!editandoLegacySinMigrar) {
+          const categoriasInvalidas = categoriasSeleccionadasBase.filter(c => !estadoCategoria(c).valida);
+
+          if (categoriasInvalidas.length > 0) {
+            setError(
+              `Revisá primero las categorías con tees AAG inexistentes: ${categoriasInvalidas.map(c => c.name).join(", ")}.`
+            );
+            return;
+          }
         }
 
         if (tipoSalida === "secuencial") {
@@ -2182,10 +3266,6 @@
 
         setOk(torneoIdEdicion ? "Torneo actualizado." : "Torneo creado.");
 
-        if (torneoIdEdicion) {
-          await cargarGrilla();
-        }
-
         await cargarTorneos();
 
         document.getElementById("nombre").value = "";
@@ -2205,9 +3285,7 @@
 
         document.getElementById("intervalo").value = "10";
 
-        Array.from(categoriasEl.options).forEach(opt => {
-          opt.selected = false;
-        });
+        seleccionarCincoCategoriasPorDefecto();
 
         inicializarBisSimultanea();
         renderBisHoles();
@@ -2262,6 +3340,31 @@
       estado.className = "ok";
 
       await cargarTorneos();
+    };
+
+    window.reabrirTorneo = async function (id) {
+      const ok = await mostrarConfirmacion(
+        "¿Querés volver a abrir este torneo para inscripciones?"
+      );
+      if (!ok) return;
+
+      const { error } = await supabase
+        .from("tournaments")
+        .update({ status: "open" })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Error reabriendo torneo:", error);
+        estado.textContent = "No se pudo volver a abrir el torneo.";
+        estado.className = "error";
+        return;
+      }
+
+      estado.textContent = "Torneo abierto nuevamente para inscripción.";
+      estado.className = "ok";
+
+      await cargarTorneos();
+      await cargarTorneosArchivados();
     };
 
     window.eliminarTorneo = async function (id, nombre) {
@@ -2347,7 +3450,7 @@
       estado.className = "ok";
 
       await cargarTorneos();
-      grillaEl.innerHTML = "";
+      await cargarTorneosArchivados();
     };
 
     (async () => {
@@ -2356,13 +3459,14 @@
       await cargarModalidades();
       await cargarSeries();
       await cargarTorneos();
+      await cargarTorneosArchivados();
       await cargarTorneoEnEdicion();
-      await cargarGrilla();
       actualizarVisibilidadTipoSalida();
       actualizarCamposSerie();
     })();
 
     tipoSalidaEl.addEventListener("change", actualizarVisibilidadTipoSalida);
+    filtroEstadoEl.addEventListener("change", cargarTorneos);
 
     document.getElementById("btnHome").addEventListener("click", () => {
       window.location.href = "panel.html";
