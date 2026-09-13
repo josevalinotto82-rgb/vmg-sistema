@@ -765,6 +765,10 @@
             return categorias.some(c => esCategoriaNuevaResultado(c));
         }
 
+        function torneoUsaSistemaLegacyResultado() {
+            return !torneoUsaSistemaNuevoResultado();
+        }
+
         function esScorecardNueva(j) {
             const cat = categoriaMetaScorecard(j);
 
@@ -1931,8 +1935,52 @@
         function scorecardPerteneceCategoriaTorneo(j, cat) {
             if (!j || !cat) return false;
 
-            // 1) Fuente autoritativa: categoría de CADA inscripción.
+            const categoriaEsNew = esCategoriaNuevaResultado(cat);
             const participantes = registrosParticipantesScorecard(j);
+
+            if (!categoriaEsNew) {
+                const registrosConCategoria = participantes.filter(reg =>
+                    String(reg?.category_id || "").trim()
+                );
+
+                if (registrosConCategoria.length) {
+                    return registrosConCategoria.some(reg =>
+                        categoriaCoincideIdResultado(reg.category_id, cat)
+                    );
+                }
+
+                const categoryIdScorecard = String(j?.category_id || "").trim();
+
+                if (categoryIdScorecard) {
+                    return categoriaCoincideIdResultado(
+                        categoryIdScorecard,
+                        cat
+                    );
+                }
+
+                const nombreSc = normalizarTexto(
+                    j.category_name ||
+                    j.tournament_categories?.name ||
+                    ""
+                );
+
+                if (nombreSc) {
+                    return nombreSc === normalizarTexto(cat.name || "");
+                }
+
+                const generoCat = generoCategoria(cat);
+                const generoSc = generoJugador(j);
+
+                if (
+                    generoCat &&
+                    generoSc &&
+                    generoCat !== generoSc
+                ) {
+                    return false;
+                }
+
+                return categoriaPorRangoResultado(j, cat);
+            }
 
             if (
                 participantes.some(reg =>
@@ -1942,12 +1990,10 @@
                 return true;
             }
 
-            // 2) Para individuales y datos previos: category_id de scorecard.
             if (categoriaCoincideIdResultado(j.category_id, cat)) {
                 return true;
             }
 
-            // 3) Nombre congelado, sólo si es inequívoco.
             const nombreSc = normalizarTexto(
                 j.category_name ||
                 j.tournament_categories?.name ||
@@ -1961,8 +2007,6 @@
                 return true;
             }
 
-            // 4) Último respaldo: reconstrucción por HCP/index según
-            // cómo fue configurada la categoría del torneo.
             return categoriaPorRangoResultado(j, cat);
         }
 
@@ -3102,9 +3146,25 @@
         function ordenCategoriaHistorica(nombreCategoria) {
             const n = normalizarTexto(nombreCategoria);
 
+            /*
+             * Orden histórico VMGC:
+             * Scratch Caballeros
+             * Negras
+             * Amarillas
+             * Blancas A
+             * Blancas B
+             * Scratch Damas
+             * Damas Rojas
+             *
+             * Los Scratch no forman parte de tournament_categories:
+             * se insertan dinámicamente antes del primer grupo de cada género.
+             * Acá ordenamos las categorías normales para que esa inserción
+             * quede exactamente en el lugar correcto.
+             */
+
             if (n.includes("scratch")) return 0;
 
-            // NEGRAS: 0 a 9
+            // NEGRAS
             if (
                 n.includes("negra") ||
                 n.includes("negras") ||
@@ -3113,7 +3173,7 @@
                 n.includes("hasta 9")
             ) return 10;
 
-            // AMARILLAS: 9.1 a 15
+            // AMARILLAS
             if (
                 n.includes("amarilla") ||
                 n.includes("amarillas") ||
@@ -3122,21 +3182,24 @@
                 n.includes("9,1")
             ) return 20;
 
-            // BLANCAS A: 15.1 a 21
+            // BLANCAS A
             if (
+                n.includes("blancas a") ||
+                n.includes("blanca a") ||
                 n.includes("15 1") ||
                 n.includes("15.1") ||
                 n.includes("15,1") ||
                 n.includes("15 a 21")
             ) return 30;
 
-            // BLANCAS B: 21.1 a 54
+            // BLANCAS B
             if (
+                n.includes("blancas b") ||
+                n.includes("blanca b") ||
                 n.includes("21 1") ||
                 n.includes("21.1") ||
                 n.includes("21,1") ||
-                n.includes("21 a 54") ||
-                n.includes("54")
+                n.includes("21 a 54")
             ) return 40;
 
             // DAMAS ROJAS
@@ -3925,11 +3988,15 @@
             categorias
                 .slice()
                 .sort((a, b) => {
-                    const oa = torneoActual?.legacy
+                    const usarOrdenHistorico =
+                        torneoActual?.legacy ||
+                        torneoUsaSistemaLegacyResultado();
+
+                    const oa = usarOrdenHistorico
                         ? ordenCategoriaHistorica(a.name)
                         : (a.display_order ?? 99);
 
-                    const ob = torneoActual?.legacy
+                    const ob = usarOrdenHistorico
                         ? ordenCategoriaHistorica(b.name)
                         : (b.display_order ?? 99);
 
