@@ -712,7 +712,142 @@
                 page-break-after: always;
                 break-after: page;
                 padding: 0;
-                font-family: Arial, sans-serif
+                font-family: Arial, sans-serif;
+                height: 275mm;
+                overflow: hidden;
+                position: relative
+            }
+
+            .print-letterhead {
+                display: grid;
+                grid-template-columns: 34mm 1fr 42mm;
+                align-items: center;
+                min-height: 25mm;
+                padding-bottom: 4mm;
+                margin-bottom: 5mm;
+                border-bottom: 2px solid #166534;
+            }
+
+            .print-logo {
+                display: block;
+                width: 27mm;
+                height: 22mm;
+                object-fit: contain;
+                object-position: left center;
+            }
+
+            .print-letterhead-title {
+                text-align: center;
+                font-size: 22px;
+                line-height: 1.05;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            .print-letterhead-date {
+                text-align: right;
+                font-size: 12px;
+                font-weight: 800;
+            }
+
+            .print-page-subtitle {
+                text-align: center;
+                color: #166534;
+                font-size: 15px;
+                font-weight: 900;
+                text-transform: uppercase;
+                margin: -2mm 0 5mm;
+            }
+
+            .print-page.compact .print-category { margin: 7px 0 2px; }
+            .print-page.compact .print-winner-premio { padding: 3px 0; }
+            .print-page.compact .print-winner-premio .name { font-size: 13px; }
+            .print-page.compact .print-winner-premio .pos,
+            .print-page.compact .print-winner-premio .score-big { font-size: 12px; }
+
+            /* Portada: composición más amplia porque contiene poca información. */
+            .print-cover-page .print-letterhead {
+                grid-template-columns: 48mm 1fr 48mm;
+                min-height: 38mm;
+                margin-bottom: 10mm;
+                padding-bottom: 6mm;
+            }
+
+            .print-cover-page .print-logo {
+                width: 42mm;
+                height: 34mm;
+            }
+
+            .print-cover-page .print-letterhead-title {
+                font-size: 29px;
+                line-height: 1.12;
+            }
+
+            .print-cover-page .print-letterhead-date {
+                font-size: 15px;
+            }
+
+            .print-cover-page .print-page-subtitle {
+                font-size: 20px;
+                margin: 0 0 10mm;
+            }
+
+            .print-cover-page .print-meta {
+                gap: 6mm 10mm;
+                margin: 0 0 12mm;
+                font-size: 16px;
+            }
+
+            .print-cover-page .print-meta-item {
+                min-height: 16mm;
+                padding: 4mm 5mm;
+                align-items: center;
+                border: 1px solid #cbd5c5;
+                border-left: 4px solid #166534;
+                border-radius: 4px;
+                background: #f7faf6;
+            }
+
+            .print-cover-page .print-meta-value {
+                font-size: 19px;
+                color: #166534;
+            }
+
+            .print-cover-page .print-approach-title {
+                font-size: 22px;
+                padding-bottom: 3mm;
+                border-bottom: 2px solid #166534;
+            }
+
+            .print-cover-page .print-approach-row {
+                font-size: 17px;
+                padding: 3mm 0;
+            }
+
+            .print-cover-page .print-winner.approach-print {
+                display: grid;
+                grid-template-columns: 52mm minmax(0, 1fr);
+                column-gap: 8mm;
+                align-items: center;
+                width: 100%;
+            }
+
+            .print-cover-page .print-winner.approach-print > div {
+                min-width: 0;
+                white-space: normal;
+                overflow: visible;
+            }
+
+            .print-cover-page .print-winner.approach-print > div:first-child {
+                padding-right: 5mm;
+                border-right: 1px solid #b7c4b4;
+                white-space: nowrap;
+            }
+
+            .print-cover-page .print-special-winner {
+                font-size: 18px;
+                font-weight: 900;
+                text-transform: uppercase;
             }
 
             .print-page:last-child {
@@ -3588,22 +3723,10 @@
         }
 
         function ordenCategoriaPremiosSerie(nombre) {
-            const t = String(nombre || "").toLowerCase();
-
-            if (t.includes("scratch")) return 9000;
-
-            if (t.includes("roja") || t.includes("damas")) return 10;
-
-            if (t.includes("blanca") && t.includes("b")) return 20;
-            if (t.includes("blancas b")) return 20;
-
-            if (t.includes("blanca") && t.includes("a")) return 30;
-            if (t.includes("blancas a")) return 30;
-
-            if (t.includes("amarilla")) return 40;
-            if (t.includes("negra")) return 50;
-
-            return 500 + ordenCategoria(nombre);
+            // Se conserva para compatibilidad con otros renders, pero el impreso
+            // usa compararCategoriasPremios, basado en género y rangos reales.
+            const d = datosOrdenCategoria(nombre);
+            return (d.esDamas ? 0 : 10000) - d.maximo;
         }
 
         function labelScoreSerie(tipo, esScratch = false) {
@@ -3783,14 +3906,11 @@
                 });
 
             const categoriasOrdenadas = [...grupos.entries()]
-                .sort((a, b) =>
-                    ordenCategoriaPremiosSerie(a[0]) - ordenCategoriaPremiosSerie(b[0]) ||
-                    a[0].localeCompare(b[0], "es")
-                );
+                .sort((a, b) => compararCategoriasPremios(a[0], b[0]));
 
             let html = `
-        <div class="print-page print-series-page">
-            <div class="print-title">${esc(titulo)}</div>
+        <div class="print-page print-series-page ${items.length > 30 ? "compact" : ""}">
+            ${renderPrintMembrete(titulo)}
             <div class="print-date">${subtitulo}</div>
     `;
 
@@ -3969,7 +4089,10 @@
                 }
             ].filter(x => x.ganador);
 
-            if (!items.length) return "";
+            if (!items.length) {
+                return `<div class="print-approach-title">Premios Especiales</div>
+                        <div class="print-approach-row">Sin premios especiales cargados.</div>`;
+            }
 
             let html = `<div class="print-approach-title">Premios Especiales</div>`;
 
@@ -3977,12 +4100,90 @@
                 html += `
                     <div class="print-winner approach-print print-approach-row">
                         <div>${esc(x.label)}</div>
-                        <div>${esc(x.ganador)}</div>
+                        <div class="print-special-winner">${esc(x.ganador)}</div>
                     </div>
                 `;
             });
 
             return html;
+        }
+
+        // El archivo del logo debe quedar junto a este HTML.
+        // Si en producción tiene otro nombre, cambiar únicamente esta constante.
+        const PRINT_CLUB_LOGO = "escudo.png";
+
+        function renderPrintMembrete(subtitulo = "") {
+            return `
+                <div class="print-letterhead">
+                    <img class="print-logo" src="${PRINT_CLUB_LOGO}" alt="Villa María Golf Club"
+                         onerror="this.style.visibility='hidden'">
+                    <div class="print-letterhead-title">${esc(torneoActual?.name || "")}</div>
+                    <div class="print-letterhead-date">${fechaTexto(torneoActual?.tournament_date)}</div>
+                </div>
+                ${subtitulo ? `<div class="print-page-subtitle">${esc(subtitulo)}</div>` : ""}
+            `;
+        }
+
+        function datosOrdenCategoria(nombre) {
+            const texto = String(nombre || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase()
+                .replace(/\s+/g, " ")
+                .trim();
+            const meta = categoriaMetaPorNombre(nombre) || categorias.find(c =>
+                String(c?.name || "")
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toLowerCase()
+                    .replace(/\s+/g, " ")
+                    .trim() === texto
+            );
+            const genero = normalizarGenero(meta?.gender || nombre);
+            const esDamas = genero === "female" || texto.includes("dama");
+            const numeroValido = value => value == null || value === "" ? null : n(value);
+            let maximo = numeroValido(meta?.playing_handicap_max) ?? numeroValido(meta?.index_max);
+            let minimo = numeroValido(meta?.playing_handicap_min) ?? numeroValido(meta?.index_min);
+
+            // Respaldo para los nombres habituales, incluso si la categoría de la
+            // tarjeta no encuentra su metadata por una diferencia de escritura.
+            let ordenHabitual = null;
+            if (!esDamas) {
+                if (/blancas?\s*b\b/.test(texto)) ordenHabitual = 1;
+                else if (/blancas?\s*a\b/.test(texto)) ordenHabitual = 2;
+                else if (texto.includes("amarilla")) ordenHabitual = 3;
+                else if (texto.includes("negra")) ordenHabitual = 4;
+            }
+
+            // Último respaldo: si el nombre contiene un rango, también se utiliza.
+            if (maximo == null || minimo == null) {
+                const nums = texto.match(/-?\d+(?:[.,]\d+)?/g)?.map(v => Number(v.replace(",", "."))) || [];
+                if (minimo == null && nums.length) minimo = nums[0];
+                if (maximo == null && nums.length > 1) maximo = nums[nums.length - 1];
+            }
+
+            return {
+                esDamas,
+                ordenHabitual,
+                maximo: maximo ?? -9999,
+                minimo: minimo ?? -9999
+            };
+        }
+
+        // Damas primero. Dentro de cada género: rango más alto a rango más bajo.
+        function compararCategoriasPremios(a, b) {
+            const da = datosOrdenCategoria(a);
+            const db = datosOrdenCategoria(b);
+            if (da.esDamas !== db.esDamas) return da.esDamas ? -1 : 1;
+            if (!da.esDamas && da.ordenHabitual != null && db.ordenHabitual != null) {
+                return da.ordenHabitual - db.ordenHabitual;
+            }
+            if (da.maximo !== db.maximo) return db.maximo - da.maximo;
+            if (da.minimo !== db.minimo) return db.minimo - da.minimo;
+            if (da.ordenHabitual != null || db.ordenHabitual != null) {
+                return (da.ordenHabitual ?? 999) - (db.ordenHabitual ?? 999);
+            }
+            return String(a).localeCompare(String(b), "es");
         }
 
         function renderPrintReport() {
@@ -4003,8 +4204,9 @@
                 ...scratchDam.map(s => String(s.id))
             ]);
 
-            let html = `<div class="print-page">`;
-            html += `<div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">${fechaTexto(torneoActual.tournament_date)}</div>`;
+            // HOJA 1: membrete, resumen general y premios especiales.
+            let html = `<div class="print-page print-cover-page">`;
+            html += renderPrintMembrete("Resumen del torneo");
             html += `
             <div class="print-meta">
 
@@ -4051,7 +4253,12 @@
             </div>
             `;
             html += renderPrintApproach();
-            html += `<div class="print-section-title">Ganadores por Categoría</div>`;
+            html += `</div>`;
+
+            // HOJA 2: únicamente ganadores del torneo.
+            const cantidadLineasPremios = top * Math.max(1, categorias.length) + topScratchCab + topScratchDam;
+            html += `<div class="print-page print-winners-page ${cantidadLineasPremios > 18 ? "compact" : ""}">`;
+            html += renderPrintMembrete("Ganadores por categorías");
 
             if (esFourballAmericana() && torneoUsaSistemaNuevo()) {
                 const gruposFourball =
@@ -4062,7 +4269,10 @@
                         )
                     );
 
-                gruposFourball.forEach(({ categoria, items }) => {
+                gruposFourball
+                    .slice()
+                    .sort((a, b) => compararCategoriasPremios(a.categoria?.name, b.categoria?.name))
+                    .forEach(({ categoria, items }) => {
                     html += renderPrintCategoria(
                         categoria.name || "Sin categoría",
                         items
@@ -4075,10 +4285,10 @@
                     html += renderPrintSeriesPage();
                 }
 
-                html += `<div class="print-page"><div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">Grilla de anotados</div>${renderPrintGrilla()}</div>`;
+                html += `<div class="print-page print-grid-page">${renderPrintMembrete("Grilla de anotados")}${renderPrintGrilla()}</div>`;
 
                 const stats = calcularStatsTee(validas);
-                html += `<div class="print-page"><div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">Resumen general hoyo por hoyo</div>`;
+                html += `<div class="print-page print-holes-page">${renderPrintMembrete("Ranking y detalle por hoyo")}`;
                 html += `<div class="print-section-title">Ranking de hoyos · Peor a mejor</div>${renderPrintRanking(stats)}`;
                 html += `<div class="print-section-title">Detalle por hoyo</div><table class="print-hole-table"><thead><tr><th>Hoyo</th><th>Par</th><th>HCP</th><th>Prom.</th><th>Vs Par</th><th>Águilas</th><th>Birdies</th><th>Par</th><th>Bogey</th><th>Doble+</th></tr></thead><tbody>`;
                 stats.forEach(r => html += `<tr><td>H${r.hole}</td><td>${r.par ?? "—"}</td><td>${r.hcp ?? "—"}</td><td>${fmt(r.avg, 2)}</td><td>${fmt(r.avgVsPar, 2)}</td><td>${r.eagle}</td><td>${r.birdie}</td><td>${r.parCount}</td><td>${r.bogey}</td><td>${r.doublePlus}</td></tr>`);
@@ -4180,10 +4390,7 @@
                 .sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"));
 
             const todasCategorias = [...categoriasDam, ...categoriasCab]
-                .sort((a, b) =>
-                    ordenCategoria(a[0]) - ordenCategoria(b[0]) ||
-                    a[0].localeCompare(b[0], "es")
-                );
+                .sort((a, b) => compararCategoriasPremios(a[0], b[0]));
 
             todasCategorias.forEach(([cat, items]) => {
                 html += renderPrintCategoria(cat, items);
@@ -4197,9 +4404,9 @@
             if (serieActual) {
                 html += renderPrintSeriesPage();
             }
-            html += `<div class="print-page"><div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">Grilla de anotados</div>${renderPrintGrilla()}</div>`;
+            html += `<div class="print-page print-grid-page">${renderPrintMembrete("Grilla de anotados")}${renderPrintGrilla()}</div>`;
             const stats = calcularStatsTee(validas);
-            html += `<div class="print-page"><div class="print-title">${esc(torneoActual.name)}</div><div class="print-date">Resumen general hoyo por hoyo</div>`;
+            html += `<div class="print-page print-holes-page">${renderPrintMembrete("Ranking y detalle por hoyo")}`;
             html += `<div class="print-section-title">Ranking de hoyos · Peor a mejor</div>${renderPrintRanking(stats)}`;
             html += `<div class="print-section-title">Detalle por hoyo</div><table class="print-hole-table"><thead><tr><th>Hoyo</th><th>Par</th><th>HCP</th><th>Prom.</th><th>Vs Par</th><th>Águilas</th><th>Birdies</th><th>Par</th><th>Bogey</th><th>Doble+</th></tr></thead><tbody>`;
             stats.forEach(r => html += `<tr><td>H${r.hole}</td><td>${r.par ?? "—"}</td><td>${r.hcp ?? "—"}</td><td>${fmt(r.avg, 2)}</td><td>${fmt(r.avgVsPar, 2)}</td><td>${r.eagle}</td><td>${r.birdie}</td><td>${r.parCount}</td><td>${r.bogey}</td><td>${r.doublePlus}</td></tr>`);
