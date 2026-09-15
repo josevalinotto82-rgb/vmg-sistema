@@ -107,6 +107,14 @@
       <div class="section-title">Torneo en pantalla</div>
       <label for="torneoSelect">Torneo</label>
       <select id="torneoSelect"><option value="">Cargando torneos...</option></select>
+      <div style="margin-top:12px;">
+        <label for="seriesViewMode">Vista de resultados</label>
+        <select id="seriesViewMode">
+          <option value="daily">Resultados del día</option>
+          <option value="aggregate">Acumulado de la serie</option>
+        </select>
+      </div>
+      <div id="seriesViewHelp" class="muted">El acumulado se habilita cuando el torneo pertenece a una serie.</div>
       <div class="muted">La TV debe abrir siempre <strong>tv.html</strong>. Esta pantalla solo guarda la configuración.</div>
     </section>
 
@@ -219,14 +227,28 @@
     async function cargarTorneos() {
       const { data, error } = await supabase
         .from("tournaments")
-        .select("id, name, tournament_date, status")
+        .select("id, name, tournament_date, status, series_id")
+        .eq("data_schema_version", 2)
         .order("tournament_date", { ascending: false })
         .limit(40);
 
       if (error) throw error;
 
       $("torneoSelect").innerHTML = `<option value="">Sin torneo seleccionado</option>` +
-        (data || []).map(t => `<option value="${t.id}">${formatearFecha(t.tournament_date)} · ${t.name}</option>`).join("");
+        (data || []).map(t => `<option value="${t.id}" data-series="${t.series_id || ""}">${formatearFecha(t.tournament_date)} · ${t.name}</option>`).join("");
+
+      actualizarDisponibilidadAcumulado();
+    }
+
+    function actualizarDisponibilidadAcumulado() {
+      const option = $("torneoSelect").selectedOptions?.[0];
+      const perteneceSerie = !!option?.dataset?.series;
+      const selector = $("seriesViewMode");
+      selector.disabled = !perteneceSerie;
+      if (!perteneceSerie) selector.value = "daily";
+      $("seriesViewHelp").textContent = perteneceSerie
+        ? "Podés mostrar esta fecha o la suma de las fechas jugadas de la serie."
+        : "Este torneo no pertenece a una serie; se mostrará el resultado del día.";
     }
 
     async function cargarSettings() {
@@ -239,6 +261,8 @@
       if (error) throw error;
 
       $("torneoSelect").value = data.tournament_id || "";
+      $("seriesViewMode").value = data.series_view_mode === "aggregate" ? "aggregate" : "daily";
+      actualizarDisponibilidadAcumulado();
       $("showScratchMale").checked = data.show_scratch_male ?? true;
       $("showScratchFemale").checked = data.show_scratch_female ?? true;
       $("excludeScratch").checked = data.exclude_scratch_from_category ?? true;
@@ -258,6 +282,7 @@
 
       const payload = {
         tournament_id: $("torneoSelect").value || null,
+        series_view_mode: $("seriesViewMode").value,
         show_scratch_male: $("showScratchMale").checked,
         show_scratch_female: $("showScratchFemale").checked,
         exclude_scratch_from_category: $("excludeScratch").checked,
@@ -298,6 +323,7 @@
       }
 
       $("modoUnaCategoria").addEventListener("change", aplicarModoUnaCategoria);
+      $("torneoSelect").addEventListener("change", actualizarDisponibilidadAcumulado);
 
       ["showPhotos", "showSponsors", "showLogoMedia", "showQr"].forEach(id => {
         $(id).addEventListener("change", () => {

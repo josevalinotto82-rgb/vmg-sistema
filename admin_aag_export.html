@@ -219,7 +219,7 @@
         <div style="margin-top:12px; padding:12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px;">
             <b>Salidas AAG</b>
             <div style="margin-top:6px; color:#6b7280; font-size:13px;">
-                Las salidas se resuelven automáticamente desde la configuración histórica
+                Las salidas se resuelven automáticamente desde la configuración
                 del torneo y se vinculan con la salida vigente en <code>aag_teeouts</code>.
                 No hay tees ni IDs AAG definidos dentro de este HTML.
             </div>
@@ -333,6 +333,7 @@
         const btnGenerar = document.getElementById("btnGenerar");
         const estado = document.getElementById("estado");
         const jsonPreview = document.getElementById("jsonPreview");
+        let idsTorneosV2 = [];
 
         async function cargarResumenAAG() {
             const box = document.getElementById("aagResumen");
@@ -340,6 +341,7 @@
             const { data, error } = await supabase
                 .from("aag_exports")
                 .select("status, aag_remote_status, aag_tournament_id")
+                .in("tournament_id", idsTorneosV2)
                 .eq("is_current", true);
 
             if (error) {
@@ -406,6 +408,7 @@
             export_id,
             details
         `)
+                .in("tournament_id", idsTorneosV2)
                 .eq("status", "open")
                 .order("created_at", { ascending: false })
                 .limit(20);
@@ -791,22 +794,26 @@
             const { data, error } = await supabase
                 .from("tournaments")
                 .select("id, name, tournament_date, status")
-                .eq("status", "archived")
-                .order("tournament_date", { ascending: false })
-                .limit(7);
+                .eq("data_schema_version", 2)
+                .order("tournament_date", { ascending: false });
 
             if (error) throw error;
 
-            torneoSelect.innerHTML = (data || []).map(t => `
+            idsTorneosV2 = (data || []).map(t => t.id);
+            const archivados = (data || [])
+                .filter(t => t.status === "archived")
+                .slice(0, 7);
+
+            torneoSelect.innerHTML = archivados.map(t => `
                 <option value="${t.id}">
                 ${t.tournament_date || ""} · ${t.name || "Torneo"}
                 </option>
             `).join("");
 
-            setEstado(`Torneos archivados cargados: ${data?.length || 0}`, "ok");
+            setEstado(`Torneos v2 archivados cargados: ${archivados.length}`, "ok");
 
-            if (data?.length) {
-                await cargarExportsDelTorneo(data[0].id);
+            if (archivados.length) {
+                await cargarExportsDelTorneo(archivados[0].id);
             }
         }
 
@@ -992,32 +999,11 @@
 
         function categoriaTournamentScorecard(sc, categoriasTorneo) {
             const id = String(sc?.category_id || "").trim();
+            if (!id) return null;
 
-            if (id) {
-                const porId = (categoriasTorneo || []).find(c =>
-                    String(c?.id || "").trim() === id
-                );
-                if (porId) return porId;
-
-                const porCategoryId = (categoriasTorneo || []).find(c =>
-                    String(c?.category_id || "").trim() === id
-                );
-                if (porCategoryId) return porCategoryId;
-            }
-
-            const nombre = normalizarTextoAAG(sc?.category_name);
-
-            if (nombre) {
-                const coincidencias = (categoriasTorneo || []).filter(c =>
-                    normalizarTextoAAG(c?.name) === nombre
-                );
-
-                if (coincidencias.length === 1) {
-                    return coincidencias[0];
-                }
-            }
-
-            return null;
+            return (categoriasTorneo || []).find(c =>
+                String(c?.id || "").trim() === id
+            ) || null;
         }
 
         function reglaSnapshotScorecard(sc, categoriasTorneo) {
@@ -1263,10 +1249,11 @@
                     .from("tournaments")
                     .select("*")
                     .eq("id", tournamentId)
+                    .eq("data_schema_version", 2)
                     .single();
 
             if (torneoError || !torneo) {
-                throw new Error("No se encontró torneo.");
+                throw new Error("No se encontró un torneo versión 2.");
             }
 
             // ===================================================
@@ -1431,25 +1418,17 @@
             };
         }
 
-        function normalizarIniHole(hole, batchesHoles = 18) {
-            const h = Number(hole);
-
-            if (Number(batchesHoles) === 18) return 1;
-
-            if (h >= 10) return 10;
-            return 1;
-        }
-
         async function generarAagPayloadsDesdeTorneo(tournamentId) {
 
             const { data: torneo, error: torneoError } = await supabase
                 .from("tournaments")
                 .select("*")
                 .eq("id", tournamentId)
+                .eq("data_schema_version", 2)
                 .single();
 
             if (torneoError || !torneo) {
-                throw new Error("No se encontró torneo.");
+                throw new Error("No se encontró un torneo versión 2.");
             }
 
             const { data: scorecards, error: scorecardsError } = await supabase
@@ -1460,19 +1439,13 @@
 
             if (scorecardsError) throw scorecardsError;
 
-            /*
-             * Snapshot histórico del torneo.
-             * Acá está la identidad del tee que se usó al crear/oficializar
-             * el torneo. No se consulta categories actual.
-             */
+            // Configuración de categorías guardada al crear el torneo v2.
             const { data: categoriasTorneo, error: categoriasError } =
                 await supabase
                     .from("tournament_categories")
                     .select(`
                         id,
-                        category_id,
                         category_system,
-                        name,
                         tee_rules,
                         playing_tee_aag_teeout_id,
                         hole_segment
@@ -1480,6 +1453,10 @@
                     .eq("tournament_id", tournamentId);
 
             if (categoriasError) throw categoriasError;
+
+            if ((categoriasTorneo || []).some(c => c.category_system !== "new")) {
+                throw new Error("El torneo contiene categorías que no pertenecen al sistema v2.");
+            }
 
             /*
              * Fuente AUTORITATIVA ACTUAL para IDs AAG.
@@ -1558,7 +1535,7 @@
 
                     const detalleOpciones =
                         Array.isArray(resolucion.opciones) &&
-                        resolucion.opciones.length
+                            resolucion.opciones.length
                             ? ` Opciones: ${resolucion.opciones
                                 .map(o =>
                                     `${o.tee_name} ` +
@@ -1911,11 +1888,15 @@
             }
         });
 
-        Promise.all([
-            cargarTorneos(),
-            cargarResumenAAG(),
-            cargarAlertasAAG()
-        ]).catch(err => {
+        async function iniciar() {
+            await cargarTorneos();
+            await Promise.all([
+                cargarResumenAAG(),
+                cargarAlertasAAG()
+            ]);
+        }
+
+        iniciar().catch(err => {
             console.error(err);
             setEstado(err.message || String(err), "err");
         });

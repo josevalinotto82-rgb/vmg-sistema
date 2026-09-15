@@ -759,11 +759,22 @@
                 margin: -2mm 0 5mm;
             }
 
-            .print-page.compact .print-category { margin: 7px 0 2px; }
-            .print-page.compact .print-winner-premio { padding: 3px 0; }
-            .print-page.compact .print-winner-premio .name { font-size: 13px; }
+            .print-page.compact .print-category {
+                margin: 7px 0 2px;
+            }
+
+            .print-page.compact .print-winner-premio {
+                padding: 3px 0;
+            }
+
+            .print-page.compact .print-winner-premio .name {
+                font-size: 13px;
+            }
+
             .print-page.compact .print-winner-premio .pos,
-            .print-page.compact .print-winner-premio .score-big { font-size: 12px; }
+            .print-page.compact .print-winner-premio .score-big {
+                font-size: 12px;
+            }
 
             /* Portada: composición más amplia porque contiene poca información. */
             .print-cover-page .print-letterhead {
@@ -832,13 +843,13 @@
                 width: 100%;
             }
 
-            .print-cover-page .print-winner.approach-print > div {
+            .print-cover-page .print-winner.approach-print>div {
                 min-width: 0;
                 white-space: normal;
                 overflow: visible;
             }
 
-            .print-cover-page .print-winner.approach-print > div:first-child {
+            .print-cover-page .print-winner.approach-print>div:first-child {
                 padding-right: 5mm;
                 border-right: 1px solid #b7c4b4;
                 white-space: nowrap;
@@ -1291,12 +1302,12 @@
                     <input id="topCategoria" type="number" min="1" max="10" value="2">
                 </div>
 
-                <div>
+                <div id="controlScratchCab">
                     <label>Scratch Cab.</label>
                     <input id="topScratch" type="number" min="0" max="10" value="0">
                 </div>
 
-                <div>
+                <div id="controlScratchDam">
                     <label>Scratch Dam.</label>
                     <input id="topScratchDamas" type="number" min="0" max="10" value="0">
                 </div>
@@ -1866,9 +1877,11 @@
                 const jugadores = items
                     .slice()
                     .sort((a, b) =>
-                        esFourballAmericana()
-                            ? compareFourballAmericana(a, b)
-                            : compareScore(a, b, "net")
+                        esTorneoGross()
+                            ? compareScore(a, b, "gross")
+                            : esFourballAmericana()
+                                ? compareFourballAmericana(a, b)
+                                : compareScore(a, b, "net")
                     );
 
                 html += `
@@ -1883,8 +1896,7 @@
                         <th style="width:90px">Matrícula</th>
                         <th class="left">${esFourballAmericana() ? "Pareja" : "Jugador"}</th>
                         <th style="width:60px">Gross</th>
-                        <th style="width:60px">HCP</th>
-                        <th style="width:60px">Neto</th>
+                        ${esTorneoGross() ? "" : `<th style="width:60px">HCP</th><th style="width:60px">Neto</th>`}
                     </tr>
                 </thead>
                 <tbody>
@@ -1899,8 +1911,7 @@
                         <b>${esc(j.display_name || "")}</b>
                     </td>
                     <td>${fmt(j.gross, 0)}</td>
-                    <td>${fmt(j.playing_handicap, 0)}</td>
-                    <td><b>${fmt(j.net, 0)}</b></td>
+                    ${esTorneoGross() ? "" : `<td>${fmt(j.playing_handicap, 0)}</td><td><b>${fmt(j.net, 0)}</b></td>`}
                 </tr>
             `;
                 });
@@ -1921,7 +1932,7 @@
                 setEstado("Cargando torneos archivados...");
                 const { data, error } = await supabase
                     .from("tournaments")
-                    .select("id,name,tournament_date,status,start_type,series_id,series_round_number,game_modes(name,participation_type)")
+                    .select("id,name,tournament_date,status,start_type,series_id,series_round_number,data_schema_version,scoring_mode,game_modes(name,participation_type)")
                     .in("status", ["officialized", "archived"])
                     .order("tournament_date", { ascending: false });
                 if (error) throw error;
@@ -1942,10 +1953,18 @@
 
                 const { data: torneo, error: errorTorneo } = await supabase
                     .from("tournaments")
-                    .select("id,name,tournament_date,status,start_type,hole_count,series_id,series_round_number,special_prizes,game_modes(name,participation_type)")
+                    .select("id,name,tournament_date,status,start_type,hole_count,series_id,series_round_number,data_schema_version,scoring_mode,special_prizes,game_modes(name,participation_type)")
                     .eq("id", tournamentId).single();
                 if (errorTorneo) throw errorTorneo;
                 torneoActual = torneo;
+
+                const gross = esTorneoGross();
+                el("controlScratchCab").style.display = gross ? "none" : "";
+                el("controlScratchDam").style.display = gross ? "none" : "";
+                if (gross) {
+                    el("topScratch").value = "0";
+                    el("topScratchDamas").value = "0";
+                }
 
                 cargarPremiosEspecialesGuardados();
 
@@ -2001,21 +2020,23 @@
                 if (errorCats) console.warn("No se pudieron cargar categorías", errorCats);
                 categorias = cats || [];
 
-                // Fallback NEW #2: categorías maestras.
-                // Se usa sólo cuando el snapshot de tournament_categories no alcanza.
-                const { data: masters, error: errorMasters } = await supabase
-                    .from("categories")
-                    .select("id,name,active,display_order,playing_handicap_min,playing_handicap_max,playing_tee_aag_teeout_id,tee_rules");
+                categoriasMaestras = [];
+                categoriasMaestrasMap = new Map();
 
-                if (errorMasters) {
-                    console.warn("No se pudieron cargar categories para fallback NEW", errorMasters);
-                    categoriasMaestras = [];
-                    categoriasMaestrasMap = new Map();
-                } else {
-                    categoriasMaestras = masters || [];
-                    categoriasMaestrasMap = new Map(
-                        categoriasMaestras.map(c => [String(c.id), c])
-                    );
+                // Sólo versión 2 puede usar categorías maestras como respaldo.
+                if (torneoUsaSistemaNuevo()) {
+                    const { data: masters, error: errorMasters } = await supabase
+                        .from("categories")
+                        .select("id,name,active,display_order,playing_handicap_min,playing_handicap_max,playing_tee_aag_teeout_id,tee_rules");
+
+                    if (errorMasters) {
+                        console.warn("No se pudieron cargar categories para fallback NEW", errorMasters);
+                    } else {
+                        categoriasMaestras = masters || [];
+                        categoriasMaestrasMap = new Map(
+                            categoriasMaestras.map(c => [String(c.id), c])
+                        );
+                    }
                 }
 
                 // Diagnóstico de integridad para torneos nuevos.
@@ -2067,7 +2088,7 @@
 
             const { data: torneos, error: errorTorneosSerie } = await supabase
                 .from("tournaments")
-                .select("id,name,tournament_date,status,series_id,series_round_number")
+                .select("id,name,tournament_date,status,series_id,series_round_number,data_schema_version")
                 .eq("series_id", torneo.series_id)
                 .order("series_round_number", { ascending: true })
                 .order("tournament_date", { ascending: true });
@@ -2084,11 +2105,20 @@
                     category_id,category_name,tee_name,official_index,manual_index,playing_handicap,
                     player_1_playing_handicap,player_2_playing_handicap,
                     slope,course_rating,par,
-                    gross,net,total,card_status,hole_segment,hole_scores,starting_time,starting_hole
+                    gross,net,total,card_status,hole_segment,hole_scores,starting_time,starting_hole,
+                    tournament_categories (
+                        id,category_id,category_system,name,index_min,index_max,gender,display_order,
+                        tee_id,hole_segment,slope,course_rating,par,tee_rules,
+                        playing_handicap_min,playing_handicap_max,playing_tee_aag_teeout_id
+                    )
                 `)
                 .in("tournament_id", ids);
             if (errorCardsSerie) throw errorCardsSerie;
             scorecardsSerie = cardsSerie || [];
+        }
+
+        function esTorneoGross() {
+            return String(torneoActual?.scoring_mode || "net").toLowerCase() === "gross";
         }
 
         function renderTodo() { if (!torneoActual) return; renderInfoGeneral(); renderGanadoresCategorias(); renderSerie(); renderResumenHoyos(); renderPrintReport(); }
@@ -2469,8 +2499,8 @@
 
         function renderTablaSeriePorCategorias({ tipo, items, field, required = null }) {
             const topCategoria = Math.max(1, Number(el("topCategoria").value || 3));
-            const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
-            const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
+            const topScratchCab = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchDam = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratchDamas")?.value || 0));
 
             const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
             const esMejor18 = tipo === "mejor18";
@@ -2673,20 +2703,41 @@
         <div class="stat"><div class="k">Desc.</div><div class="v">${desc.length}</div></div>
         <div class="stat"><div class="k">NPT</div><div class="v">${npt.length}</div></div>
         <div class="stat"><div class="k">Gross promedio</div><div class="v">${fmt(grossAvg, 1)}</div></div>
-        <div class="stat"><div class="k">Neto promedio</div><div class="v">${fmt(netAvg, 1)}</div></div>
+        ${esTorneoGross() ? "" : `<div class="stat"><div class="k">Neto promedio</div><div class="v">${fmt(netAvg, 1)}</div></div>`}
       `;
         }
 
+        function versionDatosTorneo(torneo) {
+            return Number(torneo?.data_schema_version) === 2 ? 2 : 1;
+        }
+
+        function torneoUsaSistemaNuevo() {
+            return versionDatosTorneo(torneoActual) === 2;
+        }
+
+        function torneoDeScorecard(sc) {
+            const tournamentId = String(sc?.tournament_id || "").trim();
+
+            if (
+                tournamentId &&
+                String(torneoActual?.id || "") === tournamentId
+            ) {
+                return torneoActual;
+            }
+
+            return (torneosSerie || []).find(t =>
+                String(t?.id || "") === tournamentId
+            ) || torneoActual;
+        }
+
         function esCategoriaNuevaArchivada(cat) {
-            return String(cat?.category_system || "legacy").toLowerCase() === "new";
+            // La versión del torneo es la autoridad. category_system queda
+            // como dato de integridad del snapshot, no como detector de versión.
+            return torneoUsaSistemaNuevo();
         }
 
         function esCategoriaLegacyArchivada(cat) {
             return !esCategoriaNuevaArchivada(cat);
-        }
-
-        function torneoUsaSistemaNuevo() {
-            return categorias.some(c => esCategoriaNuevaArchivada(c));
         }
 
         function categoriaMetaPorNombre(nombre) {
@@ -2696,6 +2747,17 @@
 
         function categoriaMetaPorScorecard(sc) {
             if (!sc) return null;
+
+            // En una serie, cada tarjeta trae el snapshot de categoría
+            // correspondiente a su propia fecha.
+            if (
+                sc.tournament_categories &&
+                typeof sc.tournament_categories === "object"
+            ) {
+                return Array.isArray(sc.tournament_categories)
+                    ? (sc.tournament_categories[0] || null)
+                    : sc.tournament_categories;
+            }
 
             const scCategoryId = String(sc.category_id || "").trim();
 
@@ -2724,13 +2786,9 @@
         }
 
         function scorecardEsNueva(sc) {
-            const cat = categoriaMetaPorScorecard(sc);
-            if (cat) return esCategoriaNuevaArchivada(cat);
-
-            // En un torneo creado completamente con el nuevo sistema,
-            // una scorecard sin categoría resoluble sigue siendo NEW.
-            // Esto evita cualquier caída accidental a COURSE_HOLES.
-            return torneoUsaSistemaNuevo();
+            // En informes de serie cada tarjeta usa la versión de su propia fecha.
+            // Fuera de una serie toma la versión del torneo actualmente abierto.
+            return versionDatosTorneo(torneoDeScorecard(sc)) === 2;
         }
 
         function nombreTeeNormalizado(valor) {
@@ -3178,8 +3236,42 @@
 
             const validasBase = scorecards.filter(s =>
                 (s.card_status === "valid" || s.card_status === "cargada") &&
-                n(s.net) != null
+                n(esTorneoGross() ? s.gross : s.net) != null
             );
+
+            // TORNEO GROSS: todos compiten sólo contra los jugadores de su categoría.
+            // No se descuenta HCP y no se genera ningún premio Scratch separado.
+            if (esTorneoGross()) {
+                const grupos = new Map();
+                validasBase.forEach(s => {
+                    const nombre = s.category_name || "Sin categoría";
+                    if (esCategoriaScratch(nombre)) return;
+                    if (!grupos.has(nombre)) grupos.set(nombre, []);
+                    grupos.get(nombre).push(s);
+                });
+
+                let html = "";
+                [...grupos.entries()]
+                    .sort((a, b) => compararCategoriasPremios(a[0], b[0]))
+                    .forEach(([cat, items]) => {
+                        const meta = categoriaMetaPorNombre(cat);
+                        const claseTee = claseColorCategoria(cat, meta);
+                        const ganadores = items
+                            .slice()
+                            .sort((a, b) => compareScore(a, b, "gross"))
+                            .slice(0, topCategoria);
+
+                        html += `<div class="winner-card"><div class="winner-head ${claseTee}">${esc(cat)}</div><div class="podium">`;
+                        ganadores.forEach((s, i) => {
+                            html += podiumRow(s, i, `Gross ${fmt(s.gross, 0)}`, esc(s.tee_name || "Tee —"));
+                        });
+                        html += `</div></div>`;
+                    });
+
+                el("ganadoresCategorias").innerHTML =
+                    html || `<div class="small">No hay resultados por categoría para mostrar.</div>`;
+                return;
+            }
 
             // =========================
             // FOURBALL AMERICANA NEW:
@@ -3200,7 +3292,7 @@
 
                     const rango =
                         categoria.playing_handicap_min != null ||
-                        categoria.playing_handicap_max != null
+                            categoria.playing_handicap_max != null
                             ? ` · HCP ${fmt(categoria.playing_handicap_min, 0)} a ${fmt(categoria.playing_handicap_max, 0)}`
                             : "";
 
@@ -3246,8 +3338,8 @@
             // =========================
             // RESTO DE MODALIDADES: comportamiento actual
             // =========================
-            const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
-            const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
+            const topScratchCab = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchDam = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratchDamas")?.value || 0));
 
             const scratchCab = topScratchCab > 0
                 ? obtenerScratchItems("male").slice(0, topScratchCab)
@@ -3671,8 +3763,8 @@
 
         function renderPrintTablaSeriePorCategorias({ tipo, items, field, required = null }) {
             const topCategoria = Math.max(1, Number(el("topCategoria").value || 3));
-            const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
-            const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
+            const topScratchCab = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchDam = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratchDamas")?.value || 0));
 
             const labelScore = field === "gross" ? "Gross" : field === "total" ? "Total" : "Neto";
             const esMejor18 = tipo === "mejor18";
@@ -3928,8 +4020,8 @@
 
         function renderPrintPremiosSeriePage({ titulo, subtitulo, tipo, items, field, required = null }) {
             const topCategoria = Math.max(1, Number(el("topCategoria")?.value || 2));
-            const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
-            const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
+            const topScratchCab = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchDam = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratchDamas")?.value || 0));
 
             const esMejor18 = tipo === "mejor18";
 
@@ -4037,13 +4129,12 @@
                 .sort((a, b) => compararCategoriasPremios(a[0], b[0]));
 
             let html = `
-        <div class="print-page print-series-page ${
-            (
-                categoriasOrdenadas.length * topCategoria +
-                scratchDam.length +
-                scratchCab.length
-            ) > 12 ? "compact" : ""
-        }">
+        <div class="print-page print-series-page ${(
+                    categoriasOrdenadas.length * topCategoria +
+                    scratchDam.length +
+                    scratchCab.length
+                ) > 12 ? "compact" : ""
+                }">
             ${renderPrintMembrete(titulo)}
             <div class="print-date">${subtitulo}</div>
     `;
@@ -4337,8 +4428,8 @@
             const grossAvg = validas.length ? validas.reduce((a, s) => a + (n(s.gross) || 0), 0) / validas.length : null;
             const netAvg = validas.length ? validas.reduce((a, s) => a + (n(s.net) || 0), 0) / validas.length : null;
             const top = Math.max(1, Number(el("topCategoria")?.value || 3));
-            const topScratchCab = Math.max(0, Number(el("topScratch")?.value || 0));
-            const topScratchDam = Math.max(0, Number(el("topScratchDamas")?.value || 0));
+            const topScratchCab = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratch")?.value || 0));
+            const topScratchDam = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratchDamas")?.value || 0));
 
             const scratchCab = topScratchCab > 0 ? obtenerScratchItems("male").slice(0, topScratchCab) : [];
             const scratchDam = topScratchDam > 0 ? obtenerScratchItems("female").slice(0, topScratchDam) : [];
@@ -4389,10 +4480,10 @@
                     <span class="print-meta-value">${fmt(grossAvg, 1)}</span>
                 </div>
 
-                <div class="print-meta-item">
+                ${esTorneoGross() ? "" : `<div class="print-meta-item">
                     <span class="print-meta-label">Neto Promedio</span>
                     <span class="print-meta-value">${fmt(netAvg, 1)}</span>
-                </div>
+                </div>`}
 
             </div>
             `;
@@ -4417,11 +4508,11 @@
                     .slice()
                     .sort((a, b) => compararCategoriasPremios(a.categoria?.name, b.categoria?.name))
                     .forEach(({ categoria, items }) => {
-                    html += renderPrintCategoria(
-                        categoria.name || "Sin categoría",
-                        items
-                    );
-                });
+                        html += renderPrintCategoria(
+                            categoria.name || "Sin categoría",
+                            items
+                        );
+                    });
 
                 html += `</div>`;
 
@@ -4481,9 +4572,11 @@
                 const ganadores = items
                     .slice()
                     .sort((a, b) =>
-                        esFourballAmericana()
-                            ? compareFourballAmericana(a, b)
-                            : compareScore(a, b, "net")
+                        esTorneoGross()
+                            ? compareScore(a, b, "gross")
+                            : esFourballAmericana()
+                                ? compareFourballAmericana(a, b)
+                                : compareScore(a, b, "net")
                     )
                     .slice(0, top)
                     .reverse();
@@ -4494,7 +4587,7 @@
 
                 ganadores.forEach((s, idx, arr) => {
                     const pos = arr.length - idx;
-                    out += renderGanadorLinea(s, pos, "net");
+                    out += renderGanadorLinea(s, pos, esTorneoGross() ? "gross" : "net");
                 });
 
                 return out;
@@ -4506,7 +4599,7 @@
                     const catName = String(s.category_name || "").toLowerCase();
                     return (s.card_status === "valid" || s.card_status === "cargada") &&
                         s.category_name &&
-                        n(s.net) != null &&
+                        n(esTorneoGross() ? s.gross : s.net) != null &&
                         !catName.includes("scratch") &&
                         !catName.includes("scrach") &&
                         !scratchWinnerIds.has(String(s.id));

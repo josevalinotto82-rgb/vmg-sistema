@@ -660,6 +660,10 @@
         let detalleJugadoresMap = new Map();
         let criterioSerieSeleccionado = "dia";
 
+        function esTorneoGross() {
+            return String(torneoActual?.scoring_mode || "net").toLowerCase() === "gross";
+        }
+
         function fechaAObjeto(fecha) {
             const texto = String(fecha || "").trim();
             if (!texto) return null;
@@ -756,29 +760,42 @@
             return null;
         }
 
-        function esCategoriaNuevaResultado(cat) {
-            return String(cat?.category_system || "legacy")
-                .toLowerCase() === "new";
+        function versionDatosTorneo(torneo) {
+            return Number(torneo?.data_schema_version) === 2 ? 2 : 1;
         }
 
         function torneoUsaSistemaNuevoResultado() {
-            return categorias.some(c => esCategoriaNuevaResultado(c));
+            return versionDatosTorneo(torneoActual) === 2;
         }
 
         function torneoUsaSistemaLegacyResultado() {
             return !torneoUsaSistemaNuevoResultado();
         }
 
-        function esScorecardNueva(j) {
-            const cat = categoriaMetaScorecard(j);
+        function torneoDeScorecard(j) {
+            const tournamentId = String(j?.tournament_id || "").trim();
 
-            if (cat) {
-                return esCategoriaNuevaResultado(cat);
+            if (
+                tournamentId &&
+                String(torneoActual?.id || "") === tournamentId
+            ) {
+                return torneoActual;
             }
 
-            // En un torneo NEW una tarjeta sin asociación perfecta no debe
-            // terminar leyendo la cancha hardcodeada legacy.
+            return (torneosSerie || []).find(t =>
+                String(t?.id || "") === tournamentId
+            ) || torneoActual;
+        }
+
+        function esCategoriaNuevaResultado(cat) {
+            // La versión del torneo es la autoridad. category_system queda
+            // únicamente como control de integridad del snapshot.
             return torneoUsaSistemaNuevoResultado();
+        }
+
+        function esScorecardNueva(j) {
+            // En una serie, cada tarjeta usa la versión de su propia fecha.
+            return versionDatosTorneo(torneoDeScorecard(j)) === 2;
         }
 
         function normalizarNombreTeeResultado(valor) {
@@ -876,7 +893,7 @@
             if (!esScorecardNueva(j)) return null;
 
             const cat = categoriaMetaScorecard(j);
-            if (!cat || !esCategoriaNuevaResultado(cat)) return null;
+            if (!cat) return null;
 
             const regla = seleccionarReglaTeeTournamentCategory(cat, j);
 
@@ -1146,6 +1163,11 @@
 
             if (!sc || esNoValido(sc)) return "";
 
+            if (esTorneoGross()) {
+                const gross = parseNumero(sc.gross);
+                return gross !== null && gross > 0 ? gross : "";
+            }
+
             const net = parseNumero(sc.net);
             if (net !== null && net > 0) return net;
 
@@ -1284,14 +1306,16 @@
 
         function compararTarjetasSerie(a, b, esScratch = false) {
 
+            const compararComoGross = esScratch || esTorneoGross();
+
             // =========================================
             // 1. RESULTADO PRINCIPAL DE LA TARJETA
             // =========================================
-            const valorA = esScratch
+            const valorA = compararComoGross
                 ? parseNumero(a.gross)
                 : parseNumero(a.net ?? a.total);
 
-            const valorB = esScratch
+            const valorB = compararComoGross
                 ? parseNumero(b.gross)
                 : parseNumero(b.net ?? b.total);
 
@@ -1308,7 +1332,7 @@
             // Segunda vuelta, últimos 6,
             // últimos 3, últimos 2, último hoyo
             // =========================================
-            if (esScratch) {
+            if (compararComoGross) {
 
                 const criteriosScratch = [
                     [10, 18],
@@ -1392,6 +1416,8 @@
 
         function tarjetasValidasSerie(j, esScratch = false) {
 
+            const usarGross = esScratch || esTorneoGross();
+
             const key = claveJugadorSerie(j);
             const mapa = scorecardsSeriePorJugador.get(key);
 
@@ -1405,7 +1431,7 @@
                         return false;
                     }
 
-                    const valor = esScratch
+                    const valor = usarGross
                         ? parseNumero(sc.gross)
                         : parseNumero(sc.net ?? sc.total);
 
@@ -1415,7 +1441,7 @@
                 .map(sc => ({
                     scorecard: sc,
 
-                    valor: esScratch
+                    valor: usarGross
                         ? parseNumero(sc.gross)
                         : parseNumero(sc.net ?? sc.total)
                 }))
@@ -2099,6 +2125,8 @@
         function valorPrincipal(j) {
             if (esNoValido(j)) return 999999;
 
+            if (esTorneoGross()) return valorGross(j);
+
             if (esFourballAmericana()) {
                 const net = parseNumero(j.net);
                 const total = parseNumero(j.total);
@@ -2209,6 +2237,20 @@
             const bPrincipal = valorPrincipal(b);
 
             if (aPrincipal !== bPrincipal) return aPrincipal - bPrincipal;
+
+            if (esTorneoGross()) {
+                const criteriosGross = [[10, 18], [13, 18], [16, 18], [17, 18], [18, 18]];
+                const hoyosA = hoyosPorScorecard[a.id] || {};
+                const hoyosB = hoyosPorScorecard[b.id] || {};
+
+                for (const [desde, hasta] of criteriosGross) {
+                    const sumaA = sumaHoyosArray(hoyosA, desde, hasta);
+                    const sumaB = sumaHoyosArray(hoyosB, desde, hasta);
+                    if (sumaA !== sumaB) return sumaA - sumaB;
+                }
+
+                return String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+            }
 
             // DESEMPATE FOURBALL AMERICANA
             // Los golpes por hoyo ya son netos: no se vuelve a descontar HCP.
@@ -2786,18 +2828,18 @@
               <tr>
                 <td class="label">Al Par</td>
                 ${idaConfig.map(x => {
-                    const golpes = parseNumero(dataHoyos[x.h]);
-                    const par = parseNumero(x.par);
-                    const diff = golpes === null || par === null ? null : golpes - par;
-                    return `<td>${toParHtmlONulo(diff)}</td>`;
-                }).join("")}
+                const golpes = parseNumero(dataHoyos[x.h]);
+                const par = parseNumero(x.par);
+                const diff = golpes === null || par === null ? null : golpes - par;
+                return `<td>${toParHtmlONulo(diff)}</td>`;
+            }).join("")}
                 <td class="sum">${toParHtmlONulo(idaPar)}</td>
                 ${vueltaConfig.map(x => {
-                    const golpes = parseNumero(dataHoyos[x.h]);
-                    const par = parseNumero(x.par);
-                    const diff = golpes === null || par === null ? null : golpes - par;
-                    return `<td>${toParHtmlONulo(diff)}</td>`;
-                }).join("")}
+                const golpes = parseNumero(dataHoyos[x.h]);
+                const par = parseNumero(x.par);
+                const diff = golpes === null || par === null ? null : golpes - par;
+                return `<td>${toParHtmlONulo(diff)}</td>`;
+            }).join("")}
                 <td class="sum">${toParHtmlONulo(vueltaPar)}</td>
                 <td class="sum">${toParHtmlONulo(totalPar)}</td>
               </tr>
@@ -2844,11 +2886,11 @@
               <tr>
                 <td class="label">Al Par</td>
                 ${hoyosConfig.map(x => {
-                    const golpes = parseNumero(dataHoyos[x.h]);
-                    const par = parseNumero(x.par);
-                    const diff = golpes === null || par === null ? null : golpes - par;
-                    return `<td>${toParHtmlONulo(diff)}</td>`;
-                }).join("")}
+                const golpes = parseNumero(dataHoyos[x.h]);
+                const par = parseNumero(x.par);
+                const diff = golpes === null || par === null ? null : golpes - par;
+                return `<td>${toParHtmlONulo(diff)}</td>`;
+            }).join("")}
                 <td class="sum">${toParHtmlONulo(alPar)}</td>
               </tr>
             </tbody>
@@ -3074,17 +3116,22 @@
                 jDetalle.tee_name ? `<div><strong>Tee:</strong> ${jDetalle.tee_name}</div>` : ""
             ].filter(Boolean).join("");
 
-            const datosTop = esScratch
+            const datosTop = esTorneoGross()
                 ? `
                 <div><strong>Puesto:</strong> ${posicionDetalle || ""}</div>
                 <div><strong>Gross:</strong> ${jDetalle.gross ?? ""}</div>
                 `
-                : esFourballAmericana()
+                : esScratch
                     ? `
+                <div><strong>Puesto:</strong> ${posicionDetalle || ""}</div>
+                <div><strong>Gross:</strong> ${jDetalle.gross ?? ""}</div>
+                `
+                    : esFourballAmericana()
+                        ? `
                 <div><strong>Puesto:</strong> ${posicionDetalle || ""}</div>
                 <div><strong>Neto:</strong> ${jDetalle.net ?? jDetalle.total ?? jDetalle.gross ?? ""}</div>
                 `
-                    : `
+                        : `
                 <div><strong>Puesto:</strong> ${posicionDetalle || ""}</div>
                 <div><strong>Index:</strong> ${jDetalle.official_index ?? ""}</div>
                 <div><strong>Gross:</strong> ${jDetalle.gross ?? ""}</div>
@@ -3099,7 +3146,7 @@
             ${datosCanchaHtml}
           </div>
 
-          ${otrosNetosSerieHtml(j, jDetalle, idx)}
+          ${esTorneoGross() ? "" : otrosNetosSerieHtml(j, jDetalle, idx)}
           ${obtenerDetalleDesempate(
                 jDetalle,
 
@@ -3108,19 +3155,19 @@
 
                     ? empatadosMejor18Serie(
                         j,
-                        esScratch
+                        esScratch || esTorneoGross()
                     )
 
                     : torneoTieneSerie()
 
                         ? empatadosParaScorecardDetalle(
                             jDetalle,
-                            esScratch
+                            esScratch || esTorneoGross()
                         )
 
                         : empatados,
 
-                esScratch
+                esScratch || esTorneoGross()
             )}
           ${detalleDesktop(jDetalle)}
           ${detalleMobile(jDetalle)}
@@ -3287,6 +3334,7 @@
                 game_modes: {
                     name: torneo.modalidad || ""
                 },
+                data_schema_version: 1,
                 legacy: true
             };
 
@@ -3378,6 +3426,8 @@
                     tournament_date,
                     series_id,
                     series_round_number,
+                    data_schema_version,
+                    scoring_mode,
                     game_modes (
                     name
                     )
@@ -3406,6 +3456,25 @@
 
                 if (errorCats) throw errorCats;
                 categorias = cats || [];
+
+                const sistemaEsperado = torneoUsaSistemaNuevoResultado()
+                    ? "new"
+                    : "legacy";
+
+                const categoriasConVersionInconsistente = categorias.filter(c =>
+                    String(c?.category_system || "legacy").toLowerCase() !== sistemaEsperado
+                );
+
+                if (categoriasConVersionInconsistente.length) {
+                    console.warn(
+                        `El torneo versión ${versionDatosTorneo(torneoActual)} contiene categorías con category_system inesperado. Se respetará la versión del torneo.`,
+                        categoriasConVersionInconsistente.map(c => ({
+                            id: c.id,
+                            name: c.name,
+                            category_system: c.category_system
+                        }))
+                    );
+                }
 
                 const categoriasNewIncompletas = categorias.filter(c =>
                     esCategoriaNuevaResultado(c) &&
@@ -3488,7 +3557,7 @@
                 if (torneo.series_id) {
                     const { data: rondas, error: errorRondas } = await supabase
                         .from("tournaments")
-                        .select("id, name, tournament_date, series_id, series_round_number")
+                        .select("id, name, tournament_date, series_id, series_round_number, data_schema_version")
                         .eq("series_id", torneo.series_id)
                         .order("series_round_number", { ascending: true });
 
@@ -3710,21 +3779,23 @@
                             : ""
                     : "";
 
-                const columnas = columnasSerie || (
-                    esScratch
-                        ? `
+                const columnas = esTorneoGross()
+                    ? `<th>Pos</th><th>Jugador</th><th>Gross</th>`
+                    : columnasSerie || (
+                        esScratch
+                            ? `
                 <th>Pos</th>
                 <th>Jugador</th>
                 <th>Gross</th>
                 `
-                        : esFourballAmericana()
-                            ? `
+                            : esFourballAmericana()
+                                ? `
                 <th>Pos</th>
                 <th>Pareja</th>
                 <th>Neto</th>
                 `
-                            : esFourballClasico()
-                                ? `
+                                : esFourballClasico()
+                                    ? `
                 <th>Pos</th>
                 <th>Pareja</th>
                 <th>Gross</th>
@@ -3732,7 +3803,7 @@
                 <th>Neto</th>
                 <th>Total</th>
                 `
-                                : `
+                                    : `
                 <th>Pos</th>
                 <th>Jugador</th>
                 <th>Index</th>
@@ -3741,21 +3812,23 @@
                 <th>Neto</th>
                 <th>Total</th>
                 `
-                );
+                    );
 
-                const colspanDetalle = esClasificacionSerie
-                    ? (
-                        criterioSerieSeleccionado === "mejor18"
-                            ? 5
-                            : 4
-                    )
-                    : columnasSerie
-                        ? (4 + torneosSerie.length)
-                        : esFourballAmericana() || esScratch
-                            ? 3
-                            : esFourballClasico()
-                                ? 6
-                                : 7;
+                const colspanDetalle = esTorneoGross()
+                    ? 3
+                    : esClasificacionSerie
+                        ? (
+                            criterioSerieSeleccionado === "mejor18"
+                                ? 5
+                                : 4
+                        )
+                        : columnasSerie
+                            ? (4 + torneosSerie.length)
+                            : esFourballAmericana() || esScratch
+                                ? 3
+                                : esFourballClasico()
+                                    ? 6
+                                    : 7;
 
                 html += `
             <div class="categoria-card">
@@ -3816,6 +3889,15 @@
                         <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross != null ? j.gross : "")}</td>
                     `;
 
+                    const filaGross = `
+                        <td>${posMostrar}</td>
+                        <td class="nombre">${j.display_name}</td>
+                        <td>${esClasificacionSerie
+                            ? valorClasificacionSerie(j, false)
+                            : (esNoValido(j) ? textoEstadoVisible(j) : (j.gross != null ? j.gross : ""))
+                        }</td>
+                    `;
+
                     const filaAmericana = `
                         <td>${posMostrar}</td>
                         <td class="nombre">${j.display_name}</td>
@@ -3860,8 +3942,9 @@
                         <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>
                     `;
 
-                    const filaVisible =
-                        esClasificacionSerie
+                    const filaVisible = esTorneoGross()
+                        ? filaGross
+                        : esClasificacionSerie
                             ? filaClasificacionSerie
                             : torneoTieneSerie() && !esScratch && !esFourball()
                                 ? filaSerie
@@ -3902,6 +3985,7 @@
             }
 
             function renderScratch(genero) {
+                if (esTorneoGross()) return;
                 if (!esMedal()) return;
 
                 if (genero === "male" && scratchCaballerosAgregado) return;
@@ -4134,6 +4218,8 @@
                         return String(a.name || "").localeCompare(String(b.name || ""), "es");
                     })
                     .forEach(cat => {
+
+                        if (esTorneoGross() && normalizarTexto(cat.name).includes("SCRATCH")) return;
 
                         const generoCat = generoCategoria(cat);
 

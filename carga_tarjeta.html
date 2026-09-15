@@ -782,31 +782,13 @@
 
     function categoriaTournamentScorecard(sc) {
       const id = String(sc?.category_id || "").trim();
+      if (!id) return null;
 
-      if (id) {
-        const porId = (categoriasTorneo || []).find(c =>
-          String(c?.id || "").trim() === id
-        );
-        if (porId) return porId;
-
-        // Compatibilidad por si alguna scorecard conserva el category_id maestro.
-        const porCategoryId = (categoriasTorneo || []).find(c =>
-          String(c?.category_id || "").trim() === id
-        );
-        if (porCategoryId) return porCategoryId;
-      }
-
-      const nombre = normalizarTexto(sc?.category_name);
-
-      if (nombre) {
-        const coincidencias = (categoriasTorneo || []).filter(c =>
-          normalizarTexto(c?.name) === nombre
-        );
-
-        if (coincidencias.length === 1) return coincidencias[0];
-      }
-
-      return null;
+      // En versión 2, scorecards.category_id siempre referencia
+      // tournament_categories.id. No se infiere por nombre ni por categoría maestra.
+      return (categoriasTorneo || []).find(c =>
+        String(c?.id || "").trim() === id
+      ) || null;
     }
 
     function reglaTeeTournamentScorecard(sc) {
@@ -953,12 +935,14 @@
             name,
             tournament_date,
             status,
+            data_schema_version,
             game_modes (
               id,
               name
             )
           `)
           .in("status", ["officialized", "open"])
+          .eq("data_schema_version", 2)
           .order("tournament_date", { ascending: true });
 
         if (error) throw error;
@@ -990,8 +974,8 @@
 
         if (!torneos.length) {
           torneoActual = null;
-          limpiarPantalla("No hay torneos Oficializados.");
-          setEstado("No se encontraron torneos oficializados.", "warn");
+          limpiarPantalla("No hay torneos versión 2 oficializados.");
+          setEstado("No se encontraron torneos versión 2 para cargar.", "warn");
           return;
         }
 
@@ -1010,6 +994,10 @@
 
         setEstado("Cargando scorecards...");
         torneoActual = torneos.find(t => String(t.id) === String(torneoId)) || null;
+
+        if (!torneoActual || Number(torneoActual.data_schema_version) !== 2) {
+          throw new Error("Carga de tarjetas sólo admite torneos con data_schema_version = 2.");
+        }
 
         torneoFecha.value = fechaTexto(torneoActual?.tournament_date);
         torneoModalidad.value = torneoActual?.game_modes?.name || "";
@@ -1034,6 +1022,14 @@
         if (categoriasError) throw categoriasError;
 
         categoriasTorneo = categoriasData || [];
+
+        const categoriasInvalidas = categoriasTorneo.filter(c =>
+          String(c?.category_system || "").toLowerCase() !== "new"
+        );
+
+        if (categoriasInvalidas.length) {
+          throw new Error("El torneo versión 2 contiene categorías que no pertenecen al sistema nuevo.");
+        }
 
         const { data, error } = await supabase
           .from("scorecards")
@@ -1365,7 +1361,10 @@
       const net = cargados.length > 0
         ? (americana ? gross : gross - hcp)
         : null;
-      const export_ready = card_status === "valid" && !!sc.aag_member_number;
+      const export_ready =
+        card_status === "valid" &&
+        sc.aag_exportable === true &&
+        !!sc.aag_member_number;
 
       return {
         gross: cargados.length > 0 ? gross : null,
@@ -1438,8 +1437,7 @@
             total: resultado.total,
             card_status: resultado.card_status,
             hole_scores: holeScores,
-            export_ready: holes.every(h => h.strokes != null) && !!sc.aag_member_number,
-            aag_exportable: holes.every(h => h.strokes != null) && !!sc.aag_member_number
+            export_ready: resultado.export_ready
           })
           .eq("id", sc.id);
 
@@ -1515,6 +1513,7 @@
           : null;
 
         const exportaAAG =
+          sc.aag_exportable === true &&
           !!sc.aag_member_number &&
           (
             nuevoEstado === "valid" ||
@@ -1529,8 +1528,7 @@
             total: net,
             card_status: nuevoEstado,
             hole_scores: construirHoleScores(holes),
-            export_ready: exportaAAG,
-            aag_exportable: exportaAAG
+            export_ready: exportaAAG
           })
           .eq("id", sc.id);
 
@@ -1594,8 +1592,7 @@
             const { error: errorScorecards } = await supabase
               .from("scorecards")
               .update({
-                export_ready: false,
-                aag_exportable: false
+                export_ready: false
               })
               .in("id", scorecardsIncompletas);
 
