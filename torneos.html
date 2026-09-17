@@ -88,6 +88,117 @@
             font-weight: 700;
         }
 
+        .categoria-toggle {
+            width: 100%;
+            border: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            text-align: left;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .categoria-toggle:hover {
+            filter: brightness(1.05);
+        }
+
+        .categoria-toggle-main {
+            min-width: 0;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 850;
+        }
+
+        .tee-color-dot {
+            width: 15px;
+            height: 15px;
+            flex: 0 0 15px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+        }
+
+        .tee-color-negro {
+            background: #111827;
+        }
+
+        .tee-color-amarillo {
+            background: #facc15;
+        }
+
+        .tee-color-blanco {
+            background: #ffffff;
+        }
+
+        .tee-color-rojo {
+            background: #dc2626;
+        }
+
+        .tee-color-azul {
+            background: #2563eb;
+        }
+
+        .tee-color-verde {
+            background: #22c55e;
+        }
+
+        .categoria-chevron {
+            flex: 0 0 auto;
+            font-size: 18px;
+            transition: transform 0.2s ease;
+        }
+
+        .categoria-card.expanded .categoria-chevron {
+            transform: rotate(180deg);
+        }
+
+        .categoria-card:not(.expanded) .categoria-extra-row {
+            display: none;
+        }
+
+        .scratch-card {
+            border: 1px solid #d6b65a;
+        }
+
+        .scratch-card .categoria-header {
+            background: #26384a;
+        }
+
+        .scratch-resumen {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            min-width: 0;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .scratch-ganador {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .scratch-gross {
+            flex: 0 0 auto;
+            min-width: 42px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: #d6b65a;
+            color: #172235;
+            text-align: center;
+            font-weight: 800;
+        }
+
+        .scratch-card:not(.expanded) .tabla-wrap {
+            display: none;
+        }
+
         .tabla-wrap {
             overflow-x: auto;
         }
@@ -478,6 +589,22 @@
             .categoria-header {
                 padding: 14px 14px;
                 font-size: 18px;
+            }
+
+            .scratch-resumen {
+                gap: 7px;
+                font-size: 13px;
+            }
+
+            .tee-color-dot {
+                width: 13px;
+                height: 13px;
+                flex-basis: 13px;
+            }
+
+            .scratch-gross {
+                min-width: 34px;
+                padding: 4px 7px;
             }
 
             .ranking-table {
@@ -3888,11 +4015,50 @@
 
             let html = controlesSerieHtml();
             let globalIndex = 0;
+            let categoryPanelIndex = 0;
             let scratchCaballerosAgregado = false;
             let scratchDamasAgregado = false;
 
+            function indicadorTeeCategoria(titulo, lista) {
+                const jugadorConTee = lista.find(j => String(j?.tee_name || "").trim());
+                const referencia = normalizarTexto(
+                    `${jugadorConTee?.tee_name || ""} ${titulo || ""}`
+                );
+
+                const opciones = [
+                    { palabras: ["negra", "negro"], clase: "negro", nombre: "Negro" },
+                    { palabras: ["amarilla", "amarillo"], clase: "amarillo", nombre: "Amarillo" },
+                    { palabras: ["blanca", "blanco"], clase: "blanco", nombre: "Blanco" },
+                    { palabras: ["roja", "rojo"], clase: "rojo", nombre: "Rojo" },
+                    { palabras: ["azul"], clase: "azul", nombre: "Azul" },
+                    { palabras: ["verde"], clase: "verde", nombre: "Verde" }
+                ];
+
+                const tee = opciones.find(opcion =>
+                    opcion.palabras.some(palabra => referencia.includes(palabra))
+                );
+
+                if (!tee) return "";
+
+                return `<span
+                    class="tee-color-dot tee-color-${tee.clase}"
+                    title="Tee ${tee.nombre}"
+                    aria-label="Tee ${tee.nombre}"
+                ></span>`;
+            }
+
             function renderTablaCategoria(titulo, lista, esScratch = false) {
                 if (!lista.length) return;
+
+                const panelId = `categoria-panel-${categoryPanelIndex++}`;
+                const ganadorScratch = esScratch ? lista[0] : null;
+                const grossGanadorScratch = ganadorScratch
+                    ? (
+                        torneoTieneSerie() && criterioSerieSeleccionado !== "dia"
+                            ? valorClasificacionSerie(ganadorScratch, true)
+                            : (ganadorScratch.gross || "")
+                    )
+                    : "";
 
                 const esClasificacionSerie =
                     torneoTieneSerie() &&
@@ -3945,10 +4111,10 @@
                                     ? `
                 <th>Pos</th>
                 <th>Pareja</th>
-                <th>Gross</th>
-                <th>HCP</th>
-                <th>Neto</th>
-                <th>Total</th>
+                                <th>Gross</th>
+                                <th>HCP</th>
+                                <th>Neto</th>
+                                ${torneoTieneSerie() ? "<th>Total</th>" : ""}
                 `
                                     : `
                 <th>Pos</th>
@@ -3957,7 +4123,7 @@
                 <th>Gross</th>
                 <th>HCP</th>
                 <th>Neto</th>
-                <th>Total</th>
+                ${torneoTieneSerie() ? "<th>Total</th>" : ""}
                 `
                     );
 
@@ -3974,24 +4140,43 @@
                             : esFourballAmericana() || esScratch
                                 ? 3
                                 : esFourballClasico()
-                                    ? 6
-                                    : 7;
+                                    ? (torneoTieneSerie() ? 6 : 5)
+                                    : (torneoTieneSerie() ? 7 : 6);
 
                 html += `
-            <div class="categoria-card">
-                <div class="categoria-header">${titulo}</div>
+            <div id="${panelId}" class="categoria-card ${esScratch ? "scratch-card" : ""}">
+                <button
+                    type="button"
+                    class="categoria-header categoria-toggle"
+                    aria-expanded="false"
+                    onclick="toggleCategoria('${panelId}')"
+                >
+                    <span class="categoria-toggle-main">
+                        ${esScratch ? "" : indicadorTeeCategoria(titulo, lista)}
+                        <span>${titulo}</span>
+                    </span>
+                    ${esScratch
+                        ? `<span class="scratch-resumen">
+                               <span class="scratch-ganador">${ganadorScratch?.display_name || ""}</span>
+                               <span class="scratch-gross">${grossGanadorScratch}</span>
+                           </span>`
+                        : ""
+                    }
+                    <span class="categoria-chevron" aria-hidden="true">⌄</span>
+                </button>
                 <div class="tabla-wrap">
                     <table class="ranking-table">
-                        <thead>
-                            <tr>${columnas}</tr>
-                        </thead>
+                        ${esScratch
+                        ? ""
+                        : `<thead><tr>${columnas}</tr></thead>`
+                    }
                         <tbody>
         `;
 
                 let posicion = 1;
                 let colorIdx = 0;
 
-                lista.forEach(j => {
+                lista.forEach((j, indiceLista) => {
                     const idx = esScratch
                         ? `scratch-${titulo.replace(/\s+/g, "-").toLowerCase()}-${globalIndex++}`
                         : globalIndex++;
@@ -4054,10 +4239,13 @@
                     const filaFourballClasico = `
                         <td>${posMostrar}</td>
                         <td class="nombre">${j.display_name}</td>
-                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross != null ? j.gross : "")}</td>
+                        <td>${esNoValido(j) ? "" : (j.gross != null ? j.gross : "")}</td>
                         <td>${j.playing_handicap ?? ""}</td>
-                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.net ?? "")}</td>
-                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>
+                        <td>${esNoValido(j) && !torneoTieneSerie() ? textoEstadoVisible(j) : (esNoValido(j) ? "" : (j.net ?? ""))}</td>
+                        ${torneoTieneSerie()
+                            ? `<td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>`
+                            : ""
+                        }
                     `;
 
                     const filaClasificacionSerie = `
@@ -4076,17 +4264,20 @@
                         <td class="nombre">${j.display_name}</td>
                         <td>${j.official_index ?? ""}</td>
                         ${rondasSerieHtml(j, idx)}
-                        <td>${totalSerie(j) === 999999 ? "" : totalSerie(j)}</td>
+                        <td>${totalSerie(j) === 999999 ? (esNoValido(j) ? textoEstadoVisible(j) : "") : totalSerie(j)}</td>
                     `;
 
                     const filaNormal = `
                         <td>${posMostrar}</td>
                         <td class="nombre">${j.display_name}</td>
                         <td>${j.official_index ?? ""}</td>
-                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.gross != null ? j.gross : "")}</td>
+                        <td>${esNoValido(j) ? "" : (j.gross != null ? j.gross : "")}</td>
                         <td>${j.playing_handicap ?? ""}</td>
-                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.net ?? "")}</td>
-                        <td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>
+                        <td>${esNoValido(j) && !torneoTieneSerie() ? textoEstadoVisible(j) : (esNoValido(j) ? "" : (j.net ?? ""))}</td>
+                        ${torneoTieneSerie()
+                            ? `<td>${esNoValido(j) ? textoEstadoVisible(j) : (j.total ?? "")}</td>`
+                            : ""
+                        }
                     `;
 
                     const filaVisible = esTorneoGross()
@@ -4112,10 +4303,10 @@
                     });
 
                     html += `
-                <tr id="player-${idx}" data-serie-key="${claveJugadorSerie(j)}" class="player-row ${rowColor}"${highlight} onclick="toggleDetalle('${idx}')">
+                <tr id="player-${idx}" data-serie-key="${claveJugadorSerie(j)}" class="player-row ${rowColor} ${!esScratch && indiceLista >= 3 ? "categoria-extra-row" : ""}"${highlight} onclick="toggleDetalle('${idx}')">
                     ${filaVisible}
                 </tr>
-                <tr id="detail-${idx}" class="detail-row">
+                <tr id="detail-${idx}" class="detail-row ${!esScratch && indiceLista >= 3 ? "categoria-extra-row" : ""}">
                     <td colspan="${colspanDetalle}" class="detail-cell">
                         ${detalleJugadorHtml(j, posMostrar, empatados, titulo, esScratch, null, idx)}
                     </td>
@@ -4453,12 +4644,41 @@
                 setTimeout(() => {
                     const fila = document.getElementById(`player-${indiceAutoAbrir}`);
                     if (fila) {
+                        const categoria = fila.closest(".categoria-card");
+
+                        if (categoria && !categoria.classList.contains("expanded")) {
+                            categoria.classList.add("expanded");
+
+                            const botonCategoria = categoria.querySelector(".categoria-toggle");
+                            if (botonCategoria) {
+                                botonCategoria.setAttribute("aria-expanded", "true");
+                            }
+                        }
+
                         fila.scrollIntoView({ behavior: "smooth", block: "center" });
                         toggleDetalle(indiceAutoAbrir);
                     }
                 }, 250);
             }
         }
+
+        window.toggleCategoria = function (panelId) {
+            const card = document.getElementById(panelId);
+            if (!card) return;
+
+            const abrir = !card.classList.contains("expanded");
+            card.classList.toggle("expanded", abrir);
+
+            const boton = card.querySelector(".categoria-toggle");
+            if (boton) {
+                boton.setAttribute("aria-expanded", abrir ? "true" : "false");
+            }
+
+            if (!abrir) {
+                card.querySelectorAll(".detail-row").forEach(fila => fila.classList.remove("show"));
+                card.querySelectorAll(".player-row").forEach(fila => fila.classList.remove("open"));
+            }
+        };
 
         window.cambiarCriterioSerie = function (criterio) {
             const permitidos = ["dia", "acumulado", "mejor36", "mejor18"];
