@@ -780,7 +780,16 @@
         .eq("tournament_date", fechaLocalISO()).eq("notes", marcadorTorneo()).maybeSingle();
       if (error) throw error;
       torneoDiario = data || null;
-      if (torneoDiario) await sincronizarCategoriasDiarias();
+      if (torneoDiario) {
+        if (!["officialized", "archived"].includes(String(torneoDiario.status || ""))) {
+          const { data: actualizado, error: estadoError } = await supabase.from("tournaments")
+            .update({ status: "officialized" }).eq("id", torneoDiario.id)
+            .select("id, name, tournament_date, status, data_schema_version, hole_count").single();
+          if (estadoError) throw estadoError;
+          torneoDiario = actualizado;
+        }
+        await sincronizarCategoriasDiarias();
+      }
     }
 
     async function asegurarTorneoDiario() {
@@ -801,7 +810,7 @@
       const { data, error } = await supabase.from("tournaments").insert({
         name: nombreTorneoDiario(), tournament_date: fechaLocalISO(), game_mode_id: medal.id,
         start_type_template_id: plantilla.id, hole_count: hoyosEsperados, allows_guests: true,
-        status: "open", published: false, notes: marcadorTorneo(), start_type: "secuencial",
+        status: "officialized", published: false, notes: marcadorTorneo(), start_type: "secuencial",
         aag_export_excluded: false, data_schema_version: 2, scoring_mode: "net"
       }).select("id, name, tournament_date, status, data_schema_version, hole_count").single();
       if (error) {

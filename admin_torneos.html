@@ -920,7 +920,7 @@
     </div>
 
     <div class="card">
-        <h2 class="section-title">Últimos torneos archivados</h2>
+        <h2 class="section-title">Torneos V2 archivados pendientes de exportar a AAG</h2>
 
         <table class="tabla-archivados">
             <thead>
@@ -933,7 +933,7 @@
             <tbody id="torneosArchivadosLista"></tbody>
         </table>
         <div id="sinTorneosArchivados" class="muted" style="display:none; margin-top:10px;">
-            No hay torneos archivados.
+            No hay torneos V2 archivados pendientes de exportar a AAG.
         </div>
     </div>
 
@@ -1163,42 +1163,85 @@
         }
 
         async function cargarTorneosArchivados() {
-            const { data, error } = await supabase
-                .from("tournaments")
-                .select("id, name, tournament_date")
-                .eq("status", "archived")
-                .order("tournament_date", { ascending: false })
-                .order("name", { ascending: true })
-                .limit(5);
+            try {
+                const archivados = [];
+                const tamanioPagina = 100;
+                let desde = 0;
+                let quedanTorneos = true;
 
-            if (error) {
-                console.error("Error cargando torneos archivados:", error);
+                // Regla de esta sección:
+                // 1) solamente torneos V2;
+                // 2) solamente archived;
+                // 3) nunca mostrar un torneo que ya fue enviado/creado en AAG.
+                while (archivados.length < 5 && quedanTorneos) {
+                    const { data: pagina, error: torneosError } = await supabase
+                        .from("tournaments")
+                        .select("id, name, tournament_date, data_schema_version")
+                        .eq("status", "archived")
+                        .eq("data_schema_version", 2)
+                        .order("tournament_date", { ascending: false })
+                        .order("name", { ascending: true })
+                        .range(desde, desde + tamanioPagina - 1);
+
+                    if (torneosError) throw torneosError;
+
+                    const candidatos = pagina || [];
+                    quedanTorneos = candidatos.length === tamanioPagina;
+                    desde += tamanioPagina;
+
+                    if (!candidatos.length) break;
+
+                    const ids = candidatos.map(t => t.id);
+                    const { data: exportaciones, error: exportError } = await supabase
+                        .from("aag_exports")
+                        .select("tournament_id, status, aag_tournament_id, aag_remote_status")
+                        .in("tournament_id", ids);
+
+                    if (exportError) throw exportError;
+
+                    const idsYaExportados = new Set(
+                        (exportaciones || [])
+                            .filter(exp => {
+                                const status = String(exp.status || "").trim().toLowerCase();
+                                const remoto = String(exp.aag_remote_status || "").trim().toLowerCase();
+                                return status === "sent" ||
+                                    !!exp.aag_tournament_id ||
+                                    ["abierto", "procesado", "modificado"].includes(remoto);
+                            })
+                            .map(exp => String(exp.tournament_id))
+                    );
+
+                    for (const torneo of candidatos) {
+                        if (!idsYaExportados.has(String(torneo.id))) archivados.push(torneo);
+                        if (archivados.length === 5) break;
+                    }
+                }
+
+                sinTorneosArchivadosEl.style.display = archivados.length ? "none" : "block";
+                sinTorneosArchivadosEl.textContent = "No hay torneos V2 archivados pendientes de exportar a AAG.";
+
+                torneosArchivadosListaEl.innerHTML = archivados
+                    .map(t => {
+                        const fecha = String(t.tournament_date || "").split("-").reverse().join("/");
+                        return `
+              <tr>
+                <td>${t.name}</td>
+                <td>${fecha}</td>
+                <td>
+                  <button class="btn-status btn-status-open" onclick="reabrirTorneo('${t.id}')">
+                    Volver a abrir
+                  </button>
+                </td>
+              </tr>
+            `;
+                    })
+                    .join("");
+            } catch (error) {
+                console.error("Error cargando torneos V2 archivados pendientes de AAG:", error);
                 torneosArchivadosListaEl.innerHTML = "";
                 sinTorneosArchivadosEl.style.display = "block";
                 sinTorneosArchivadosEl.textContent = "No se pudieron cargar los torneos archivados.";
-                return;
             }
-
-            const archivados = data || [];
-            sinTorneosArchivadosEl.style.display = archivados.length ? "none" : "block";
-            sinTorneosArchivadosEl.textContent = "No hay torneos archivados.";
-
-            torneosArchivadosListaEl.innerHTML = archivados
-                .map(t => {
-                    const fecha = String(t.tournament_date || "").split("-").reverse().join("/");
-                    return `
-            <tr>
-              <td>${t.name}</td>
-              <td>${fecha}</td>
-              <td>
-                <button class="btn-status btn-status-open" onclick="reabrirTorneo('${t.id}')">
-                  Volver a abrir
-                </button>
-              </td>
-            </tr>
-          `;
-                })
-                .join("");
         }
 
         function volverPanel() {
