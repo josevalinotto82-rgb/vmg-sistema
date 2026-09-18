@@ -2,1196 +2,1036 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scorecard libre - Villa María Golf</title>
-
-    <style>
-        :root {
-            --bg: #f5f8f3;
-            --card: #ffffff;
-            --text: #1f2937;
-            --muted: #6b7280;
-            --line: #e5e7eb;
-            --green: #166534;
-            --green2: #14532d;
-            --blue: #2563eb;
-            --gold: #d6a14a;
-            --red: #b91c1c;
-            --amber: #b45309;
-            --soft-green: #dcfce7;
-            --soft-red: #fff1f2;
-            --soft-amber: #fef3c7;
-            --soft-gray: #f3f4f6;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        .page {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 18px;
-        }
-
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 16px;
-        }
-
-        h1 {
-            margin: 0 0 4px;
-            font-size: 28px;
-            color: var(--green2);
-        }
-
-        .sub {
-            color: var(--muted);
-            font-size: 14px;
-        }
-
-        .card {
-            background: var(--card);
-            border-radius: 16px;
-            padding: 16px;
-            box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
-            margin-bottom: 16px;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 420px minmax(0, 1fr);
-            gap: 16px;
-            align-items: start;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(130px, 1fr));
-            gap: 12px;
-            align-items: end;
-        }
-
-        .form-grid-compact {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(120px, 1fr));
-            gap: 10px;
-        }
-
-        .field label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: .03em;
-        }
-
-        input,
-        select {
-            width: 100%;
-            height: 38px;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            padding: 7px 9px;
-            font-size: 13px;
-            background: #fff;
-        }
-
-        input[readonly] {
-            background: #f9fafb;
-            color: #374151;
-        }
-
-        .btn {
-            border: none;
-            border-radius: 10px;
-            height: 38px;
-            padding: 0 14px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        .btn:disabled {
-            opacity: .55;
-            cursor: not-allowed;
-        }
-
-        .btn-primary {
-            background: var(--green);
-            color: #fff;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background: var(--green2);
-        }
-
-        .btn-secondary {
-            background: var(--blue);
-            color: #fff;
-        }
-
-        .btn-light {
-            background: var(--gold);
-            color: #fff;
-        }
-
-        .btn-danger {
-            background: var(--red);
-            color: #fff;
-        }
-
-        .btn-gray {
-            background: #374151;
-            color: #fff;
-        }
-
-        .actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 14px;
-        }
-
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .status-text {
-            font-size: 14px;
-            color: var(--muted);
-        }
-
-        .status-text.ok {
-            color: var(--green);
-            font-weight: 700;
-        }
-
-        .status-text.error {
-            color: var(--red);
-            font-weight: 700;
-        }
-
-        .status-text.warn {
-            color: var(--amber);
-            font-weight: 700;
-        }
-
-        .section-title {
-            margin: 0 0 12px;
-            color: var(--green2);
-            font-size: 18px;
-            font-weight: 800;
-        }
-
-        .help {
-            font-size: 12px;
-            color: var(--muted);
-            line-height: 1.35;
-            margin-top: 8px;
-        }
-
-        .search-results {
-            margin-top: 10px;
-            max-height: 360px;
-            overflow: auto;
-            padding-right: 4px;
-        }
-
-        .player-card {
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 11px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            background: #fff;
-            transition: .12s ease;
-        }
-
-        .player-card:hover {
-            border-color: #9ca3af;
-            transform: translateY(-1px);
-        }
-
-        .player-card.active {
-            border-color: var(--green);
-            box-shadow: 0 0 0 2px rgba(22, 101, 52, .12);
-        }
-
-        .player-name {
-            font-weight: 800;
-            font-size: 14px;
-            line-height: 1.25;
-            margin-bottom: 5px;
-        }
-
-        .player-extra {
-            font-size: 12px;
-            color: var(--muted);
-            line-height: 1.35;
-        }
-
-        .selected-title {
-            font-size: 22px;
-            font-weight: 900;
-            color: var(--green2);
-            margin-bottom: 5px;
-        }
-
-        .selected-sub {
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.45;
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(6, minmax(110px, 1fr));
-            gap: 8px;
-            margin: 12px 0;
-        }
-
-        .summary-box {
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 10px;
-            background: #fafafa;
-        }
-
-        .summary-box .k {
-            color: var(--muted);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            margin-bottom: 4px;
-        }
-
-        .summary-box .v {
-            font-size: 19px;
-            font-weight: 900;
-            color: var(--green2);
-        }
-
-        .alert {
-            margin-top: 10px;
-            padding: 10px 12px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .alert.warn {
-            background: var(--soft-amber);
-            color: var(--amber);
-        }
-
-        .alert.error {
-            background: var(--soft-red);
-            color: var(--red);
-        }
-
-        .alert.ok {
-            background: var(--soft-green);
-            color: var(--green);
-        }
-
-        .score-grid-wrap {
-            overflow-x: hidden;
-            padding-bottom: 4px;
-        }
-
-        .score-grid {
-            width: 100%;
-            min-width: 0;
-            display: grid;
-            grid-template-columns: repeat(18, minmax(0, 1fr));
-            gap: 4px;
-            align-items: stretch;
-        }
-
-        .hole {
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 7px 5px;
-            min-width: 0;
-            height: 100%;
-            background: #fff;
-            text-align: center;
-        }
-
-        .hole-label {
-            font-size: 12px;
-            font-weight: 800;
-            color: var(--green2);
-        }
-
-        .hole-meta {
-            font-size: 9px;
-            color: var(--muted);
-            line-height: 1.15;
-            margin: 3px 0 6px;
-            min-height: 24px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .hole input {
-            height: 36px;
-            text-align: center;
-            font-size: 16px;
-            font-weight: 800;
-            padding: 4px;
-        }
-
-        .sumas-control {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(120px, 1fr));
-            gap: 10px;
-            margin: 10px 0 14px;
-        }
-
-        .suma-box {
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 10px;
-            background: #fafafa;
-            text-align: center;
-        }
-
-        .suma-box .label {
-            font-size: 11px;
-            font-weight: 800;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            margin-bottom: 4px;
-        }
-
-        .suma-box .valor {
-            font-size: 22px;
-            font-weight: 900;
-            color: var(--green2);
-        }
-
-        .empty {
-            padding: 18px;
-            color: var(--muted);
-            background: #fff;
-            border-radius: 12px;
-            border: 1px dashed #d1d5db;
-        }
-
-        .home-btn {
-            position: fixed;
-            top: 30px;
-            right: 27px;
-            width: 38px;
-            height: 38px;
-            border-radius: 6px;
-            background: #166534;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            cursor: pointer;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-            z-index: 9999;
-            transition: transform 0.15s, background 0.15s;
-        }
-
-        .home-btn:hover {
-            background: #14532d;
-            transform: scale(1.05);
-        }
-
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-
-            #print-root,
-            #print-root * {
-                visibility: visible;
-            }
-
-            #print-root {
-                position: absolute;
-                inset: 0;
-                background: white;
-
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            }
-
-        }
-
-        @media(max-width:1100px) {
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-
-            .form-grid {
-                grid-template-columns: repeat(2, minmax(130px, 1fr));
-            }
-
-            .summary-grid {
-                grid-template-columns: repeat(2, minmax(110px, 1fr));
-            }
-        }
-
-        @media(max-width:700px) {
-            .page {
-                padding: 12px;
-            }
-
-            h1 {
-                font-size: 24px;
-            }
-
-            .form-grid,
-            .form-grid-compact,
-            .summary-grid,
-            .sumas-control {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scorecard libre - Villa María Golf</title>
+
+  <style>
+    :root {
+      --bg: #f5f8f3;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --green: #166534;
+      --green2: #14532d;
+      --blue: #2563eb;
+      --gold: #d6a14a;
+      --red: #b91c1c;
+      --amber: #b45309;
+      --soft-green: #dcfce7;
+      --soft-red: #fff1f2;
+      --soft-amber: #fef3c7;
+      --soft-gray: #f3f4f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 28px;
+      color: var(--green2);
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+      margin-bottom: 16px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 420px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .form-grid-compact {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+
+    input, select {
+      width: 100%;
+      height: 38px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 7px 9px;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    input[readonly] {
+      background: #f9fafb;
+      color: #374151;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      height: 38px;
+      padding: 0 14px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .btn-primary { background: var(--green); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--green2); }
+    .btn-secondary { background: var(--blue); color: #fff; }
+    .btn-light { background: var(--gold); color: #fff; }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-gray { background: #374151; color: #fff; }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .coupon-button { margin-top: 18px; }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .status-text {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .status-text.ok { color: var(--green); font-weight: 700; }
+    .status-text.error { color: var(--red); font-weight: 700; }
+    .status-text.warn { color: var(--amber); font-weight: 700; }
+
+    .section-title {
+      margin: 0 0 12px;
+      color: var(--green2);
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .help {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+      margin-top: 8px;
+    }
+
+    .search-results {
+      margin-top: 10px;
+      max-height: 360px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .player-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 11px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      background: #fff;
+      transition: .12s ease;
+    }
+
+    .player-card:hover {
+      border-color: #9ca3af;
+      transform: translateY(-1px);
+    }
+
+    .player-card.active {
+      border-color: var(--green);
+      box-shadow: 0 0 0 2px rgba(22, 101, 52, .12);
+    }
+
+    .player-name {
+      font-weight: 800;
+      font-size: 14px;
+      line-height: 1.25;
+      margin-bottom: 5px;
+    }
+
+    .player-extra {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .selected-title {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--green2);
+      margin-bottom: 5px;
+    }
+
+    .selected-sub {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(110px, 1fr));
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .summary-box {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      background: #fafafa;
+    }
+
+    .summary-box .k {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 4px;
+    }
+
+    .summary-box .v {
+      font-size: 19px;
+      font-weight: 900;
+      color: var(--green2);
+    }
+
+    .alert {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .alert.warn { background: var(--soft-amber); color: var(--amber); }
+    .alert.error { background: var(--soft-red); color: var(--red); }
+    .alert.ok { background: var(--soft-green); color: var(--green); }
+
+    .score-grid-wrap {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .score-grid {
+      min-width: 720px;
+      display: grid;
+      grid-template-columns: repeat(9, minmax(68px, 1fr));
+      gap: 8px;
+    }
+
+    .score-nine-title { margin: 13px 0 7px; color: var(--green2); font-size: 12px; font-weight: 900; text-transform: uppercase; }
+
+    .hole {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 7px 5px;
+      background: #fff;
+      text-align: center;
+    }
+
+    .hole-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--green2);
+    }
+
+    .hole-meta {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.25;
+      margin: 3px 0 6px;
+    }
+
+    .hole input {
+      height: 36px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 800;
+      padding: 4px;
+    }
+
+    .sumas-control {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 10px;
+      margin: 10px 0 14px;
+    }
+
+    .suma-box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: #fafafa;
+      text-align: center;
+    }
+
+    .suma-box .label {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 4px;
+    }
+
+    .suma-box .valor {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--green2);
+    }
+
+    .empty {
+      padding: 18px;
+      color: var(--muted);
+      background: #fff;
+      border-radius: 12px;
+      border: 1px dashed #d1d5db;
+    }
+
+    .home-btn {
+      position: fixed;
+      top: 30px;
+      right: 27px;
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      background: #166534;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      z-index: 9999;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .home-btn:hover {
+      background: #14532d;
+      transform: scale(1.05);
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #print-root, #print-root * { visibility: visible; }
+      #print-root {
+        position: absolute;
+        inset: 0;
+        background: white;
+      }
+    }
+
+    @media(max-width:1100px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+      .summary-grid { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
+    }
+
+    @media(max-width:700px) {
+      .page { padding: 12px; }
+      h1 { font-size: 24px; }
+      .form-grid, .form-grid-compact, .summary-grid, .sumas-control { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsrsasign@10.8.6/lib/jsrsasign-all-min.js"></script>
+  <script src="./qz-ticket.js?v=999"></script>
 </head>
 
 <body>
-    <div class="home-btn" id="btnHome" title="Volver al panel">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
-                stroke-width="2" />
-        </svg>
+  <div class="home-btn" id="btnHome" title="Volver al panel">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white" stroke-width="2" />
+    </svg>
+  </div>
+
+  <div class="page">
+    <div class="topbar">
+      <div>
+        <h1>Green Fee · Tarjeta libre V2</h1>
+        <div class="sub">Cancha AAG, torneo diario automático, impresión y exportación sin horarios de salida.</div>
+      </div>
     </div>
 
-    <div class="page">
-        <div class="topbar">
-            <div>
-                <h1>Scorecard libre</h1>
-                <div class="sub">Generar tarjeta sin torneo, calcular tee/HCP, imprimir y cargar resultado semanal si
-                    tiene matrícula válida.</div>
-            </div>
-        </div>
-
-        <div class="card status-bar">
-            <div id="estado" class="status-text">Conectando...</div>
-            <button id="btnReset" class="btn btn-secondary">Nueva tarjeta</button>
-        </div>
-
-        <div class="card status-bar">
-            <div class="form-grid"
-                style="width:100%; grid-template-columns: minmax(180px,.5fr) minmax(220px,1fr) auto auto;">
-                <div class="field">
-                    <label for="greenfeePrecio">Precio green fee</label>
-                    <input id="greenfeePrecio" type="text" value="" placeholder="$ 0,00" />
-                </div>
-                <div>
-                    <b>Cuponera:</b> <span id="sucursalActual">No configurada</span>
-                    <div class="help" style="margin-top:4px;">El cupón usa la sucursal guardada en esta computadora.
-                    </div>
-                </div>
-                <button id="btnSucursalS1" class="btn btn-secondary">Laura</button>
-                <button id="btnSucursalS2" class="btn btn-secondary">Gisela</button>
-            </div>
-        </div>
-
-        <div class="grid-2">
-            <div>
-                <div class="card">
-                    <h2 class="section-title">Buscar jugador</h2>
-                    <div class="field">
-                        <label for="buscadorJugador">Nombre, apellido o matrícula</label>
-                        <input id="buscadorJugador" placeholder="Ej: PEREZ o 123456" autocomplete="off" />
-                    </div>
-                    <div class="actions">
-                        <button id="btnBuscar" class="btn btn-primary">Buscar</button>
-                    </div>
-                    <div class="help">Busca en la tabla <b>players</b>. Podés seleccionar un socio/jugador ya cargado o
-                        crear uno manual para imprimir.</div>
-                    <div id="resultadosBusqueda" class="search-results"></div>
-                </div>
-
-                <div class="card">
-                    <h2 class="section-title">Jugador manual</h2>
-                    <div class="form-grid-compact">
-                        <div class="field">
-                            <label for="manualApellido">Apellido</label>
-                            <input id="manualApellido" placeholder="Apellido" />
-                        </div>
-                        <div class="field">
-                            <label for="manualNombre">Nombre</label>
-                            <input id="manualNombre" placeholder="Nombre" />
-                        </div>
-                        <div class="field">
-                            <label for="manualMatricula">Matrícula</label>
-                            <input id="manualMatricula" placeholder="Opcional" />
-                        </div>
-                        <div class="field">
-                            <label for="manualIndex">Index</label>
-                            <input id="manualIndex" placeholder="Ej: 18.2" inputmode="decimal" />
-                        </div>
-                        <div class="field">
-                            <label for="manualGenero">Género</label>
-                            <select id="manualGenero">
-                                <option value="male">Caballero</option>
-                                <option value="female">Dama</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label for="manualPais">País / club</label>
-                            <input id="manualPais" placeholder="Ej: Chile" />
-                        </div>
-                    </div>
-                    <div class="actions">
-                        <button id="btnUsarManual" class="btn btn-light">Usar jugador manual</button>
-                    </div>
-                    <div class="help">Si no cargás matrícula, se puede imprimir la tarjeta, pero no guardar el resultado
-                        como tarjeta válida.</div>
-                </div>
-            </div>
-
-            <div>
-                <div class="card">
-                    <h2 class="section-title">Datos de juego</h2>
-                    <div id="panelJugador">
-                        <div class="empty">Buscá o cargá un jugador manual para generar una tarjeta.</div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h2 class="section-title">Carga de resultado</h2>
-                    <div id="panelCarga">
-                        <div class="empty">Primero generá los datos de juego.</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="card status-bar">
+      <div id="estado" class="status-text">Conectando...</div>
+      <button id="btnReset" class="btn btn-secondary">Nueva tarjeta</button>
     </div>
 
-    <div id="print-root"></div>
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <h2 class="section-title">Cupón Green Fee</h2>
+          <div class="field"><label for="cuponImporte">Importe</label><input id="cuponImporte" type="text" inputmode="numeric" value="" placeholder="Importe" /></div>
+          <div class="field"><label for="cuponPago">Forma de pago</label><select id="cuponPago"><option>Efectivo</option><option>Transferencia</option><option>Débito</option><option>Crédito</option><option>Pendiente</option></select></div>
+          <button id="btnCupon" class="btn btn-secondary coupon-button" disabled>Cupón</button>
+        </div>
 
-    <script type="module">
-        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+        <div class="card">
+          <h2 class="section-title">Buscar jugador</h2>
+          <div class="field">
+            <label for="buscadorJugador">Nombre, apellido o matrícula</label>
+            <input id="buscadorJugador" placeholder="Ej: PEREZ o 123456" autocomplete="off" />
+          </div>
+          <div class="actions">
+            <button id="btnBuscar" class="btn btn-primary">Buscar</button>
+          </div>
+          <div class="help">Busca simultáneamente en <b>players</b> y en el padrón completo de la AAG. Podés escribir varias partes del nombre, por ejemplo <b>jose val</b>.</div>
+          <div id="resultadosBusqueda" class="search-results"></div>
+        </div>
 
-        const supabase = createClient(
-            "https://bnnfolhrqxgxjmobclrm.supabase.co",
-            "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
-        );
+        <div class="card">
+          <h2 class="section-title">Jugador manual</h2>
+          <div class="form-grid-compact">
+            <div class="field">
+              <label for="manualApellido">Apellido</label>
+              <input id="manualApellido" placeholder="Apellido" />
+            </div>
+            <div class="field">
+              <label for="manualNombre">Nombre</label>
+              <input id="manualNombre" placeholder="Nombre" />
+            </div>
+            <div class="field">
+              <label for="manualMatricula">Matrícula</label>
+              <input id="manualMatricula" placeholder="Opcional" />
+            </div>
+            <div class="field">
+              <label for="manualIndex">Index</label>
+              <input id="manualIndex" placeholder="Ej: 18.2" inputmode="decimal" />
+            </div>
+            <div class="field">
+              <label for="manualGenero">Género</label>
+              <select id="manualGenero">
+                <option value="male">Caballero</option>
+                <option value="female">Dama</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="manualPais">País / club</label>
+              <input id="manualPais" placeholder="Ej: Chile" />
+            </div>
+          </div>
+          <div class="actions">
+            <button id="btnUsarManual" class="btn btn-light">Usar jugador manual</button>
+          </div>
+          <div class="help">Si no cargás matrícula, se puede imprimir la tarjeta, pero no guardar el resultado como tarjeta válida.</div>
+        </div>
 
-        async function exigirAdmin() {
-            const { data: { session } } = await supabase.auth.getSession();
+      </div>
 
-            if (!session) {
-                window.location.href = "login.html";
-                throw new Error("Sin sesión");
-            }
+      <div>
+        <div class="card">
+          <h2 class="section-title">Datos de juego</h2>
+          <div id="panelJugador">
+            <div class="empty">Buscá o cargá un jugador manual para generar una tarjeta.</div>
+          </div>
+        </div>
 
-            const { data: profile, error } = await supabase
-                .from("profiles")
-                .select("role, active")
-                .eq("id", session.user.id)
-                .maybeSingle();
+        <div class="card">
+          <h2 class="section-title">Carga de resultado</h2>
+          <div id="panelCarga">
+            <div class="empty">Primero generá los datos de juego.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-            if (error || !profile || profile.active !== true || profile.role !== "admin") {
-                alert("No tenés permiso para entrar a esta página.");
-                window.location.href = "panel.html";
-                throw new Error("Sin permiso admin");
-            }
+  <div id="print-root"></div>
 
-            return session.user;
-        }
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-        await exigirAdmin();
+    const CLUB_NOMBRE = "Villa María Golf Club";
 
-        const CLUB_NOMBRE = "Villa María Golf Club";
+    const supabase = createClient(
+      "https://bnnfolhrqxgxjmobclrm.supabase.co",
+      "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+    );
 
-        const COURSE_HOLES = {
-            1: { par: 4, hcp: 15 }, 2: { par: 4, hcp: 3 }, 3: { par: 3, hcp: 5 }, 4: { par: 4, hcp: 11 }, 5: { par: 3, hcp: 9 }, 6: { par: 4, hcp: 1 },
-            7: { par: 4, hcp: 13 }, 8: { par: 4, hcp: 7 }, 9: { par: 5, hcp: 17 }, 10: { par: 4, hcp: 8 }, 11: { par: 3, hcp: 14 }, 12: { par: 5, hcp: 10 },
-            13: { par: 3, hcp: 2 }, 14: { par: 4, hcp: 16 }, 15: { par: 4, hcp: 18 }, 16: { par: 4, hcp: 6 }, 17: { par: 5, hcp: 12 }, 18: { par: 4, hcp: 4 }
-        };
+    let COURSE_HOLES = {
+      1: { par: 4, hcp: 15 }, 2: { par: 4, hcp: 3 }, 3: { par: 3, hcp: 5 }, 4: { par: 4, hcp: 11 }, 5: { par: 3, hcp: 9 }, 6: { par: 4, hcp: 1 },
+      7: { par: 4, hcp: 13 }, 8: { par: 4, hcp: 7 }, 9: { par: 5, hcp: 17 }, 10: { par: 4, hcp: 8 }, 11: { par: 3, hcp: 14 }, 12: { par: 5, hcp: 10 },
+      13: { par: 3, hcp: 2 }, 14: { par: 4, hcp: 16 }, 15: { par: 4, hcp: 18 }, 16: { par: 4, hcp: 6 }, 17: { par: 5, hcp: 12 }, 18: { par: 4, hcp: 4 }
+    };
 
-        const $ = (id) => document.getElementById(id);
+    const $ = (id) => document.getElementById(id);
 
-        const estado = $("estado");
-        const buscadorJugador = $("buscadorJugador");
-        const resultadosBusqueda = $("resultadosBusqueda");
-        const panelJugador = $("panelJugador");
-        const panelCarga = $("panelCarga");
-        const printRoot = $("print-root");
-        const greenfeePrecio = $("greenfeePrecio");
-        const sucursalActual = $("sucursalActual");
+    const estado = $("estado");
+    const buscadorJugador = $("buscadorJugador");
+    const resultadosBusqueda = $("resultadosBusqueda");
+    const panelJugador = $("panelJugador");
+    const panelCarga = $("panelCarga");
+    const printRoot = $("print-root");
 
-        const ARS_FORMATTER = new Intl.NumberFormat("es-AR", {
-            style: "currency",
-            currency: "ARS",
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
+    let tees = [];
+    let teeRules = [];
+    let categoriasBase = [];
+    let categoriasTorneo = [];
+    let torneoDiario = null;
+    const GREEN_FEE_MARKER = "GREEN_FEE_DIARIO_V2";
+    let jugadorActual = null;
+    let scoreActual = null;
+    let searchTimer = null;
+
+    function setEstado(texto, tipo = "") {
+      estado.textContent = texto;
+      estado.className = `status-text ${tipo}`.trim();
+    }
+
+    function normalizarTexto(txt) {
+      return String(txt || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+        .trim();
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function toNumber(value) {
+      if (value == null || value === "") return null;
+      const n = Number(String(value).replace(",", "."));
+      return Number.isNaN(n) ? null : n;
+    }
+
+    function roundHalfUp(value) {
+      const n = Number(value);
+      if (Number.isNaN(n)) return null;
+      return Math.floor(n + 0.5);
+    }
+
+    function formatIndex(value) {
+      const n = toNumber(value);
+      return n == null ? "" : n.toFixed(1);
+    }
+
+    function normalizarGenero(gender) {
+      const g = String(gender || "").toLowerCase().trim();
+      if (["male", "caballero", "caballeros", "hombre", "masculino", "m"].includes(g)) return "male";
+      if (["female", "dama", "damas", "mujer", "femenino", "f"].includes(g)) return "female";
+      return g || "male";
+    }
+
+    function generoTexto(g) {
+      return normalizarGenero(g) === "female" ? "Dama" : "Caballero";
+    }
+
+    function fechaHoyTexto() {
+      const d = new Date();
+      const dia = String(d.getDate()).padStart(2, "0");
+      const mes = String(d.getMonth() + 1).padStart(2, "0");
+      const anio = d.getFullYear();
+      return `${dia}/${mes}/${anio}`;
+    }
+
+    function normalizarSegmento(segment) {
+      const s = String(segment || "18").toLowerCase().trim();
+      if (["front9", "front 9", "primeros 9", "ida", "9", "9h", "9 hoyos"].includes(s)) return "front9";
+      if (["back9", "back 9", "segundos 9", "vuelta"].includes(s)) return "back9";
+      return "18";
+    }
+
+    function hoyosHabilitados(segment) {
+      const seg = normalizarSegmento(segment);
+      if (seg === "front9") return [1, 2, 3, 4, 5, 6, 7, 8, 9];
+      if (seg === "back9") return [10, 11, 12, 13, 14, 15, 16, 17, 18];
+      return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+    }
+
+    function etiquetaSegmento(seg) {
+      const s = normalizarSegmento(seg);
+      if (s === "front9") return "Front 9 · hoyos 1 al 9";
+      if (s === "back9") return "Back 9 · hoyos 10 al 18";
+      return "18 hoyos";
+    }
+
+    async function protegerAdmin() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        window.location.href = "login.html";
+        throw new Error("Usuario no logueado");
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, active")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (!profile || profile.active !== true || profile.role !== "admin") {
+        alert("Acceso restringido");
+        window.location.href = "panel.html";
+        throw new Error("Acceso restringido");
+      }
+    }
+
+    function hoyosDesdeAag(raw) {
+      return (Array.isArray(raw) ? raw : []).map(h => ({
+        hole: Number(h?.HoleNumber ?? h?.hole_number ?? h?.hole),
+        par: toNumber(h?.Par ?? h?.par),
+        handicap: toNumber(h?.Handicap ?? h?.handicap ?? h?.Hcp ?? h?.hcp)
+      })).filter(h => h.hole >= 1 && h.hole <= 18).sort((a, b) => a.hole - b.hole);
+    }
+
+    function parTramo(holes, desde, hasta) {
+      return holes.filter(h => h.hole >= desde && h.hole <= hasta).reduce((s, h) => s + Number(h.par || 0), 0);
+    }
+
+    function referenciaTeeAag(tee) {
+      const holes = hoyosDesdeAag(tee.holes);
+      return {
+        aag_field_id: tee.aag_field_id ?? null,
+        aag_id: tee.aag_teeout_id ?? null,
+        tee_name: tee.tee_name || "",
+        category: tee.category ?? null,
+        slope_in: tee.slope_in ?? null,
+        slope_out: tee.slope_out ?? null,
+        slope_total: tee.slope_total ?? null,
+        rating_in: tee.calification_in ?? null,
+        rating_out: tee.calification_out ?? null,
+        rating_total: tee.calification_total ?? null,
+        par_in: parTramo(holes, 1, 9),
+        par_out: parTramo(holes, 10, 18),
+        par_total: parTramo(holes, 1, 18),
+        holes
+      };
+    }
+
+    function enriquecerReglas(reglas) {
+      return (Array.isArray(reglas) ? reglas : []).map(raw => {
+        const id = String(raw?.aag_teeout_id || raw?.tee_uuid || "").trim();
+        const tee = tees.find(t => String(t.id) === id);
+        return { ...raw, aag_teeout_id: id, reference: tee ? referenciaTeeAag(tee) : (raw.reference || null) };
+      });
+    }
+
+    async function cargarTeesYReglas() {
+      setEstado("Cargando cancha y categorías V2 desde AAG...");
+      const [teesRes, categoriasRes] = await Promise.all([
+        supabase.from("aag_teeouts").select("id, aag_teeout_id, aag_field_id, tee_name, category, slope_in, slope_out, slope_total, calification_in, calification_out, calification_total, holes").order("aag_field_id").order("category").order("tee_name"),
+        supabase.from("categories").select("id, name, tee_rules, playing_handicap_min, playing_handicap_max, playing_tee_aag_teeout_id, display_order, active").eq("active", true).order("display_order").order("name")
+      ]);
+      if (teesRes.error) throw teesRes.error;
+      if (categoriasRes.error) throw categoriasRes.error;
+      tees = (teesRes.data || []).map(t => ({ ...t, name: t.tee_name || "Tee AAG" }));
+      categoriasBase = (categoriasRes.data || []).slice(0, 5);
+      categoriasBase.forEach(c => c.tee_rules = enriquecerReglas(c.tee_rules));
+      teeRules = tees.flatMap(t => [
+        { tee_id: t.id, gender: Number(t.category) === 1 ? "female" : "male", segment: "18", slope: t.slope_total, course_rating: t.calification_total, par: parTramo(hoyosDesdeAag(t.holes), 1, 18), holes: hoyosDesdeAag(t.holes) },
+        { tee_id: t.id, gender: Number(t.category) === 1 ? "female" : "male", segment: "front9", slope: t.slope_in, course_rating: t.calification_in, par: parTramo(hoyosDesdeAag(t.holes), 1, 9), holes: hoyosDesdeAag(t.holes) },
+        { tee_id: t.id, gender: Number(t.category) === 1 ? "female" : "male", segment: "back9", slope: t.slope_out, course_rating: t.calification_out, par: parTramo(hoyosDesdeAag(t.holes), 10, 18), holes: hoyosDesdeAag(t.holes) }
+      ]);
+      if (!tees.length) throw new Error("No hay tees cargados en aag_teeouts.");
+      if (!categoriasBase.length) throw new Error("No hay categorías V2 activas.");
+      await buscarTorneoDiarioExistente();
+      setEstado("Listo. Cancha y categorías cargadas desde AAG.", "ok");
+    }
+
+    function buscarTeePorNombre(nombreObjetivo) {
+      const objetivo = normalizarTexto(nombreObjetivo);
+      return tees.find(t => normalizarTexto(t.name) === objetivo)
+        || tees.find(t => normalizarTexto(t.name).includes(objetivo))
+        || null;
+    }
+
+    function sugerirTeeDesdeIndex(index, gender) {
+      const idx = toNumber(index);
+      const genero = normalizarGenero(gender);
+      if (idx == null) return null;
+      for (const categoria of categoriasBase) {
+        const regla = enriquecerReglas(categoria.tee_rules).find(r => {
+          const min = toNumber(r.index_min), max = toNumber(r.index_max);
+          const generoRegla = Number(r?.reference?.category) === 1 ? "female" : "male";
+          return min != null && max != null && idx >= min && idx <= max && generoRegla === genero;
         });
-
-        let tees = [];
-        let teeRules = [];
-        let jugadorActual = null;
-        let scoreActual = null;
-        let searchTimer = null;
-
-        function setEstado(texto, tipo = "") {
-            estado.textContent = texto;
-            estado.className = `status-text ${tipo}`.trim();
-        }
-
-
-        function money(v) {
-            return ARS_FORMATTER.format(Number(v || 0));
-        }
-
-        function formatearPesosInput(valor) {
-            if (!valor) return "";
-            const limpio = String(valor).replace(/[^\d]/g, "");
-            if (!limpio) return "";
-            const numero = Number(limpio) / 100;
-            return money(numero);
-        }
-
-        function obtenerPrecioGreenfee() {
-            const limpio = String(greenfeePrecio?.value || "").replace(/[^\d]/g, "");
-            if (!limpio) return 0;
-            return Number(limpio) / 100;
-        }
-
-        function setSucursal(codigo) {
-            localStorage.setItem("ticket_branch_code", codigo);
-            mostrarSucursal();
-            alert("Sucursal configurada: " + codigo);
-        }
-
-        function mostrarSucursal() {
-            const s = localStorage.getItem("ticket_branch_code") || "NO CONFIGURADA";
-            if (sucursalActual) sucursalActual.textContent = s;
-        }
-        function normalizarTexto(txt) {
-            return String(txt || "")
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .toUpperCase()
-                .trim();
-        }
-
-        function escapeHtml(value) {
-            return String(value ?? "")
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#039;");
-        }
-
-        function toNumber(value) {
-            if (value == null || value === "") return null;
-            const n = Number(String(value).replace(",", "."));
-            return Number.isNaN(n) ? null : n;
-        }
-
-        function roundHalfUp(value) {
-            const n = Number(value);
-            if (Number.isNaN(n)) return null;
-            return Math.floor(n + 0.5);
-        }
-
-        function formatIndex(value) {
-            const n = toNumber(value);
-            return n == null ? "" : n.toFixed(1);
-        }
-
-        function normalizarGenero(gender) {
-            const g = String(gender || "").toLowerCase().trim();
-            if (["male", "caballero", "caballeros", "hombre", "masculino", "m"].includes(g)) return "male";
-            if (["female", "dama", "damas", "mujer", "femenino", "f"].includes(g)) return "female";
-            return g || "male";
-        }
-
-        function generoTexto(g) {
-            return normalizarGenero(g) === "female" ? "Dama" : "Caballero";
-        }
-
-        function fechaHoyTexto() {
-            const d = new Date();
-            const dia = String(d.getDate()).padStart(2, "0");
-            const mes = String(d.getMonth() + 1).padStart(2, "0");
-            const anio = d.getFullYear();
-            return `${dia}/${mes}/${anio}`;
-        }
-
-        function normalizarSegmento(segment) {
-            const s = String(segment || "18").toLowerCase().trim();
-            if (["front9", "front 9", "primeros 9", "ida", "9", "9h", "9 hoyos"].includes(s)) return "front9";
-            if (["back9", "back 9", "segundos 9", "vuelta"].includes(s)) return "back9";
-            return "18";
-        }
-
-        function hoyosHabilitados(segment) {
-            const seg = normalizarSegmento(segment);
-            if (seg === "front9") return [1, 2, 3, 4, 5, 6, 7, 8, 9];
-            if (seg === "back9") return [10, 11, 12, 13, 14, 15, 16, 17, 18];
-            return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
-        }
-
-        function etiquetaSegmento(seg) {
-            const s = normalizarSegmento(seg);
-            if (s === "front9") return "Front 9 · hoyos 1 al 9";
-            if (s === "back9") return "Back 9 · hoyos 10 al 18";
-            return "18 hoyos";
-        }
-
-        async function protegerAdmin() {
-            const { data: { session } } = await supabase.auth.getSession();
-
-            if (!session) {
-                window.location.href = "login.html";
-                throw new Error("Usuario no logueado");
-            }
-
-            const { data: profile } = await supabase
-                .from("profiles")
-                .select("role, active")
-                .eq("id", session.user.id)
-                .maybeSingle();
-
-            if (!profile || profile.active !== true || profile.role !== "admin") {
-                alert("Acceso restringido");
-                window.location.href = "panel.html";
-                throw new Error("Acceso restringido");
-            }
-        }
-
-        async function cargarTeesYReglas() {
-            setEstado("Cargando tees y reglas...");
-
-            const [teesRes, rulesRes] = await Promise.all([
-                supabase.from("tees").select("id, name, display_order").order("display_order", { ascending: true }),
-                supabase.from("tee_handicap_rules").select("id, tee_id, gender, segment, slope, course_rating, par")
-            ]);
-
-            if (teesRes.error) throw teesRes.error;
-            if (rulesRes.error) throw rulesRes.error;
-
-            tees = teesRes.data || [];
-            teeRules = rulesRes.data || [];
-
-            setEstado("Listo para generar scorecards libres.", "ok");
-        }
-
-        function buscarTeePorNombre(nombreObjetivo) {
-            const objetivo = normalizarTexto(nombreObjetivo);
-            return tees.find(t => normalizarTexto(t.name) === objetivo)
-                || tees.find(t => normalizarTexto(t.name).includes(objetivo))
-                || null;
-        }
-
-        function sugerirTeeDesdeIndex(index, gender) {
-            const idx = toNumber(index);
-            const genero = normalizarGenero(gender);
-
-            if (genero === "female") return buscarTeePorNombre("ROJA");
-            if (idx == null) return null;
-
-            if (idx >= -6 && idx <= 9) return buscarTeePorNombre("NEGRA");
-            if (idx >= 9.1 && idx <= 15) return buscarTeePorNombre("AMARILLA");
-            if (idx >= 15.1 && idx <= 21) return buscarTeePorNombre("BLANCA A") || buscarTeePorNombre("BLANCA");
-            if (idx >= 21.1 && idx <= 54) return buscarTeePorNombre("BLANCA B") || buscarTeePorNombre("BLANCA");
-
-            return null;
-        }
-
-        function teesPermitidosPorGenero(gender) {
-            const genero = normalizarGenero(gender);
-
-            const teeIdsConRegla = new Set(
-                teeRules
-                    .filter(r => normalizarGenero(r.gender) === genero)
-                    .map(r => String(r.tee_id))
-            );
-
-            const filtrados = tees.filter(t => teeIdsConRegla.has(String(t.id)));
-
-            if (filtrados.length) return filtrados;
-
-            return tees.filter(t => {
-                const nombre = normalizarTexto(t.name);
-
-                if (genero === "female") {
-                    return nombre.includes("ROJA") || nombre.includes("DAMA");
-                }
-
-                return !nombre.includes("ROJA") && !nombre.includes("DAMA");
-            });
-        }
-
-        function getRuleForTee(teeId, gender, segment = "18") {
-            const genero = normalizarGenero(gender);
-            const seg = normalizarSegmento(segment);
-
-            return teeRules.find(r =>
-                String(r.tee_id) === String(teeId) &&
-                normalizarGenero(r.gender) === genero &&
-                normalizarSegmento(r.segment) === seg
-            ) || teeRules.find(r =>
-                String(r.tee_id) === String(teeId) &&
-                normalizarSegmento(r.segment) === seg
-            ) || null;
-        }
-
-        function calcularHcpJuego(index, rule, segment = "18") {
-            const idx = toNumber(index);
-            if (idx == null || !rule) return null;
-
-            const slope = toNumber(rule.slope);
-            const courseRating = toNumber(rule.course_rating);
-            const par = toNumber(rule.par);
-            if ([slope, courseRating, par].some(v => v == null)) return null;
-
-            const seg = normalizarSegmento(segment);
-
-            const valor = seg === "front9" || seg === "back9"
-                ? ((idx / 2) * (slope / 113)) + (courseRating - par)
-                : (idx * (slope / 113)) + (courseRating - par);
-
-            const hcp = roundHalfUp(valor);
-            return hcp == null ? null : Math.min(hcp, 54);
-        }
-
-        function nombreDesdePlayer(p) {
-            return p.full_name || [p.last_name, p.first_name].filter(Boolean).join(", ") || "Sin nombre";
-        }
-
-        function matriculaValida(matricula) {
-            return String(matricula || "").trim().length >= 3;
-        }
-
-        async function buscarJugadores() {
-            const qRaw = buscadorJugador.value.trim();
-
-            if (qRaw.length < 2) {
-                resultadosBusqueda.innerHTML = `<div class="empty">Escribí al menos 2 caracteres.</div>`;
-                return;
-            }
-
-            try {
-                setEstado("Buscando jugadores...");
-
-                const q = normalizarTexto(qRaw).replace(/\s+/g, "%");
-
-                const { data: playersData, error: playersError } = await supabase
-                    .from("players")
-                    .select(`
-                    id,
-                    first_name,
-                    last_name,
-                    full_name,
-                    gender,
-                    current_index,
-                    aag_member_number,
-                    country,
-                    club_name,
-                    is_club_member,
-                    search_text
-                `)
-                    .ilike("search_text", `%${q}%`)
-                    .limit(15);
-
-                if (playersError) throw playersError;
-
-                const { data: aagData, error: aagError } = await supabase
-                    .from("aag_enrolleds")
-                    .select(`
-                    enrollment_number,
-                    first_name,
-                    last_name,
-                    full_name,
-                    gender,
-                    current_index,
-                    option_club_id,
-                    club_name,
-                    search_text
-                `)
-                    .ilike("search_text", `%${q}%`)
-                    .limit(15);
-
-                if (aagError) throw aagError;
-
-                const players = (playersData || []).map(p => ({
-                    ...p,
-                    origen_busqueda: "players"
-                }));
-
-                const yaEstanEnPlayers = new Set(
-                    players.map(p => String(p.aag_member_number || ""))
-                );
-
-                const externos = (aagData || [])
-                    .filter(p => !yaEstanEnPlayers.has(String(p.enrollment_number || "")))
-                    .map(p => ({
-                        id: `aag:${p.enrollment_number}`,
-                        origen_busqueda: "aag_enrolleds",
-                        enrollment_number: p.enrollment_number,
-                        aag_member_number: p.enrollment_number,
-                        first_name: p.first_name,
-                        last_name: p.last_name,
-                        full_name: p.full_name,
-                        gender: p.gender,
-                        current_index: p.current_index,
-                        option_club_id: p.option_club_id,
-                        club_name: p.club_name,
-                        country: "Argentina",
-                        is_club_member: Number(p.option_club_id) === 408
-                    }));
-
-                function scoreJugador(p) {
-                    const buscado = normalizarTexto(qRaw);
-                    const partes = buscado.split(" ").filter(Boolean);
-
-                    const nombre = normalizarTexto(
-                        `${p.full_name || ""} ${p.last_name || ""} ${p.first_name || ""} ${p.aag_member_number || p.enrollment_number || ""}`
-                    );
-
-                    let score = 0;
-
-                    if (Number(p.option_club_id) === 408 || p.is_club_member === true) score += 10000;
-                    if (String(p.aag_member_number || p.enrollment_number || "") === qRaw) score += 8000;
-                    if (nombre.includes(buscado)) score += 4000;
-                    if (partes.every(parte => nombre.includes(parte))) score += 2500;
-                    score += partes.filter(parte => nombre.includes(parte)).length * 500;
-
-                    return score;
-                }
-
-                const items = [...players, ...externos]
-                    .map(p => ({ ...p, _score: scoreJugador(p) }))
-                    .sort((a, b) => b._score - a._score)
-                    .slice(0, 3);
-
-                if (!items.length) {
-                    resultadosBusqueda.innerHTML = `<div class="empty">No se encontraron jugadores.</div>`;
-                    setEstado("Sin resultados.", "warn");
-                    return;
-                }
-
-                resultadosBusqueda.innerHTML = items.map(p => `
-                <div class="player-card" data-player-id="${escapeHtml(p.id)}">
-                    <div class="player-name">${escapeHtml(nombreDesdePlayer(p))}</div>
-                    <div class="player-extra">
-                    Matrícula: ${escapeHtml(p.aag_member_number || "—")}
-                    · Index: ${escapeHtml(formatIndex(p.current_index))}
-                    · Club: ${escapeHtml(p.club_name || "—")}
-                    · ${p.origen_busqueda === "players" ? "Players" : "Padrón AAG"}
-                    </div>
-                </div>
-                `).join("");
-
-                resultadosBusqueda.querySelectorAll("[data-player-id]").forEach(card => {
-                    card.addEventListener("click", async () => {
-                        const p = items.find(x => String(x.id) === String(card.dataset.playerId));
-                        if (!p) return;
-
-                        const player = await asegurarJugadorEnPlayers(p);
-                        seleccionarJugadorDesdePlayers(player);
-                    });
-                });
-
-                setEstado(`Se encontraron ${items.length} jugador(es).`, "ok");
-
-            } catch (error) {
-                console.error(error);
-                resultadosBusqueda.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message || error)}</div>`;
-                setEstado("Error buscando jugadores.", "error");
-            }
-        }
-
-        async function asegurarJugadorEnPlayers(jugador) {
-            if (jugador.origen_busqueda === "players" && jugador.id && !String(jugador.id).startsWith("aag:")) {
-                return jugador;
-            }
-
-            const matricula = jugador.enrollment_number || jugador.aag_member_number;
-
-            const row = {
-                aag_member_number: matricula,
-                first_name: jugador.first_name || "",
-                last_name: jugador.last_name || "",
-                gender: normalizarGenero(jugador.gender),
-                current_index: toNumber(jugador.current_index),
-                option_club_id: jugador.option_club_id ?? null,
-                club_name: jugador.club_name || "",
-                country: jugador.country || "Argentina",
-                source: "AAG",
-                is_club_member: Number(jugador.option_club_id) === 408,
-                aag_last_sync_at: new Date().toISOString(),
-                search_text: [
-                    jugador.last_name,
-                    jugador.first_name,
-                    jugador.first_name,
-                    jugador.last_name,
-                    matricula
-                ]
-                    .filter(Boolean)
-                    .join(" ")
-                    .normalize("NFD")
-                    .replace(/[\u0300-\u036f]/g, "")
-                    .toUpperCase()
-            };
-
-            const { data, error } = await supabase
-                .from("players")
-                .upsert(row, { onConflict: "aag_member_number" })
-                .select("*")
-                .single();
-
-            if (error) throw error;
-            return data;
-        }
-
-        function renderResultados(items) {
-            if (!items.length) {
-                resultadosBusqueda.innerHTML = `<div class="empty">No encontré jugadores. Podés cargarlo manualmente.</div>`;
-                return;
-            }
-
-            resultadosBusqueda.innerHTML = items.map(p => `
+        if (regla) return tees.find(t => String(t.id) === String(regla.aag_teeout_id)) || null;
+      }
+      return tees.find(t => (Number(t.category) === 1 ? "female" : "male") === genero) || null;
+    }
+
+    function getRuleForTee(teeId, gender, segment = "18") {
+      const genero = normalizarGenero(gender);
+      const seg = normalizarSegmento(segment);
+
+      return teeRules.find(r =>
+        String(r.tee_id) === String(teeId) &&
+        normalizarGenero(r.gender) === genero &&
+        normalizarSegmento(r.segment) === seg
+      ) || teeRules.find(r =>
+        String(r.tee_id) === String(teeId) &&
+        normalizarSegmento(r.segment) === seg
+      ) || null;
+    }
+
+    function calcularHcpJuego(index, rule) {
+      let idx = toNumber(index);
+      if (idx == null || !rule) return null;
+
+      if (["front9", "back9"].includes(normalizarSegmento(rule.segment))) idx = idx / 2;
+
+      const slope = toNumber(rule.slope);
+      const courseRating = toNumber(rule.course_rating);
+      const par = toNumber(rule.par);
+      if ([slope, courseRating, par].some(v => v == null)) return null;
+
+      const valor = (idx * (slope / 113)) + (courseRating - par);
+      const hcp = roundHalfUp(valor);
+      return hcp == null ? null : Math.min(hcp, 54);
+    }
+
+    function aplicarHoyosAag(rule) {
+      const holes = Array.isArray(rule?.holes) ? rule.holes : [];
+      const nuevo = {};
+      holes.forEach(h => { nuevo[h.hole] = { par: h.par, hcp: h.handicap }; });
+      if (Object.keys(nuevo).length) COURSE_HOLES = nuevo;
+    }
+
+    function fechaLocalISO() {
+      const d = new Date(), p = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    }
+
+    function diaSemana() {
+      return ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"][new Date().getDay()];
+    }
+
+    function segmentoActual() { return normalizarSegmento(scoreActual?.hole_segment || "18"); }
+    function marcadorTorneo() { const s = segmentoActual(); return s === "18" ? GREEN_FEE_MARKER : `${GREEN_FEE_MARKER}:${s}`; }
+    function nombreTorneoDiario() { const s = segmentoActual(); return `${diaSemana()} ${fechaLocalISO()}${s === "front9" ? " - 9 hoyos ida" : s === "back9" ? " - 9 hoyos vuelta" : ""}`; }
+    function nombreCupon() { return `Green Fee ${diaSemana()}`; }
+
+    async function buscarTorneoDiarioExistente() {
+      const { data, error } = await supabase.from("tournaments")
+        .select("id, name, tournament_date, status, data_schema_version, hole_count")
+        .eq("tournament_date", fechaLocalISO()).eq("notes", marcadorTorneo()).maybeSingle();
+      if (error) throw error;
+      torneoDiario = data || null;
+      if (torneoDiario) await sincronizarCategoriasDiarias();
+    }
+
+    async function asegurarTorneoDiario() {
+      const hoyosEsperados = segmentoActual() === "18" ? 18 : 9;
+      if (torneoDiario && Number(torneoDiario.hole_count) === hoyosEsperados) return torneoDiario;
+      await buscarTorneoDiarioExistente();
+      if (torneoDiario) return torneoDiario;
+      const [modoRes, salidaRes] = await Promise.all([
+        supabase.from("game_modes").select("id, name, calculation_code, participation_type").eq("active", true).eq("participation_type", "individual"),
+        supabase.from("start_type_templates").select("id, name, start_type").eq("active", true).eq("start_type", "sequential")
+      ]);
+      if (modoRes.error) throw modoRes.error;
+      if (salidaRes.error) throw salidaRes.error;
+      const medal = (modoRes.data || []).find(m => normalizarTexto(`${m.name} ${m.calculation_code}`).includes("MEDAL"));
+      const plantilla = (salidaRes.data || [])[0];
+      if (!medal) throw new Error("No encontré una modalidad Medal individual activa.");
+      if (!plantilla) throw new Error("No encontré una plantilla secuencial activa.");
+      const { data, error } = await supabase.from("tournaments").insert({
+        name: nombreTorneoDiario(), tournament_date: fechaLocalISO(), game_mode_id: medal.id,
+        start_type_template_id: plantilla.id, hole_count: hoyosEsperados, allows_guests: true,
+        status: "open", published: false, notes: marcadorTorneo(), start_type: "secuencial",
+        aag_export_excluded: false, data_schema_version: 2, scoring_mode: "net"
+      }).select("id, name, tournament_date, status, data_schema_version, hole_count").single();
+      if (error) {
+        if (error.code === "23505") { await buscarTorneoDiarioExistente(); return torneoDiario; }
+        throw error;
+      }
+      torneoDiario = data;
+      await sincronizarCategoriasDiarias();
+      return torneoDiario;
+    }
+
+    async function sincronizarCategoriasDiarias() {
+      const { data: actuales, error } = await supabase.from("tournament_categories")
+        .select("id, category_id, name, tee_rules, category_system").eq("tournament_id", torneoDiario.id);
+      if (error) throw error;
+      const existentes = new Set((actuales || []).map(c => String(c.category_id)));
+      const faltantes = categoriasBase.filter(c => !existentes.has(String(c.id))).map(c => ({
+        tournament_id: torneoDiario.id, category_id: c.id, name: c.name,
+        tee_rules: enriquecerReglas(c.tee_rules), playing_handicap_min: c.playing_handicap_min,
+        playing_handicap_max: c.playing_handicap_max, playing_tee_aag_teeout_id: c.playing_tee_aag_teeout_id || null,
+        display_order: c.display_order || 0, hole_segment: segmentoActual(), category_system: "new"
+      }));
+      if (faltantes.length) {
+        const { error: insertError } = await supabase.from("tournament_categories").insert(faltantes);
+        if (insertError) throw insertError;
+      }
+      const { data, error: reloadError } = await supabase.from("tournament_categories")
+        .select("id, category_id, name, tee_rules, category_system").eq("tournament_id", torneoDiario.id).eq("category_system", "new");
+      if (reloadError) throw reloadError;
+      categoriasTorneo = data || [];
+    }
+
+    function categoriaTorneoParaScore() {
+      const teeId = String(scoreActual?.tee_id || "");
+      const idx = toNumber(scoreActual?.official_index);
+      const genero = normalizarGenero(scoreActual?.gender);
+      return categoriasTorneo.find(c => enriquecerReglas(c.tee_rules).some(r => {
+        const min = toNumber(r.index_min), max = toNumber(r.index_max);
+        const generoRegla = Number(r?.reference?.category) === 1 ? "female" : "male";
+        return String(r.aag_teeout_id) === teeId && generoRegla === genero && min != null && max != null && idx >= min && idx <= max;
+      })) || categoriasTorneo.find(c => enriquecerReglas(c.tee_rules).some(r => String(r.aag_teeout_id) === teeId)) || null;
+    }
+
+    function nombreCategoriaParaScore() {
+      const teeId = String(scoreActual?.tee_id || ""), idx = toNumber(scoreActual?.official_index);
+      const genero = normalizarGenero(scoreActual?.gender);
+      return categoriasBase.find(c => enriquecerReglas(c.tee_rules).some(r => {
+        const min = toNumber(r.index_min), max = toNumber(r.index_max);
+        const gr = Number(r?.reference?.category) === 1 ? "female" : "male";
+        return String(r.aag_teeout_id) === teeId && gr === genero && min != null && max != null && idx >= min && idx <= max;
+      }))?.name || "—";
+    }
+
+    function nombreDesdePlayer(p) {
+      return p.full_name || [p.last_name, p.first_name].filter(Boolean).join(", ") || "Sin nombre";
+    }
+
+    function matriculaValida(matricula) {
+      return String(matricula || "").trim().length >= 3;
+    }
+
+    async function buscarJugadores() {
+      const texto = buscadorJugador.value.trim();
+      if (texto.length < 2) {
+        resultadosBusqueda.innerHTML = `<div class="empty">Escribí al menos 2 caracteres.</div>`;
+        return;
+      }
+      try {
+        setEstado("Buscando jugadores...");
+        const buscado = normalizarTexto(texto), palabras = buscado.split(" ").filter(Boolean);
+        const patronCompleto = `%${texto.replace(/[%_,]/g, " ").replace(/\s+/g, "%")}%`;
+        const patronPalabra = `%${palabras[0] || buscado}%`;
+        const matricula = texto.replace(/\s+/g, ""), esMatricula = /^\d+$/.test(matricula);
+        const conTimeout = (promesa, ms) => Promise.race([Promise.resolve(promesa), new Promise(resolve => setTimeout(() => resolve({ data: [], error: null, timedOut: true }), ms))]);
+        const consultaPlayers = supabase.from("players")
+          .select("id, first_name, last_name, full_name, gender, current_index, aag_member_number, country, club_name, is_club_member, search_text")
+          .or([`search_text.ilike.${patronCompleto}`, `full_name.ilike.${patronCompleto}`, `first_name.ilike.${patronPalabra}`, `last_name.ilike.${patronPalabra}`, ...(esMatricula ? [`aag_member_number.eq.${matricula}`] : [])].join(","))
+          .limit(40);
+        let consultaAag = supabase.from("aag_enrolleds")
+          .select("enrollment_number, first_name, last_name, full_name, gender, current_index, option_club_id, club_name, search_text");
+        consultaAag = esMatricula ? consultaAag.eq("enrollment_number", matricula) : consultaAag.ilike("search_text", patronCompleto);
+        const [pr, ar] = await Promise.all([conTimeout(consultaPlayers, 3500), conTimeout(consultaAag.limit(40), 3500)]);
+        if (pr.error) console.error("Players:", pr.error);
+        if (ar.error) console.error("AAG:", ar.error);
+        const players = (pr.data || []).map(p => ({ ...p, origen_busqueda: "players" }));
+        const matriculasPlayers = new Set(players.map(p => String(p.aag_member_number || "")).filter(Boolean));
+        const externos = (ar.data || []).filter(p => !matriculasPlayers.has(String(p.enrollment_number || ""))).map(p => ({
+          id: `aag:${p.enrollment_number}`, origen_busqueda: "aag_enrolleds", aag_member_number: p.enrollment_number,
+          first_name: p.first_name, last_name: p.last_name, full_name: p.full_name, gender: p.gender,
+          current_index: p.current_index, option_club_id: p.option_club_id, club_name: p.club_name,
+          country: "Argentina", is_club_member: Number(p.option_club_id) === 408
+        }));
+        const puntuar = p => {
+          const nombre = normalizarTexto(`${p.full_name || ""} ${p.last_name || ""} ${p.first_name || ""} ${p.aag_member_number || ""}`);
+          if (!palabras.every(parte => nombre.includes(parte))) return -1;
+          let puntos = 0;
+          if (Number(p.option_club_id) === 408 || p.is_club_member === true) puntos += 10000;
+          if (String(p.aag_member_number || "") === matricula) puntos += 8000;
+          if (nombre.includes(buscado)) puntos += 4000;
+          return puntos + palabras.length * 500;
+        };
+        const encontrados = [...players, ...externos].map(p => ({ ...p, _score: puntuar(p) })).filter(p => p._score >= 0).sort((a, b) => b._score - a._score).slice(0, 15);
+        renderResultados(encontrados);
+        setEstado(`Encontrados ${encontrados.length} jugadores entre Players y AAG.`, "ok");
+      } catch (err) {
+        console.error(err);
+        resultadosBusqueda.innerHTML = `<div class="empty">Error buscando jugadores.</div>`;
+        setEstado(err.message || "Error buscando jugadores.", "error");
+      }
+    }
+
+    function renderResultados(items) {
+      if (!items.length) {
+        resultadosBusqueda.innerHTML = `<div class="empty">No encontré jugadores. Podés cargarlo manualmente.</div>`;
+        return;
+      }
+
+      resultadosBusqueda.innerHTML = items.map(p => `
         <div class="player-card" data-player-id="${p.id}">
           <div class="player-name">${escapeHtml(nombreDesdePlayer(p))}</div>
           <div class="player-extra">
             Matrícula: ${escapeHtml(p.aag_member_number || "—")} · Index: ${formatIndex(p.current_index) || "—"}<br>
-            Género: ${generoTexto(p.gender)} · ${p.is_club_member ? "Socio VMGC" : "No socio / invitado"}
+            Género: ${generoTexto(p.gender)} · ${p.is_club_member ? "Socio VMGC" : "AAG / invitado"} · ${p.origen_busqueda === "aag_enrolleds" ? "Padrón AAG" : "Players"}
           </div>
         </div>
       `).join("");
 
-            resultadosBusqueda.querySelectorAll("[data-player-id]").forEach(card => {
-                card.addEventListener("click", () => {
-                    const p = items.find(x => String(x.id) === String(card.dataset.playerId));
-                    if (p) seleccionarJugadorDesdePlayers(p);
-                });
-            });
-        }
+      resultadosBusqueda.querySelectorAll("[data-player-id]").forEach(card => {
+        card.addEventListener("click", () => {
+          const p = items.find(x => String(x.id) === String(card.dataset.playerId));
+          if (p) seleccionarJugadorDesdePlayers(p);
+        });
+      });
+    }
 
-        function seleccionarJugadorDesdePlayers(p) {
-            jugadorActual = {
-                source: "players",
-                player_id: p.id,
-                first_name: p.first_name || "",
-                last_name: p.last_name || "",
-                display_name: nombreDesdePlayer(p),
-                gender: normalizarGenero(p.gender),
-                official_index: toNumber(p.current_index),
-                aag_member_number: p.aag_member_number || "",
-                country: p.country || "Argentina",
-                club_name: p.club_name || (p.is_club_member ? CLUB_NOMBRE : "")
-            };
+    function seleccionarJugadorDesdePlayers(p) {
+      jugadorActual = {
+        source: p.origen_busqueda === "aag_enrolleds" ? "aag_enrolleds" : "players",
+        player_id: p.origen_busqueda === "aag_enrolleds" ? null : p.id,
+        first_name: p.first_name || "",
+        last_name: p.last_name || "",
+        display_name: nombreDesdePlayer(p),
+        gender: normalizarGenero(p.gender),
+        official_index: toNumber(p.current_index),
+        aag_member_number: p.aag_member_number || "",
+        country: p.country || "Argentina",
+        club_name: p.club_name || (p.is_club_member ? CLUB_NOMBRE : "")
+      };
 
-            crearScorecardBase();
-        }
+      crearScorecardBase();
+    }
 
-        function seleccionarJugadorManual() {
-            const apellido = normalizarTexto($("manualApellido").value);
-            const nombre = normalizarTexto($("manualNombre").value);
-            const index = toNumber($("manualIndex").value);
+    function seleccionarJugadorManual() {
+      const apellido = normalizarTexto($("manualApellido").value);
+      const nombre = normalizarTexto($("manualNombre").value);
+      const index = toNumber($("manualIndex").value);
 
-            if (!apellido || !nombre) {
-                alert("Cargá apellido y nombre.");
-                return;
-            }
+      if (!apellido || !nombre) {
+        alert("Cargá apellido y nombre.");
+        return;
+      }
 
-            if (index == null) {
-                alert("Cargá el index del jugador manual.");
-                return;
-            }
+      if (index == null) {
+        alert("Cargá el index del jugador manual.");
+        return;
+      }
 
-            jugadorActual = {
-                source: "manual",
-                player_id: null,
-                first_name: nombre,
-                last_name: apellido,
-                display_name: `${apellido}, ${nombre}`,
-                gender: normalizarGenero($("manualGenero").value),
-                official_index: index,
-                aag_member_number: $("manualMatricula").value.trim(),
-                country: $("manualPais").value.trim() || "",
-                club_name: $("manualPais").value.trim() || ""
-            };
+      jugadorActual = {
+        source: "manual",
+        player_id: null,
+        first_name: nombre,
+        last_name: apellido,
+        display_name: `${apellido}, ${nombre}`,
+        gender: normalizarGenero($("manualGenero").value),
+        official_index: index,
+        aag_member_number: $("manualMatricula").value.trim(),
+        country: $("manualPais").value.trim() || "",
+        club_name: $("manualPais").value.trim() || ""
+      };
 
-            crearScorecardBase();
-        }
+      crearScorecardBase();
+    }
 
-        function crearScorecardBase() {
-            const tee = sugerirTeeDesdeIndex(jugadorActual.official_index, jugadorActual.gender);
-            const segment = "18";
-            const rule = tee ? getRuleForTee(tee.id, jugadorActual.gender, segment) : null;
-            const hcp = calcularHcpJuego(jugadorActual.official_index, rule, segment);
+    function crearScorecardBase() {
+      const tee = sugerirTeeDesdeIndex(jugadorActual.official_index, jugadorActual.gender);
+      const segment = "18";
+      const rule = tee ? getRuleForTee(tee.id, jugadorActual.gender, segment) : null;
+      aplicarHoyosAag(rule);
+      const hcp = calcularHcpJuego(jugadorActual.official_index, rule);
 
-            scoreActual = {
-                player_id: jugadorActual.player_id,
-                display_name: jugadorActual.display_name,
-                first_name: jugadorActual.first_name,
-                last_name: jugadorActual.last_name,
-                aag_member_number: jugadorActual.aag_member_number,
-                country: jugadorActual.country,
-                club_name: jugadorActual.club_name,
-                gender: jugadorActual.gender,
-                official_index: jugadorActual.official_index,
-                tee_id: tee?.id || "",
-                tee_name: tee?.name || "",
-                hole_segment: segment,
-                slope: rule?.slope ?? null,
-                course_rating: rule?.course_rating ?? null,
-                par: rule?.par ?? null,
-                playing_handicap: hcp,
-                gross: null,
-                net: null,
-                total: null,
-                card_status: "npt",
-                hole_scores: {},
-                export_ready: false
-            };
+      scoreActual = {
+        player_id: jugadorActual.player_id,
+        display_name: jugadorActual.display_name,
+        first_name: jugadorActual.first_name,
+        last_name: jugadorActual.last_name,
+        aag_member_number: jugadorActual.aag_member_number,
+        country: jugadorActual.country,
+        club_name: jugadorActual.club_name,
+        gender: jugadorActual.gender,
+        official_index: jugadorActual.official_index,
+        tee_id: tee?.id || "",
+        tee_name: tee?.name || "",
+        hole_segment: segment,
+        slope: rule?.slope ?? null,
+        course_rating: rule?.course_rating ?? null,
+        par: rule?.par ?? null,
+        playing_handicap: hcp,
+        gross: null,
+        net: null,
+        total: null,
+        card_status: "npt",
+        hole_scores: {},
+        export_ready: false
+      };
 
-            renderPanelJugador();
-            renderPanelCarga();
-            setEstado(`Tarjeta preparada para ${jugadorActual.display_name}.`, "ok");
-        }
+      renderPanelJugador();
+      renderPanelCarga();
+      if ($("btnCupon")) $("btnCupon").disabled = false;
+      setEstado(`Tarjeta preparada para ${jugadorActual.display_name}.`, "ok");
+    }
 
-        function renderPanelJugador() {
-            if (!scoreActual) {
-                panelJugador.innerHTML = `<div class="empty">Buscá o cargá un jugador manual para generar una tarjeta.</div>`;
-                return;
-            }
+    function renderPanelJugador() {
+      if (!scoreActual) {
+        panelJugador.innerHTML = `<div class="empty">Buscá o cargá un jugador manual para generar una tarjeta.</div>`;
+        return;
+      }
 
-            const puedeGuardar = matriculaValida(scoreActual.aag_member_number);
+      const puedeGuardar = matriculaValida(scoreActual.aag_member_number);
 
-            panelJugador.innerHTML = `
+      panelJugador.innerHTML = `
         <div class="selected-title">${escapeHtml(scoreActual.display_name)}</div>
         <div class="selected-sub">
           Matrícula: ${escapeHtml(scoreActual.aag_member_number || "Sin matrícula")} · Género: ${generoTexto(scoreActual.gender)} · Origen: ${jugadorActual.source === "players" ? "Players" : "Manual"}
@@ -1200,26 +1040,26 @@
         <div class="form-grid" style="margin-top:14px;">
           <div class="field">
             <label>Index</label>
-            <input id="scoreIndex" value="${formatIndex(scoreActual.official_index)}" inputmode="decimal" />
+            <input id="scoreIndex" value="${formatIndex(scoreActual.official_index)}" readonly />
           </div>
           <div class="field">
             <label>Segmento</label>
             <select id="scoreSegmento">
               <option value="18" ${scoreActual.hole_segment === "18" ? "selected" : ""}>18 hoyos</option>
-              <option value="front9" ${scoreActual.hole_segment === "front9" ? "selected" : ""}>9 Ida</option>
-              <option value="back9" ${scoreActual.hole_segment === "back9" ? "selected" : ""}>9 Vta.</option>
+              <option value="front9" ${scoreActual.hole_segment === "front9" ? "selected" : ""}>Front 9 · hoyos 1 al 9</option>
+              <option value="back9" ${scoreActual.hole_segment === "back9" ? "selected" : ""}>Back 9 · hoyos 10 al 18</option>
             </select>
           </div>
           <div class="field">
             <label>Tee</label>
             <select id="scoreTee">
               <option value="">Seleccionar</option>
-              ${teesPermitidosPorGenero(scoreActual.gender).map(t => `<option value="${t.id}" ${String(t.id) === String(scoreActual.tee_id) ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("")}
+              ${tees.filter(t => (Number(t.category) === 1 ? "female" : "male") === normalizarGenero(scoreActual.gender)).map(t => `<option value="${t.id}" ${String(t.id) === String(scoreActual.tee_id) ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("")}
             </select>
           </div>
           <div class="field">
             <label>Matrícula</label>
-            <input id="scoreMatricula" value="${escapeHtml(scoreActual.aag_member_number || "")}" placeholder="Requerida para cargar resultado" />
+            <input id="scoreMatricula" value="${escapeHtml(scoreActual.aag_member_number || "")}" readonly />
           </div>
         </div>
 
@@ -1229,94 +1069,93 @@
           <div class="summary-box"><div class="k">Slope</div><div class="v" id="sumSlope">${scoreActual.slope ?? "—"}</div></div>
           <div class="summary-box"><div class="k">Rating</div><div class="v" id="sumRating">${scoreActual.course_rating ?? "—"}</div></div>
           <div class="summary-box"><div class="k">Par</div><div class="v" id="sumPar">${scoreActual.par ?? "—"}</div></div>
+          <div class="summary-box"><div class="k">Categoría</div><div class="v" style="font-size:14px">${escapeHtml(nombreCategoriaParaScore())}</div></div>
           <div class="summary-box"><div class="k">Resultado</div><div class="v" id="sumResultado">${scoreActual.net ?? "—"}</div></div>
         </div>
 
         ${puedeGuardar
-                    ? `<div class="alert ok">Tiene matrícula: se podrá guardar resultado si la tarjeta está completa.</div>`
-                    : `<div class="alert warn">Sin matrícula válida: podés imprimir, pero no guardar resultado semanal.</div>`}
+          ? `<div class="alert ok">Tiene matrícula: se podrá guardar resultado si la tarjeta está completa.</div>`
+          : `<div class="alert warn">Sin matrícula válida: podés imprimir, pero no guardar resultado semanal.</div>`}
 
         <div class="actions">
           <button id="btnRecalcular" class="btn btn-primary">Recalcular HCP</button>
           <button id="btnAutoTee" class="btn btn-secondary">Auto tee</button>
           <button id="btnImprimir" class="btn btn-light">Imprimir tarjeta</button>
-          <button id="btnImprimirCupon" class="btn btn-gray">Imprimir cupón</button>
         </div>
       `;
 
-            $("scoreIndex").addEventListener("change", recalcularDesdeInputs);
-            $("scoreIndex").addEventListener("blur", recalcularDesdeInputs);
-            $("scoreSegmento").addEventListener("change", () => { recalcularDesdeInputs(); renderPanelCarga(); });
-            $("scoreTee").addEventListener("change", recalcularDesdeInputs);
-            $("scoreMatricula").addEventListener("change", () => {
-                scoreActual.aag_member_number = $("scoreMatricula").value.trim();
-                renderPanelJugador();
-                renderPanelCarga();
-            });
-            $("btnRecalcular").addEventListener("click", recalcularDesdeInputs);
-            $("btnAutoTee").addEventListener("click", aplicarAutoTee);
-            $("btnImprimir").addEventListener("click", imprimirTarjeta);
-            $("btnImprimirCupon").addEventListener("click", imprimirCupon);
-        }
+      $("scoreSegmento").addEventListener("change", () => { torneoDiario = null; categoriasTorneo = []; recalcularDesdeInputs(); renderPanelCarga(); });
+      $("scoreTee").addEventListener("change", recalcularDesdeInputs);
+      $("btnRecalcular").addEventListener("click", recalcularDesdeInputs);
+      $("btnAutoTee").addEventListener("click", aplicarAutoTee);
+      $("btnImprimir").addEventListener("click", imprimirTarjeta);
+    }
 
-        function recalcularDesdeInputs() {
-            if (!scoreActual) return;
+    function recalcularDesdeInputs() {
+      if (!scoreActual) return;
 
-            scoreActual.official_index = toNumber($("scoreIndex")?.value);
-            scoreActual.hole_segment = $("scoreSegmento")?.value || "18";
-            scoreActual.tee_id = $("scoreTee")?.value || "";
-            scoreActual.aag_member_number = $("scoreMatricula")?.value.trim() || "";
+      scoreActual.hole_segment = $("scoreSegmento")?.value || "18";
+      scoreActual.tee_id = $("scoreTee")?.value || "";
 
-            const tee = tees.find(t => String(t.id) === String(scoreActual.tee_id)) || null;
-            const rule = tee ? getRuleForTee(tee.id, scoreActual.gender, scoreActual.hole_segment) : null;
+      const tee = tees.find(t => String(t.id) === String(scoreActual.tee_id)) || null;
+      const rule = tee ? getRuleForTee(tee.id, scoreActual.gender, scoreActual.hole_segment) : null;
+      aplicarHoyosAag(rule);
 
-            scoreActual.tee_name = tee?.name || "";
-            scoreActual.slope = rule?.slope ?? null;
-            scoreActual.course_rating = rule?.course_rating ?? null;
-            scoreActual.par = rule?.par ?? null;
-            scoreActual.playing_handicap = calcularHcpJuego(scoreActual.official_index, rule, scoreActual.hole_segment);
+      scoreActual.tee_name = tee?.name || "";
+      scoreActual.slope = rule?.slope ?? null;
+      scoreActual.course_rating = rule?.course_rating ?? null;
+      scoreActual.par = rule?.par ?? null;
+      scoreActual.playing_handicap = calcularHcpJuego(scoreActual.official_index, rule);
 
-            const { holes } = leerInputsTarjeta();
-            Object.assign(scoreActual, calcularResultado(holes));
+      const { holes } = leerInputsTarjeta();
+      Object.assign(scoreActual, calcularResultado(holes));
 
-            renderPanelJugador();
-            renderPanelCarga();
-        }
+      renderPanelJugador();
+      renderPanelCarga();
+    }
 
-        function aplicarAutoTee() {
-            if (!scoreActual) return;
-            const tee = sugerirTeeDesdeIndex($("scoreIndex")?.value ?? scoreActual.official_index, scoreActual.gender);
-            if (!tee) {
-                alert("No pude encontrar el tee sugerido. Revisá que existan los tees Negra, Amarilla, Blanca A, Blanca B y Roja.");
-                return;
-            }
-            scoreActual.tee_id = tee.id;
-            renderPanelJugador();
-            recalcularDesdeInputs();
-        }
+    function aplicarAutoTee() {
+      if (!scoreActual) return;
+      const tee = sugerirTeeDesdeIndex(scoreActual.official_index, scoreActual.gender);
+      if (!tee) {
+        alert("No pude encontrar el tee sugerido. Revisá que existan los tees Negra, Amarilla, Blanca A, Blanca B y Roja.");
+        return;
+      }
+      scoreActual.tee_id = tee.id;
+      renderPanelJugador();
+      recalcularDesdeInputs();
+    }
 
-        function mapaStrokes() {
-            const mapa = {};
-            const hs = scoreActual?.hole_scores || {};
-            for (const [hole, val] of Object.entries(hs)) {
-                if (val && typeof val === "object") mapa[Number(hole)] = val.strokes;
-                else mapa[Number(hole)] = val;
-            }
-            return mapa;
-        }
+    function mapaStrokes() {
+      const mapa = {};
+      const hs = scoreActual?.hole_scores || {};
+      for (const [hole, val] of Object.entries(hs)) {
+        if (val && typeof val === "object") mapa[Number(hole)] = val.strokes;
+        else mapa[Number(hole)] = val;
+      }
+      return mapa;
+    }
 
-        function renderPanelCarga() {
-            if (!scoreActual) {
-                panelCarga.innerHTML = `<div class="empty">Primero generá los datos de juego.</div>`;
-                return;
-            }
+    function renderPanelCarga() {
+      if (!scoreActual) {
+        panelCarga.innerHTML = `<div class="empty">Primero generá los datos de juego.</div>`;
+        return;
+      }
 
-            const seg = normalizarSegmento(scoreActual.hole_segment);
-            const habilitados = hoyosHabilitados(seg);
-            const strokes = mapaStrokes();
-            const puedeGuardar = matriculaValida(scoreActual.aag_member_number);
+      const seg = normalizarSegmento(scoreActual.hole_segment);
+      const habilitados = hoyosHabilitados(seg);
+      const strokes = mapaStrokes();
+      const puedeGuardar = matriculaValida(scoreActual.aag_member_number);
+      const renderHoyo = hole => `
+        <div class="hole">
+          <div class="hole-label">H${hole}</div>
+          <div class="hole-meta">Par ${COURSE_HOLES[hole].par}<br>HCP ${COURSE_HOLES[hole].hcp}</div>
+          <input id="h${hole}" data-hole-input inputmode="numeric" value="${strokes[hole] ?? ""}" />
+        </div>`;
+      const ida = habilitados.filter(h => h <= 9);
+      const vuelta = habilitados.filter(h => h >= 10);
 
-            panelCarga.innerHTML = `
+      panelCarga.innerHTML = `
         <div class="selected-sub">
           Segmento: ${etiquetaSegmento(seg)} · HCP juego: ${scoreActual.playing_handicap ?? "—"} · Tee: ${escapeHtml(scoreActual.tee_name || "—")}
         </div>
@@ -1327,17 +1166,8 @@
           <div class="suma-box"><div class="label">Total cargado</div><div class="valor" id="sumaTotalPreview">—</div></div>
         </div>
 
-        <div class="score-grid-wrap">
-          <div class="score-grid">
-            ${habilitados.map(hole => `
-              <div class="hole">
-                <div class="hole-label">H${hole}</div>
-                <div class="hole-meta">Par ${COURSE_HOLES[hole].par}<br>HCP ${COURSE_HOLES[hole].hcp}</div>
-                <input id="h${hole}" data-hole-input inputmode="numeric" value="${strokes[hole] ?? ""}" />
-              </div>
-            `).join("")}
-          </div>
-        </div>
+        ${ida.length ? `<div class="score-nine-title">Ida · hoyos 1 al 9</div><div class="score-grid-wrap"><div class="score-grid">${ida.map(renderHoyo).join("")}</div></div>` : ""}
+        ${vuelta.length ? `<div class="score-nine-title">Vuelta · hoyos 10 al 18</div><div class="score-grid-wrap"><div class="score-grid">${vuelta.map(renderHoyo).join("")}</div></div>` : ""}
 
         <div class="summary-grid">
           <div class="summary-box"><div class="k">Gross</div><div class="v" id="grossPreview">—</div></div>
@@ -1347,478 +1177,383 @@
         </div>
 
         ${puedeGuardar
-                    ? `<div class="alert ok">Resultado habilitado para guardar.</div>`
-                    : `<div class="alert warn">Para guardar resultado semanal cargá una matrícula válida. La impresión sigue habilitada.</div>`}
+          ? `<div class="alert ok">Resultado habilitado para guardar.</div>`
+          : `<div class="alert warn">Para guardar resultado semanal cargá una matrícula válida. La impresión sigue habilitada.</div>`}
 
         <div class="actions">
           <button id="btnGuardarResultado" class="btn btn-primary" ${puedeGuardar ? "" : "disabled"}>Guardar resultado</button>
           <button id="btnLimpiarHoyos" class="btn btn-gray">Limpiar hoyos</button>
-          <button id="btnExportarAag" class="btn btn-secondary">Exportar AAG</button>
         </div>
       `;
 
-            panelCarga.querySelectorAll("[data-hole-input]").forEach(inp => {
-                inp.addEventListener("input", actualizarPreviewLocal);
-                inp.addEventListener("keydown", async (e) => {
-                    if (e.key !== "Enter") return;
-                    e.preventDefault();
-                    const inputs = Array.from(panelCarga.querySelectorAll("[data-hole-input]"));
-                    const pos = inputs.indexOf(inp);
-                    if (pos >= 0 && pos < inputs.length - 1) {
-                        inputs[pos + 1].focus();
-                        inputs[pos + 1].select?.();
-                    } else if (matriculaValida(scoreActual.aag_member_number)) {
-                        await guardarResultado();
-                    }
-                });
-            });
-
-            $("btnGuardarResultado")?.addEventListener("click", guardarResultado);
-            $("btnLimpiarHoyos")?.addEventListener("click", () => {
-                panelCarga.querySelectorAll("[data-hole-input]").forEach(i => i.value = "");
-                actualizarPreviewLocal();
-            });
-            $("btnExportarAag")?.addEventListener("click", () => {
-                alert("Exportar AAG pendiente: acá vamos a conectar el formato oficial cuando lo tengamos definido.");
-            });
-
-            actualizarPreviewLocal();
-        }
-
-        function sumarHoyos(holes, desde, hasta) {
-            return holes
-                .filter(h => h.hole_number >= desde && h.hole_number <= hasta && h.strokes != null)
-                .reduce((sum, h) => sum + Number(h.strokes || 0), 0);
-        }
-
-        function contarHoyosCargados(holes, desde, hasta) {
-            return holes.filter(h => h.hole_number >= desde && h.hole_number <= hasta && h.strokes != null).length;
-        }
-
-        function textoSuma(sum, cargados) {
-            return cargados > 0 ? String(sum) : "—";
-        }
-
-        function leerInputsTarjeta() {
-            const seg = normalizarSegmento(scoreActual?.hole_segment || "18");
-            const habilitados = hoyosHabilitados(seg);
-            const holes = [];
-
-            for (const hole of habilitados) {
-                const input = document.getElementById(`h${hole}`);
-                const raw = String(input?.value || "").trim();
-                const strokes = raw === "" ? null : Number(raw);
-                const meta = COURSE_HOLES[hole];
-                holes.push({
-                    hole_number: hole,
-                    strokes: Number.isFinite(strokes) ? strokes : null,
-                    par_value: meta.par,
-                    hole_handicap: meta.hcp
-                });
-            }
-
-            return { seg, habilitados, holes };
-        }
-
-        function construirHoleScores(holes) {
-            const obj = {};
-            for (const h of holes) {
-                obj[String(h.hole_number)] = {
-                    strokes: h.strokes,
-                    par_value: h.par_value,
-                    hole_handicap: h.hole_handicap
-                };
-            }
-            return obj;
-        }
-
-        function calcularResultado(holes) {
-            const cargados = holes.filter(h => h.strokes != null);
-            const gross = cargados.reduce((sum, h) => sum + Number(h.strokes || 0), 0);
-            const totalNecesarios = holes.length;
-            const hcp = Number(scoreActual?.playing_handicap || 0);
-
-            let card_status = "npt";
-            if (cargados.length === 0) card_status = "npt";
-            else if (cargados.length < totalNecesarios) card_status = "desc";
-            else card_status = "valid";
-
-            const net = cargados.length > 0 ? gross - hcp : null;
-            const export_ready = card_status === "valid" && matriculaValida(scoreActual?.aag_member_number);
-
-            return {
-                gross: cargados.length > 0 ? gross : null,
-                net,
-                total: net,
-                card_status,
-                export_ready
-            };
-        }
-
-        function actualizarPreviewLocal() {
-            if (!scoreActual) return;
-
-            const { holes } = leerInputsTarjeta();
-            const r = calcularResultado(holes);
-            scoreActual.hole_scores = construirHoleScores(holes);
-            Object.assign(scoreActual, r);
-
-            const sumaIda = sumarHoyos(holes, 1, 9);
-            const sumaVuelta = sumarHoyos(holes, 10, 18);
-            const cargadosIda = contarHoyosCargados(holes, 1, 9);
-            const cargadosVuelta = contarHoyosCargados(holes, 10, 18);
-            const cargadosTotal = holes.filter(h => h.strokes != null).length;
-
-            if ($("sumaIdaPreview")) $("sumaIdaPreview").textContent = textoSuma(sumaIda, cargadosIda);
-            if ($("sumaVueltaPreview")) $("sumaVueltaPreview").textContent = textoSuma(sumaVuelta, cargadosVuelta);
-            if ($("sumaTotalPreview")) $("sumaTotalPreview").textContent = textoSuma(sumaIda + sumaVuelta, cargadosTotal);
-            if ($("grossPreview")) $("grossPreview").textContent = r.gross ?? "—";
-            if ($("netPreview")) $("netPreview").textContent = r.net ?? "—";
-            if ($("estadoPreview")) $("estadoPreview").textContent = r.card_status === "valid" ? "Cargada" : r.card_status.toUpperCase();
-            if ($("exportPreview")) $("exportPreview").textContent = r.export_ready ? "Sí" : "No";
-            if ($("sumResultado")) $("sumResultado").textContent = r.net ?? "—";
-        }
-
-        function payloadScorecard() {
-            return {
-                player_id: scoreActual.player_id || null,
-                display_name: scoreActual.display_name,
-                first_name: scoreActual.first_name || null,
-                last_name: scoreActual.last_name || null,
-                aag_member_number: scoreActual.aag_member_number || null,
-                country: scoreActual.country || null,
-                club_name: scoreActual.club_name || null,
-                gender: scoreActual.gender,
-                official_index: scoreActual.official_index,
-                tee_id: scoreActual.tee_id || null,
-                tee_name: scoreActual.tee_name || null,
-                playing_handicap: scoreActual.playing_handicap,
-                slope: scoreActual.slope,
-                course_rating: scoreActual.course_rating,
-                par: scoreActual.par,
-                hole_segment: scoreActual.hole_segment || "18",
-                gross: scoreActual.gross,
-                net: scoreActual.net,
-                total: scoreActual.total,
-                card_status: scoreActual.card_status,
-                hole_scores: scoreActual.hole_scores,
-                export_ready: scoreActual.export_ready
-            };
-        }
-
-        async function guardarResultado() {
-            if (!scoreActual) return;
-            if (!matriculaValida(scoreActual.aag_member_number)) {
-                alert("Para guardar el resultado necesitás una matrícula válida.");
-                return;
-            }
-
-            actualizarPreviewLocal();
-
-            try {
-                setEstado("Guardando resultado libre...");
-
-                const { error } = await supabase
-                    .from("casual_scorecards")
-                    .insert(payloadScorecard());
-
-                if (error) throw error;
-
-                setEstado(`Resultado guardado para ${scoreActual.display_name}.`, "ok");
-                alert("Resultado guardado correctamente.");
-            } catch (err) {
-                console.error(err);
-                setEstado(err.message || "Error guardando resultado.", "error");
-                alert("No pude guardar. Revisá que exista la tabla casual_scorecards. Error: " + (err.message || err));
-            }
-        }
-
-        async function guardarNpt() {
-            if (!scoreActual) return;
-            if (!matriculaValida(scoreActual.aag_member_number)) {
-                alert("Para guardar NPT necesitás una matrícula válida.");
-                return;
-            }
-
-            if (!confirm(`¿Guardar ${scoreActual.display_name} como NPT?`)) return;
-
-            const { holes } = leerInputsTarjeta();
-            holes.forEach(h => h.strokes = null);
-            scoreActual.hole_scores = construirHoleScores(holes);
-            scoreActual.gross = null;
-            scoreActual.net = null;
-            scoreActual.total = null;
-            scoreActual.card_status = "npt";
-            scoreActual.export_ready = false;
-
+      panelCarga.querySelectorAll("[data-hole-input]").forEach(inp => {
+        inp.addEventListener("input", actualizarPreviewLocal);
+        inp.addEventListener("keydown", async (e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          const inputs = Array.from(panelCarga.querySelectorAll("[data-hole-input]"));
+          const pos = inputs.indexOf(inp);
+          if (pos >= 0 && pos < inputs.length - 1) {
+            inputs[pos + 1].focus();
+            inputs[pos + 1].select?.();
+          } else if (matriculaValida(scoreActual.aag_member_number)) {
             await guardarResultado();
-        }
-
-        function fontSizeTorneo(texto) {
-            const largo = String(texto || "").trim().length;
-            if (largo > 35) return 12;
-            if (largo > 30) return 14;
-            if (largo > 27) return 16;
-            if (largo > 24) return 18;
-            return 20;
-        }
-
-        function buildTarjetaPreimpresaHTML({
-            torneo,
-            fecha,
-            jugadorA,
-            jugadorB = "",
-            handicap = "",
-            matricula = "",
-            datosJuego = ""
-        }) {
-            return `
-                <style>
-                    @page {
-                        size: 150mm 297mm;
-                        margin: 0;
-                    }
-
-                    #print-root {
-                        margin: 0;
-                        padding: 0;
-                    }
-
-                    body {
-                        margin: 0;
-                        background: white;
-                        font-family: Arial, sans-serif;
-                    }
-
-                    .page {
-                        position: relative;
-                        width: 150mm;
-                        height: 297mm;
-                        overflow: hidden;
-                    }
-
-                    .overlay {
-                        position: absolute;
-                        width: 297mm;
-                        height: 150mm;
-                        white-space: nowrap;
-                        transform-origin: top left;
-                        transform: rotate(90deg);
-                        left: 150mm;
-                        top: 0;
-                    }
-
-                    .field {
-                        position: absolute;
-                        font-weight: bold;
-                        color: black;
-                        font-size: 14px;
-                    }
-
-                    .torneo {
-                        top: 12mm;
-                        left: 37mm;
-                        width: 75mm;
-                        text-align: left;
-                    }
-
-                    .fecha {
-                        top: 12mm;
-                        left: 120mm;
-                        width: 30mm;
-                        font-size: 20px;
-                        text-align: center;
-                        transform: translateX(-50%);
-                    }
-
-                    .jugadorA {
-                        top: 27mm;
-                        left: 37mm;
-                        width: 45mm;
-                        text-align: left;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                    }
-
-                    .jugadorB {
-                        top: 27mm;
-                        left: 86mm;
-                        width: 45mm;
-                        text-align: right;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                    }
-
-                    .handicap {
-                        top: 27mm;
-                        left: 149mm;
-                        width: 30mm;
-                        text-align: center;
-                        transform: translateX(-50%);
-                    }
-
-                    .matricula {
-                        top: 27mm;
-                        left: 183mm;
-                        width: 30mm;
-                        text-align: center;
-                        transform: translateX(-50%);
-                    }
-
-                    .datosdejuego {
-                        top: 40mm;
-                        left: 115mm;
-                        width: 65mm;
-                        text-align: center;
-                        font-size: 12px;
-                    }
-                </style>
-
-                <div class="page">
-                    <div class="overlay">
-                        <div class="field torneo">${torneo}</div>
-                        <div class="field fecha">${fecha}</div>
-
-                        <div class="field jugadorA">${jugadorA}</div>
-                        <div class="field jugadorB">${jugadorB}</div>
-
-                        <div class="field handicap">${handicap}</div>
-                        <div class="field matricula">${matricula}</div>
-
-                        <div class="field datosdejuego">${datosJuego}</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function doPrint(html) {
-            printRoot.innerHTML = html;
-
-            setTimeout(() => {
-                window.print();
-                setTimeout(() => { printRoot.innerHTML = ""; }, 700);
-            }, 150);
-        }
-
-        function imprimirTarjeta() {
-            if (!scoreActual) return;
-            recalcularDesdeInputs();
-
-            const datosJuego = `Tee: ${scoreActual.tee_name || "—"} / HCP: ${scoreActual.playing_handicap ?? "—"} / ${etiquetaSegmento(scoreActual.hole_segment)}`;
-
-            const html = buildTarjetaPreimpresaHTML({
-                torneo: "TARJETA LIBRE",
-                fecha: fechaHoyTexto(),
-                jugadorA: scoreActual.display_name,
-                handicap: scoreActual.playing_handicap ?? "",
-                matricula: scoreActual.aag_member_number || "",
-                datosJuego
-            });
-
-            doPrint(html);
-        }
-
-        async function obtenerNumeroCupon() {
-            const branchCode = String(localStorage.getItem("ticket_branch_code") || "").trim();
-
-            if (!branchCode) {
-                alert("Esta computadora no tiene sucursal configurada.");
-                throw new Error("Falta configurar ticket_branch_code");
-            }
-
-            const { data, error } = await supabase.rpc("get_next_ticket_number", {
-                p_branch_code: branchCode
-            });
-
-            if (error) throw error;
-            return data;
-        }
-
-        function buildCuponHTMLLibre(numeroCupon = "") {
-            const importe = obtenerPrecioGreenfee();
-            return `
-        <div style="width:80mm; padding:4mm; font-family:Arial,sans-serif; color:#000;">
-          <div style="text-align:center; font-size:14px; font-weight:700;">${CLUB_NOMBRE}</div>
-          <div style="text-align:center; font-size:12px; margin-top:2px;">Cupón de pago NO FISCAL</div>
-          <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-          <div style="font-size:12px; line-height:1.5;">
-            <div><b>Concepto:</b> Green fee</div>
-            <div><b>Fecha:</b> ${fechaHoyTexto()}</div>
-            <div><b>Cupón:</b> ${escapeHtml(numeroCupon)}</div>
-            <div><b>Jugador:</b> ${escapeHtml(scoreActual?.display_name || "")}</div>
-            <div><b>Matrícula:</b> ${escapeHtml(scoreActual?.aag_member_number || "—")}</div>
-            <div><b>Tee:</b> ${escapeHtml(scoreActual?.tee_name || "—")}</div>
-            <div><b>HCP:</b> ${scoreActual?.playing_handicap ?? "—"}</div>
-            <div><b>Importe:</b> ${money(importe)}</div>
-          </div>
-          <div style="border-top:1px dashed #000; margin:6px 0;"></div>
-          <div style="font-size:11px; text-align:center;">NO VÁLIDO COMO FACTURA</div>
-        </div>
-      `;
-        }
-
-        async function imprimirCupon() {
-            if (!scoreActual) return;
-            recalcularDesdeInputs();
-
-            try {
-                const numeroCupon = await obtenerNumeroCupon();
-                doPrint(buildCuponHTMLLibre(numeroCupon));
-            } catch (error) {
-                console.error(error);
-                alert("Error generando número de cupón: " + (error.message || JSON.stringify(error)));
-            }
-        }
-
-        function resetTodo() {
-            jugadorActual = null;
-            scoreActual = null;
-            buscadorJugador.value = "";
-            resultadosBusqueda.innerHTML = "";
-            panelJugador.innerHTML = `<div class="empty">Buscá o cargá un jugador manual para generar una tarjeta.</div>`;
-            panelCarga.innerHTML = `<div class="empty">Primero generá los datos de juego.</div>`;
-            setEstado("Listo para generar una nueva tarjeta.", "ok");
-        }
-
-        greenfeePrecio?.addEventListener("input", () => {
-            const limpio = greenfeePrecio.value.replace(/[^\d]/g, "");
-            if (!limpio) {
-                greenfeePrecio.value = "";
-                return;
-            }
-            greenfeePrecio.value = money(Number(limpio) / 100);
+          }
         });
-        greenfeePrecio?.addEventListener("focus", () => greenfeePrecio.select());
-        greenfeePrecio?.addEventListener("blur", () => {
-            greenfeePrecio.value = formatearPesosInput(greenfeePrecio.value);
-        });
-        $("btnSucursalS1")?.addEventListener("click", () => setSucursal("S1"));
-        $("btnSucursalS2")?.addEventListener("click", () => setSucursal("S2"));
+      });
 
-        $("btnBuscar").addEventListener("click", buscarJugadores);
-        buscadorJugador.addEventListener("input", () => {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(buscarJugadores, 350);
-        });
-        buscadorJugador.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") buscarJugadores();
-        });
-        $("btnUsarManual").addEventListener("click", seleccionarJugadorManual);
-        $("btnReset").addEventListener("click", resetTodo);
-        $("btnHome").addEventListener("click", () => { window.location.href = "panel.html"; });
+      $("btnGuardarResultado")?.addEventListener("click", guardarResultado);
+      $("btnLimpiarHoyos")?.addEventListener("click", () => {
+        panelCarga.querySelectorAll("[data-hole-input]").forEach(i => i.value = "");
+        actualizarPreviewLocal();
+      });
 
-        mostrarSucursal();
+      actualizarPreviewLocal();
+    }
 
-        try {
-            await protegerAdmin();
-            await cargarTeesYReglas();
-        } catch (err) {
-            console.error(err);
-            setEstado(err.message || "Error inicializando scorecard libre.", "error");
+    function sumarHoyos(holes, desde, hasta) {
+      return holes
+        .filter(h => h.hole_number >= desde && h.hole_number <= hasta && h.strokes != null)
+        .reduce((sum, h) => sum + Number(h.strokes || 0), 0);
+    }
+
+    function contarHoyosCargados(holes, desde, hasta) {
+      return holes.filter(h => h.hole_number >= desde && h.hole_number <= hasta && h.strokes != null).length;
+    }
+
+    function textoSuma(sum, cargados) {
+      return cargados > 0 ? String(sum) : "—";
+    }
+
+    function leerInputsTarjeta() {
+      const seg = normalizarSegmento(scoreActual?.hole_segment || "18");
+      const habilitados = hoyosHabilitados(seg);
+      const holes = [];
+
+      for (const hole of habilitados) {
+        const input = document.getElementById(`h${hole}`);
+        const raw = String(input?.value || "").trim();
+        const strokes = raw === "" ? null : Number(raw);
+        const meta = COURSE_HOLES[hole];
+        holes.push({
+          hole_number: hole,
+          strokes: Number.isFinite(strokes) ? strokes : null,
+          par_value: meta.par,
+          hole_handicap: meta.hcp
+        });
+      }
+
+      return { seg, habilitados, holes };
+    }
+
+    function construirHoleScores(holes) {
+      const obj = {};
+      for (const h of holes) {
+        obj[String(h.hole_number)] = {
+          strokes: h.strokes,
+          par_value: h.par_value,
+          hole_handicap: h.hole_handicap
+        };
+      }
+      return obj;
+    }
+
+    function calcularResultado(holes) {
+      const cargados = holes.filter(h => h.strokes != null);
+      const gross = cargados.reduce((sum, h) => sum + Number(h.strokes || 0), 0);
+      const totalNecesarios = holes.length;
+      const hcp = Number(scoreActual?.playing_handicap || 0);
+
+      let card_status = "npt";
+      if (cargados.length === 0) card_status = "npt";
+      else if (cargados.length < totalNecesarios) card_status = "desc";
+      else card_status = "valid";
+
+      const net = cargados.length > 0 ? gross - hcp : null;
+      const export_ready = card_status === "valid" && matriculaValida(scoreActual?.aag_member_number);
+
+      return {
+        gross: cargados.length > 0 ? gross : null,
+        net,
+        total: net,
+        card_status,
+        export_ready
+      };
+    }
+
+    function actualizarPreviewLocal() {
+      if (!scoreActual) return;
+
+      const { holes } = leerInputsTarjeta();
+      const r = calcularResultado(holes);
+      scoreActual.hole_scores = construirHoleScores(holes);
+      Object.assign(scoreActual, r);
+
+      const sumaIda = sumarHoyos(holes, 1, 9);
+      const sumaVuelta = sumarHoyos(holes, 10, 18);
+      const cargadosIda = contarHoyosCargados(holes, 1, 9);
+      const cargadosVuelta = contarHoyosCargados(holes, 10, 18);
+      const cargadosTotal = holes.filter(h => h.strokes != null).length;
+
+      if ($("sumaIdaPreview")) $("sumaIdaPreview").textContent = textoSuma(sumaIda, cargadosIda);
+      if ($("sumaVueltaPreview")) $("sumaVueltaPreview").textContent = textoSuma(sumaVuelta, cargadosVuelta);
+      if ($("sumaTotalPreview")) $("sumaTotalPreview").textContent = textoSuma(sumaIda + sumaVuelta, cargadosTotal);
+      if ($("grossPreview")) $("grossPreview").textContent = r.gross ?? "—";
+      if ($("netPreview")) $("netPreview").textContent = r.net ?? "—";
+      if ($("estadoPreview")) $("estadoPreview").textContent = r.card_status === "valid" ? "Cargada" : r.card_status.toUpperCase();
+      if ($("exportPreview")) $("exportPreview").textContent = r.export_ready ? "Sí" : "No";
+      if ($("sumResultado")) $("sumResultado").textContent = r.net ?? "—";
+    }
+
+    function payloadScorecard(categoria) {
+      return {
+        tournament_id: torneoDiario.id,
+        registration_id: null,
+        linked_player_id: scoreActual.player_id || null,
+        display_name: scoreActual.display_name,
+        aag_member_number: scoreActual.aag_member_number || null,
+        category_id: categoria?.id || null,
+        tee_id: null,
+        official_index: scoreActual.official_index,
+        manual_index: scoreActual.official_index,
+        tee_name: scoreActual.tee_name || null,
+        category_name: categoria?.name || null,
+        player_gender: scoreActual.gender,
+        playing_handicap: scoreActual.playing_handicap,
+        slope: scoreActual.slope,
+        course_rating: scoreActual.course_rating,
+        par: scoreActual.par,
+        hole_segment: scoreActual.hole_segment || "18",
+        gross: scoreActual.gross,
+        net: scoreActual.net,
+        total: scoreActual.total,
+        card_status: scoreActual.card_status,
+        hole_scores: scoreActual.hole_scores,
+        aag_exportable: matriculaValida(scoreActual.aag_member_number),
+        export_ready: scoreActual.export_ready,
+        exported_to_aag: false,
+        starting_time: null,
+        starting_hole: null
+      };
+    }
+
+    async function guardarResultado() {
+      if (!scoreActual) return;
+      if (!matriculaValida(scoreActual.aag_member_number)) {
+        alert("Para guardar el resultado necesitás una matrícula válida.");
+        return;
+      }
+
+      actualizarPreviewLocal();
+
+      try {
+        setEstado("Creando o reutilizando el torneo diario V2...");
+        await asegurarTorneoDiario();
+        const categoria = categoriaTorneoParaScore();
+        if (!categoria) throw new Error("No pude relacionar el tee AAG con una categoría V2 del torneo.");
+        const matricula = String(scoreActual.aag_member_number || "").trim();
+        const { data: existente, error: buscarError } = await supabase.from("scorecards")
+          .select("id, exported_to_aag").eq("tournament_id", torneoDiario.id)
+          .is("registration_id", null).eq("aag_member_number", matricula).maybeSingle();
+        if (buscarError) throw buscarError;
+        if (existente?.exported_to_aag) throw new Error("Esta tarjeta ya fue exportada a AAG y no puede reemplazarse.");
+        const payload = payloadScorecard(categoria);
+        const resultado = existente
+          ? await supabase.from("scorecards").update(payload).eq("id", existente.id)
+          : await supabase.from("scorecards").insert(payload);
+        if (resultado.error) throw resultado.error;
+
+        setEstado(`Tarjeta guardada en ${torneoDiario.name}${payload.export_ready ? " y lista para AAG" : ""}.`, "ok");
+        alert("Tarjeta guardada correctamente en scorecards.");
+      } catch (err) {
+        console.error(err);
+        setEstado(err.message || "Error guardando resultado.", "error");
+        if (err?.code === "23502" && String(err?.message || "").includes("registration_id")) {
+          alert("Supabase todavía exige registration_id. Ejecutá primero el archivo configuracion_scorecard_libre_v2.sql completo y verificá que el resultado diga is_nullable = YES.");
+        } else {
+          alert("No pude guardar la tarjeta. Error: " + (err.message || err));
         }
-    </script>
+      }
+    }
+
+    function fontJugador(txt) {
+      const l = String(txt || "").length;
+      if (l > 38) return 10;
+      if (l > 30) return 11;
+      return 12;
+    }
+
+    function fontTorneo(txt) {
+      const l = String(txt || "").length;
+      if (l > 35) return 12;
+      if (l > 24) return 15;
+      return 24;
+    }
+
+    function cssTarjetaLaser() {
+      return `<style>
+        @page { size: A4 portrait; margin: 0; }
+        @media print {
+          html, body { margin:0!important; padding:0!important; width:210mm!important; height:297mm!important; overflow:hidden!important; background:white!important; }
+          .page, .home-btn { display:none!important; }
+          #print-root { display:block!important; position:absolute!important; left:0!important; top:0!important; width:210mm!important; height:297mm!important; margin:0!important; padding:0!important; background:white!important; overflow:hidden!important; }
+        }
+        .tarjeta-page { position:relative; width:210mm; height:297mm; margin:0; padding:0; overflow:hidden; background:white; page-break-after:always; break-after:page; }
+        .tarjeta-page:last-child { page-break-after:auto; break-after:auto; }
+        .tarjeta-landscape { position:absolute; width:297mm; height:210mm; left:0; top:297mm; transform-origin:top left; transform:rotate(-90deg); font-family:Arial,sans-serif; color:#000; }
+        .tj-field { position:absolute; height:7mm; line-height:7mm; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .tj-torneo { left:34mm; top:39mm; width:70mm; text-align:center; }
+        .tj-fecha { left:107mm; top:39mm; width:25mm; text-align:center; }
+        .tj-jugador-a-pareja { left:34mm; top:54mm; width:50mm; text-align:left; }
+        .tj-jugador-a-solo { left:34mm; top:54mm; width:70mm; text-align:left; }
+        .tj-jugador-b { left:85mm; top:54mm; width:50mm; text-align:right; }
+        .tj-handicap { left:136mm; top:54mm; width:27mm; text-align:center; }
+        .tj-matricula { left:170mm; top:54mm; width:27mm; text-align:center; }
+        .tj-index { left:120mm; top:39mm; width:60mm; text-align:center; font-size:14px; font-weight:700; line-height:1.05; }
+        .tj-datos { left:99mm; top:67mm; width:100mm; text-align:center; font-size:18px; }
+      </style>`;
+    }
+
+    function buildTarjetaNuevaHTML({ torneo, fecha, jugadorA, jugadorB = "", handicap = "", matricula = "", index = "", datos = "" }) {
+      const esPareja = !!jugadorB;
+      return `<div class="tarjeta-page"><div class="tarjeta-landscape">
+        <div class="tj-field tj-torneo" style="font-size:${fontTorneo(torneo)}px;">${escapeHtml(torneo)}</div>
+        <div class="tj-field tj-fecha" style="font-size:18px;">${escapeHtml(fecha)}</div>
+        <div class="tj-field ${esPareja ? "tj-jugador-a-pareja" : "tj-jugador-a-solo"}" style="font-size:${fontJugador(jugadorA)}px;">${escapeHtml(jugadorA)}</div>
+        ${esPareja ? `<div class="tj-field tj-jugador-b" style="font-size:${fontJugador(jugadorB)}px;">${escapeHtml(jugadorB)}</div>` : ""}
+        <div class="tj-field tj-handicap" style="font-size:15px;">${escapeHtml(handicap)}</div>
+        <div class="tj-field tj-matricula" style="font-size:14px;">${escapeHtml(matricula)}</div>
+        <div class="tj-field tj-index">${index ? `(${escapeHtml(index)})<br>INDEX` : ""}</div>
+        <div class="tj-field tj-datos">${escapeHtml(datos)}</div>
+      </div></div>`;
+    }
+
+    function imprimirLaserTarjeta(htmlTarjeta) {
+      printRoot.innerHTML = cssTarjetaLaser() + htmlTarjeta;
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => { printRoot.innerHTML = ""; }, 700);
+      }, 150);
+    }
+
+    function imprimirTarjeta() {
+      if (!scoreActual) return;
+      recalcularDesdeInputs();
+      imprimirLaserTarjeta(buildTarjetaNuevaHTML({
+        torneo: nombreCupon(),
+        fecha: fechaHoyTexto(),
+        jugadorA: String(scoreActual.display_name || "").trim().replace(/\s+/g, " "),
+        handicap: scoreActual.playing_handicap ?? "",
+        matricula: scoreActual.aag_member_number || "",
+        index: formatIndex(scoreActual.official_index),
+        datos: `— / Tee: ${scoreActual.tee_name || "—"} / —`
+      }));
+    }
+
+    function obtenerImporteCupon() {
+      const valor = String($("cuponImporte")?.value || "")
+        .replace(/\$/g, "").replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
+      const numero = Number(valor);
+      return Number.isNaN(numero) ? 0 : numero;
+    }
+
+    function money(value) {
+      return new Intl.NumberFormat("es-AR", {
+        style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2
+      }).format(Number(value || 0));
+    }
+
+    function configurarImporteCupon() {
+      const input = $("cuponImporte");
+      input.addEventListener("focus", () => {
+        const numero = obtenerImporteCupon();
+        input.value = numero > 0 ? String(Math.round(numero)) : "";
+      });
+      input.addEventListener("blur", () => {
+        const numero = obtenerImporteCupon();
+        if (!numero) {
+          input.value = "";
+          localStorage.setItem("green_fee_ticket_amount", "0");
+          return;
+        }
+        input.value = numero.toLocaleString("es-AR", {
+          style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2
+        });
+        localStorage.setItem("green_fee_ticket_amount", String(numero));
+      });
+    }
+
+    async function obtenerNumeroCupon() {
+      const branchCode = String(localStorage.getItem("ticket_branch_code") || "").trim();
+      if (!branchCode) throw new Error("Esta computadora no tiene configurada ticket_branch_code.");
+      const { data, error } = await supabase.rpc("get_next_ticket_number", { p_branch_code: branchCode });
+      if (error) throw error;
+      return data;
+    }
+
+    async function imprimirCupon() {
+      if (!scoreActual) return;
+      try {
+        const numero = await obtenerNumeroCupon();
+        const html = `<div class="ticket-80">
+          <div style="text-align:center;font-size:14px;font-weight:700">${CLUB_NOMBRE}</div>
+          <div style="text-align:center;font-size:12px">Cupón de pago NO FISCAL</div>
+          <div style="border-top:1px dashed #000;margin:6px 0"></div>
+          <div style="font-size:12px;line-height:1.5">
+            <div><b>Cupón:</b> ${escapeHtml(numero)}</div><div><b>Fecha:</b> ${fechaHoyTexto()}</div>
+            <div><b>Torneo:</b> ${escapeHtml(nombreCupon())}</div><div><b>Jugador:</b> ${escapeHtml(scoreActual.display_name)}</div>
+            <div><b>Matrícula:</b> ${escapeHtml(scoreActual.aag_member_number || "—")}</div><div><b>Concepto:</b> Green fee</div>
+            <div><b>Importe:</b> ${money(obtenerImporteCupon())}</div><div><b>Forma de pago:</b> ${escapeHtml($("cuponPago").value)}</div>
+          </div><div style="border-top:1px dashed #000;margin:6px 0"></div>
+          <div style="font-size:11px;text-align:center">NO VÁLIDO COMO FACTURA</div></div>`;
+        localStorage.setItem("green_fee_ticket_amount", String(obtenerImporteCupon()));
+        if (typeof window.imprimirTicketQZ !== "function") throw new Error("No se cargó qz-ticket.js.");
+        await window.imprimirTicketQZ(html);
+        setEstado(`Cupón ${numero} impreso para ${scoreActual.display_name}.`, "ok");
+      } catch (err) {
+        console.error(err);
+        setEstado(err.message || "No se pudo imprimir el cupón.", "error");
+        alert("No pude imprimir el cupón: " + (err.message || err));
+      }
+    }
+
+    function resetTodo() {
+      jugadorActual = null;
+      scoreActual = null;
+      buscadorJugador.value = "";
+      resultadosBusqueda.innerHTML = "";
+      panelJugador.innerHTML = `<div class="empty">Buscá o cargá un jugador manual para generar una tarjeta.</div>`;
+      panelCarga.innerHTML = `<div class="empty">Primero generá los datos de juego.</div>`;
+      if ($("btnCupon")) $("btnCupon").disabled = true;
+      setEstado("Listo para generar una nueva tarjeta.", "ok");
+    }
+
+    $("btnBuscar").addEventListener("click", buscarJugadores);
+    buscadorJugador.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(buscarJugadores, 350);
+    });
+    buscadorJugador.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") buscarJugadores();
+    });
+    $("btnUsarManual").addEventListener("click", seleccionarJugadorManual);
+    $("btnCupon").addEventListener("click", imprimirCupon);
+    $("btnReset").addEventListener("click", resetTodo);
+    $("btnHome").addEventListener("click", () => { window.location.href = "panel.html"; });
+
+    try {
+      const importeGuardado = Number(localStorage.getItem("green_fee_ticket_amount") || 0);
+      $("cuponImporte").value = importeGuardado > 0 ? importeGuardado.toLocaleString("es-AR", {
+        style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2
+      }) : "";
+      configurarImporteCupon();
+      await protegerAdmin();
+      await cargarTeesYReglas();
+    } catch (err) {
+      console.error(err);
+      setEstado(err.message || "Error inicializando scorecard libre.", "error");
+    }
+  </script>
 </body>
 
 </html>
