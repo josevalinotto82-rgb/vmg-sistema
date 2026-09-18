@@ -297,10 +297,9 @@
     <script type="module">
         import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-        const supabase = createClient(
-            "https://bnnfolhrqxgxjmobclrm.supabase.co",
-            "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
-        );
+        const SUPABASE_URL = "https://bnnfolhrqxgxjmobclrm.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ";
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function exigirAdmin() {
             const { data: { session } } = await supabase.auth.getSession();
@@ -327,7 +326,26 @@
 
         await exigirAdmin();
 
-        const FUNCTION_URL = "https://bnnfolhrqxgxjmobclrm.supabase.co/functions/v1/swift-worker";
+        const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/swift-worker`;
+
+        async function fetchWorker(options = {}) {
+            const { data: { session }, error } = await supabase.auth.getSession();
+
+            if (error || !session?.access_token) {
+                window.location.href = "login.html";
+                throw new Error("La sesión venció. Volvé a iniciar sesión.");
+            }
+
+            const headers = new Headers(options.headers || {});
+            headers.set("Authorization", `Bearer ${session.access_token}`);
+            headers.set("apikey", SUPABASE_KEY);
+            headers.set("Content-Type", "application/json");
+
+            return fetch(FUNCTION_URL, {
+                ...options,
+                headers
+            });
+        }
 
         const torneoSelect = document.getElementById("torneoSelect");
         const btnGenerar = document.getElementById("btnGenerar");
@@ -546,7 +564,7 @@
                  * la sincronización normal seguirá funcionando, pero NO
                  * borraremos nada por seguridad.
                  */
-                const res = await fetch(FUNCTION_URL, {
+                const res = await fetchWorker({
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -644,7 +662,7 @@
                 // 👉 enviar uno por uno
                 for (const exp of exportsPendientes) {
 
-                    const res = await fetch(FUNCTION_URL, {
+                    const res = await fetchWorker({
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json"
@@ -693,7 +711,7 @@
                     out.textContent =
                         "Actualizando estado real AAG...";
 
-                    const res = await fetch(FUNCTION_URL, {
+                    const res = await fetchWorker({
 
                         method: "POST",
 
@@ -744,7 +762,7 @@
 
                     out.textContent = "Simulando exportación automática...";
 
-                    const res = await fetch(FUNCTION_URL, {
+                    const res = await fetchWorker({
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json"
@@ -1695,7 +1713,7 @@
                 meta
             });
 
-            const res = await fetch(FUNCTION_URL, {
+            const res = await fetchWorker({
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -1858,7 +1876,7 @@
                 btn.disabled = true;
                 out.textContent = "Eliminando torneo en AAG...";
 
-                const res = await fetch(FUNCTION_URL, {
+                const res = await fetchWorker({
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"

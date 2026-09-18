@@ -163,48 +163,23 @@
                 return;
             }
 
-            const { error: preUpdateError } = await supabase
-                .from("players")
-                .update({
-                    email,
-                    phone: telefono
-                })
-                .eq("id", jugadorEncontrado.id);
-
-            if (preUpdateError) {
-                console.error(preUpdateError);
-                msg.textContent = preUpdateError.message;
-                return;
-            }
-
-            const { data: authData, error: authError } = await supabase.auth.signUp({
+            const { error: authError } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     emailRedirectTo: "https://josevalinotto82-rgb.github.io/vmg-sistema/login.html",
                     data: {
-                        aag_member_number: jugadorEncontrado.aag_member_number
+                        aag_member_number: jugadorEncontrado.aag_member_number,
+                        phone: telefono
                     }
                 }
             });
 
             if (authError) {
-                msg.style.color = "#166534";
-                msg.textContent = "Iniciado. Revisá tu email y confirmá.";
+                msg.style.color = "#b91c1c";
+                msg.textContent = authError.message || "No se pudo completar el registro.";
                 return;
             }
-
-            const userId = authData.user.id;
-
-            await supabase.from("profiles").insert({
-                id: userId,
-                role: "member",
-                active: true
-            });
-
-            await supabase.from("players").update({
-                profile_id: userId
-            }).eq("id", jugadorEncontrado.id);
 
             msg.style.color = "#166534";
             msg.textContent = "Registrado. Revisá tu correo y confirmá tu e-mail para ingresar.";
