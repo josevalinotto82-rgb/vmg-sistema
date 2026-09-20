@@ -5731,7 +5731,7 @@
                 teeTxt = `Tee: ${nombreVisibleTee(tee || tee2) || "—"}`;
             }
 
-            return teeTxt;
+            return `${hora ? hora + " hs." : "—"} / ${teeTxt} / ${hoyo || "—"}`;
         }
 
         function cssTarjetaLaser(multiple = false) {
@@ -6349,20 +6349,21 @@
           </div>
         ` : ""}
 
+        <div class="tj-field tj-handicap" style="font-size:15px;">
+          ${esc(handicap)}
+        </div>
+
         <div class="tj-field tj-matricula" style="font-size:14px;">
           ${esc(matricula)}
+        </div>
+
+        <div class="tj-field tj-index">
+          ${index ? `(${esc(index)})<br>INDEX` : ""}
         </div>
 
         <div class="tj-field tj-datos">
           ${esc(datos)}
         </div>
-
-        <div class="tj-marca-fija" style="position:absolute; left:37mm; top:138mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">5</div>
-        <div class="tj-marca-fija" style="position:absolute; left:92mm; top:138mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">36</div>
-        <div class="tj-marca-fija" style="position:absolute; left:171mm; top:138mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">72</div>
-        <div class="tj-marca-fija" style="position:absolute; left:37mm; top:145.5mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">X</div>
-        <div class="tj-marca-fija" style="position:absolute; left:92mm; top:145.5mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">X</div>
-        <div class="tj-marca-fija" style="position:absolute; left:171mm; top:145.5mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">X</div>
 
                 ${golpesAmericana || ""}
 
