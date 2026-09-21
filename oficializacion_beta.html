@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VMGC · Adm. torneo</title>
+  <link rel="stylesheet" href="vmgc_beta.css">
+  <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
+  <script src="./qz-ticket.js?v=999"></script>
+</head>
+<body>
+  <div data-app-shell></div>
+  <main class="shell">
+    <section class="hero">
+      <div><div class="eyebrow">Espacio del torneo</div><h1>Adm. torneo</h1><p class="lead">La lista muestra lo esencial. Los datos completos aparecen al revisar cada jugador.</p></div>
+      <div class="hero-actions"><a class="btn outline" href="panel_beta.html">← Panel</a><button class="btn secondary" id="paymentsSummaryButton">Informe de pagos</button><button class="btn primary" id="saveReadyButton">Crear tarjetas</button></div>
+    </section>
+    <div id="tournamentStrip"></div>
+    <section class="card pricing-card"><div class="card-body"><div class="pricing-copy"><span class="eyebrow">Valores predeterminados</span><strong>Derecho de torneo</strong><small>Se aplican automáticamente al abrir cada jugador y quedan guardados en esta computadora.</small></div><div class="field"><label>Precio socio</label><input class="control money-control" id="memberPrice" inputmode="decimal" placeholder="$ 0,00"></div><div class="field"><label>Precio invitado</label><input class="control money-control" id="guestPrice" inputmode="decimal" placeholder="$ 0,00"></div></div></section>
+    <section class="card">
+      <div class="card-head"><div><h2>Jugadores</h2><div class="subtle" id="playersSummary">Cargando jugadores…</div></div><span class="status pending" id="attentionStatus">Cargando</span></div>
+      <div class="card-body">
+        <div class="toolbar"><div class="field grow"><label>Buscar</label><input class="control" id="playerSearch" placeholder="Nombre, matrícula, club, hora u hoyo"></div><div class="filter-tabs" id="statusFilters"><button class="filter-tab active" data-filter="all">Todos</button><button class="filter-tab" data-filter="pending">Pendientes</button><button class="filter-tab" data-filter="review">Revisar</button><button class="filter-tab" data-filter="ready">Listos</button></div></div>
+        <div id="pageState" class="notice">Cargando información real de Supabase…</div>
+        <div class="table-wrap hidden" id="playersTableWrap"><table class="table officialization-table"><thead><tr><th>Jugador</th><th>Salida</th><th>Categoría</th><th>Index</th><th>HCP</th><th>Pago</th><th>Estado</th><th></th></tr></thead><tbody id="playerRows"></tbody></table></div>
+      </div>
+    </section>
+    <div class="flow-footer-actions"><button class="btn secondary" id="printReadyButton">Imprimir tarjetas</button><button class="btn outline" id="saveTournamentButton">Guardar torneo</button><a class="btn primary" id="continueCardsLink" href="tarjetas_beta.html">Continuar a carga de tarjetas →</a></div>
+    <div class="footer-note">Sistema VMGC Beta · Administración del torneo</div>
+  </main>
+  <div class="drawer" id="playerDrawer" aria-hidden="true"><section class="drawer-panel officialization-drawer"><div class="drawer-head"><div><div class="eyebrow">Revisión individual</div><h2 id="drawerTitle">Administrar jugador</h2></div><button class="btn secondary small" id="drawerClose" aria-label="Cerrar">✕</button></div><div id="drawerContent"></div><div class="drawer-actions officialization-actions"><button class="btn secondary" id="couponButton">Cupón</button><button class="btn outline" id="savePaymentButton">Guardar pago</button><button class="btn outline" id="cardButton">Tarjeta</button><button class="btn primary" id="savePlayerButton">Guardar jugador</button></div></section></div>
+  <div class="drawer" id="paymentsDrawer" aria-hidden="true"><section class="drawer-panel"><div class="drawer-head"><div><div class="eyebrow">Control de caja</div><h2>Resumen de pagos</h2></div><button class="btn secondary small" id="paymentsClose">✕</button></div><div id="paymentsContent"></div><div class="drawer-actions"><button class="btn primary" id="printPaymentsButton">Imprimir informe A4</button></div></section></div>
+  <div id="printRoot"></div>
+  <script type="module" src="js/officialization_page_beta.js"></script>
+</body>
+</html>

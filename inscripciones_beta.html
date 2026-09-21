@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Inscripciones VMGC Beta</title><link rel="stylesheet" href="vmgc_beta.css"></head>
+<body>
+  <div data-app-shell></div>
+  <main class="shell">
+    <section class="hero"><div><div class="eyebrow">Etapa 2</div><h1>Inscripciones</h1><p class="lead">Una grilla clara para elegir salida, anotar jugadores y administrar reservas sin cambiar de pantalla.</p></div><div class="hero-actions"><button class="btn gold" id="exportGridButton" hidden>Compartir grilla</button><button class="btn secondary" id="refreshButton">↻ Actualizar</button></div></section>
+    <div id="pageState" class="notice" hidden></div>
+    <section class="tournament-strip" id="tournamentStrip"><div class="tournament-main"><span class="status info">Cargando</span><h2>Seleccioná un torneo</h2><div class="meta">La grilla se actualizará en tiempo real.</div></div></section>
+    <article class="card registrations-card">
+      <div class="card-head registrations-head"><div><h2>Grilla de salidas</h2><div class="subtle" id="gridSummary">Cargando disponibilidad…</div></div><div class="filter-tabs" id="gridViewTabs" aria-label="Filtrar salidas"></div></div>
+      <div class="card-body"><div class="registration-toolbar"><div class="field grid-search"><label>Buscar en la grilla</label><input class="control" id="gridPlayerSearch" placeholder="Nombre o matrícula" autocomplete="off"></div><button class="btn primary" id="addPlayerButton">＋ Agregar jugador</button><div class="grid-legend"><span><i class="legend-dot member"></i> VMGC</span><span><i class="legend-dot visitor"></i> Otro club</span><span><i class="legend-dot manual"></i> Manual</span><span><i class="legend-dot reserved"></i> Reserva</span></div></div><div class="grid-instruction" id="gridInstruction" hidden>Elegí el horario y casillero libre donde querés agregar al jugador.</div><section id="gridHost" class="grid-board" aria-live="polite"></section></div>
+    </article>
+  </main>
+
+  <div class="drawer" id="playerDrawer" aria-hidden="true"><section class="drawer-panel"><div class="drawer-head"><div><div class="eyebrow" id="drawerEyebrow">Nuevo participante</div><h2 id="drawerTitle">Elegir jugador</h2><p class="subtle" id="drawerHint"></p></div><button class="btn secondary small" id="closeDrawer">✕</button></div>
+    <div id="drawerMessage" class="notice" hidden></div>
+    <div id="selectionSummary" class="selection-summary"></div>
+    <div class="field"><label>Buscar por nombre, apellido o matrícula</label><input class="control" id="playerSearch" autocomplete="off" placeholder="Ej. jose val o 12345"></div>
+    <div id="searchResults" class="search-results"><div class="empty-state compact">Escribí al menos dos caracteres.</div></div>
+    <details class="collapsible" id="manualPanel"><summary>Agregar jugador manual</summary><form id="manualForm"><div class="field-grid"><div class="field"><label>Nombre</label><input class="control" id="manualFirst"></div><div class="field"><label>Apellido</label><input class="control" id="manualLast"></div><div class="field"><label>Índice</label><input class="control" id="manualIndex" inputmode="decimal"></div><div class="field"><label>Género</label><select class="control" id="manualGender"><option value="male">Caballero</option><option value="female">Dama</option></select></div><div class="field full"><label>País</label><input class="control" id="manualCountry" value="Argentina"></div></div><button class="btn secondary" type="submit">Crear y seleccionar</button></form></details>
+    <div class="drawer-actions"><button class="btn danger" id="blockEmptyButton" hidden>Bloquear casillero</button><button class="btn secondary" id="reserveButton">Reservar lugar</button><button class="btn primary" id="saveRegistration" disabled>Guardar inscripción</button></div>
+  </section></div>
+
+  <div class="drawer" id="slotDrawer" aria-hidden="true"><section class="drawer-panel narrow"><div class="drawer-head"><div><div class="eyebrow">Lugar ocupado</div><h2 id="slotPlayerName">Jugador</h2><p class="subtle" id="slotPlayerMeta"></p></div><button class="btn secondary small" id="closeSlotDrawer">✕</button></div><div class="slot-detail" id="slotDetail"></div><div class="drawer-actions"><button class="btn secondary" id="moveButton" hidden>Mover</button><button class="btn danger" id="releaseButton">Liberar lugar</button><button class="btn secondary" id="blockButton" hidden>Desbloquear lugar</button></div><a class="btn secondary" id="whatsappButton" href="https://wa.me/5493535646926" target="_blank" hidden>Solicitar baja por WhatsApp</a></section></div>
+  <div class="toast" id="toast"></div>
+  <div id="shareExportWrap" class="share-export-wrap" aria-hidden="true"></div>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script type="module" src="js/registrations_page_beta.js"></script>
+</body></html>
