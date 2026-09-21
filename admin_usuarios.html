@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+
+    <title>Administrar Usuarios - VMGC</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f8f3;
+            color: #1f2937;
+        }
+
+        .page {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 18px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+        }
+
+        h1 {
+            margin: 0;
+            color: #14532d;
+            font-size: 25px;
+        }
+
+        .sub {
+            margin-top: 6px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .volver {
+            display: inline-block;
+            margin-top: 14px;
+            color: #166534;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+        }
+
+        .card h2 {
+            margin: 0 0 14px;
+            color: #166534;
+            font-size: 19px;
+        }
+
+        input {
+            width: 100%;
+            height: 44px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 0 12px;
+            font-size: 15px;
+            margin-bottom: 10px;
+        }
+
+        input:focus {
+            outline: 2px solid #86efac;
+            border-color: #22c55e;
+        }
+
+        button {
+            width: 100%;
+            border: 0;
+            border-radius: 10px;
+            padding: 12px;
+            background: #166534;
+            color: white;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #15803d;
+        }
+
+        button:disabled {
+            opacity: .6;
+            cursor: default;
+        }
+
+        .resultados {
+            margin-top: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .resultado {
+            padding: 12px 14px;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+        }
+
+        .resultado:last-child {
+            border-bottom: none;
+        }
+
+        .resultado:hover {
+            background: #f0fdf4;
+        }
+
+        .nombre {
+            color: #14532d;
+            font-weight: 900;
+        }
+
+        .detalle {
+            color: #6b7280;
+            font-size: 12px;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .jugador {
+            padding: 15px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .jugador-nombre {
+            font-size: 20px;
+            color: #14532d;
+            font-weight: 900;
+        }
+
+        .estado {
+            display: inline-block;
+            margin-top: 10px;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .estado.ok {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .estado.no {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .estado.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        label {
+            display: block;
+            margin: 12px 0 5px;
+            font-size: 13px;
+            color: #374151;
+            font-weight: 700;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin: -3px 0 10px;
+        }
+
+        .msg {
+            margin-top: 14px;
+            padding: 11px;
+            border-radius: 10px;
+            display: none;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .msg.ok {
+            display: block;
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .msg.error {
+            display: block;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            color: #6b7280;
+            font-size: 13px;
+            padding: 8px 0;
+        }
+
+        @media (max-width: 600px) {
+            .page {
+                padding: 14px;
+            }
+
+            .card,
+            .header {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page">
+
+        <div class="header">
+            <h1>Usuarios VMGC</h1>
+
+            <div class="sub">
+                Crear y modificar accesos de jugadores.
+            </div>
+
+            <a class="volver" href="panel.html">
+                ← Volver al panel
+            </a>
+        </div>
+
+
+        <div class="card">
+
+            <h2>Buscar jugador</h2>
+
+            <input id="buscar" placeholder="Nombre, apellido o matrícula" autocomplete="off">
+
+            <div id="buscando" class="loading hidden">
+                Buscando...
+            </div>
+
+            <div id="resultados" class="resultados hidden"></div>
+
+        </div>
+
+
+        <div id="editorCard" class="card hidden">
+
+            <div id="datosJugador"></div>
+
+            <div id="estadoCuenta"></div>
+
+            <label>Email</label>
+
+            <input id="email" type="email" placeholder="Email del jugador" autocomplete="off">
+
+            <label id="passwordLabel">
+                Contraseña
+            </label>
+
+            <input id="password" type="password" placeholder="Contraseña" autocomplete="new-password">
+
+            <label>
+                Repetir contraseña
+            </label>
+
+            <input id="password2" type="password" placeholder="Repetir contraseña" autocomplete="new-password">
+
+            <div id="passwordHint" class="hint"></div>
+
+            <button id="guardarBtn">
+                Guardar
+            </button>
+
+            <div id="msg" class="msg"></div>
+
+        </div>
+
+    </div>
+
+
+    <script type="module">
+
+        import {
+            createClient
+        } from "https://esm.sh/@supabase/supabase-js@2";
+
+
+        const supabase = createClient(
+            "https://bnnfolhrqxgxjmobclrm.supabase.co",
+            "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
+        );
+
+
+        const buscarEl =
+            document.getElementById("buscar");
+
+        const resultadosEl =
+            document.getElementById("resultados");
+
+        const buscandoEl =
+            document.getElementById("buscando");
+
+        const editorCard =
+            document.getElementById("editorCard");
+
+        const datosJugadorEl =
+            document.getElementById("datosJugador");
+
+        const estadoCuentaEl =
+            document.getElementById("estadoCuenta");
+
+        const emailEl =
+            document.getElementById("email");
+
+        const passwordEl =
+            document.getElementById("password");
+
+        const password2El =
+            document.getElementById("password2");
+
+        const passwordLabel =
+            document.getElementById("passwordLabel");
+
+        const passwordHint =
+            document.getElementById("passwordHint");
+
+        const guardarBtn =
+            document.getElementById("guardarBtn");
+
+        const msgEl =
+            document.getElementById("msg");
+
+
+        let searchTimer = null;
+
+        let jugadorActual = null;
+
+        let cuentaActual = null;
+
+
+        function escapeHtml(valor) {
+
+            return String(valor ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+
+        function mostrarMensaje(
+            mensaje,
+            tipo = "ok"
+        ) {
+
+            msgEl.textContent = mensaje;
+
+            msgEl.className =
+                `msg ${tipo}`;
+        }
+
+
+        function limpiarMensaje() {
+
+            msgEl.textContent = "";
+
+            msgEl.className = "msg";
+        }
+
+
+        async function llamarFuncion(body) {
+
+            const {
+                data,
+                error
+            } = await supabase.functions.invoke(
+                "admin-users",
+                {
+                    body
+                }
+            );
+
+
+            if (error) {
+
+                let mensaje =
+                    error.message ||
+                    "Error llamando a la función.";
+
+                try {
+
+                    if (error.context) {
+
+                        const respuesta =
+                            await error.context.json();
+
+                        mensaje =
+                            respuesta?.error ||
+                            respuesta?.message ||
+                            mensaje;
+                    }
+
+                } catch (_) { }
+
+                throw new Error(mensaje);
+            }
+
+
+            if (!data?.ok) {
+
+                throw new Error(
+                    data?.error ||
+                    "Ocurrió un error."
+                );
+            }
+
+
+            return data;
+        }
+
+
+        async function verificarAdmin() {
+
+            const {
+                data: { session }
+            } =
+                await supabase.auth.getSession();
+
+
+            if (!session) {
+
+                window.location.href =
+                    "login.html";
+
+                return false;
+            }
+
+
+            const {
+                data: profile,
+                error
+            } =
+                await supabase
+                    .from("profiles")
+                    .select("role, active")
+                    .eq(
+                        "id",
+                        session.user.id
+                    )
+                    .maybeSingle();
+
+
+            if (
+                error ||
+                !profile ||
+                profile.role !== "admin" ||
+                profile.active !== true
+            ) {
+
+                alert(
+                    "No tenés permisos para acceder."
+                );
+
+                window.location.href =
+                    "panel.html";
+
+                return false;
+            }
+
+
+            return true;
+        }
+
+
+        async function buscarJugadores() {
+
+            const q =
+                buscarEl.value.trim();
+
+
+            if (q.length < 2) {
+
+                resultadosEl.innerHTML = "";
+
+                resultadosEl.classList.add(
+                    "hidden"
+                );
+
+                return;
+            }
+
+
+            buscandoEl.classList.remove(
+                "hidden"
+            );
+
+
+            try {
+
+                const data =
+                    await llamarFuncion({
+                        action: "search",
+                        query: q
+                    });
+
+
+                const players =
+                    data.players || [];
+
+
+                if (!players.length) {
+
+                    resultadosEl.innerHTML = `
+                    <div class="resultado">
+                        <div class="detalle">
+                            No encontré jugadores.
+                        </div>
+                    </div>
+                `;
+
+                    resultadosEl.classList.remove(
+                        "hidden"
+                    );
+
+                    return;
+                }
+
+
+                resultadosEl.innerHTML =
+                    players.map(
+                        (p, index) => `
+
+                    <div
+                        class="resultado"
+                        data-index="${index}"
+                    >
+
+                        <div class="nombre">
+
+                            ${escapeHtml(
+                            p.full_name ||
+                            `${p.last_name || ""}, ${p.first_name || ""}`
+                        )}
+
+                        </div>
+
+                        <div class="detalle">
+
+                            Matrícula:
+                            ${escapeHtml(
+                            p.aag_member_number ||
+                            "—"
+                        )}
+
+                            · Index:
+                            ${p.current_index ?? "—"}
+
+                            ${p.profile_id
+                                ? " · Tiene usuario"
+                                : " · Sin usuario"
+                            }
+
+                        </div>
+
+                    </div>
+
+                `).join("");
+
+
+                resultadosEl.classList.remove(
+                    "hidden"
+                );
+
+
+                resultadosEl
+                    .querySelectorAll(
+                        "[data-index]"
+                    )
+                    .forEach(item => {
+
+                        item.addEventListener(
+                            "click",
+                            async () => {
+
+                                const player =
+                                    players[
+                                    Number(
+                                        item.dataset.index
+                                    )
+                                    ];
+
+                                await seleccionarJugador(
+                                    player
+                                );
+                            }
+                        );
+
+                    });
+
+
+            } catch (error) {
+
+                resultadosEl.innerHTML = `
+                <div class="resultado">
+                    <div class="detalle">
+                        ${escapeHtml(
+                    error.message
+                )}
+                    </div>
+                </div>
+            `;
+
+                resultadosEl.classList.remove(
+                    "hidden"
+                );
+
+            } finally {
+
+                buscandoEl.classList.add(
+                    "hidden"
+                );
+            }
+        }
+
+
+        async function seleccionarJugador(
+            player
+        ) {
+
+            limpiarMensaje();
+
+            jugadorActual = player;
+
+            resultadosEl.classList.add(
+                "hidden"
+            );
+
+            buscarEl.value =
+                player.full_name ||
+                `${player.last_name || ""}, ${player.first_name || ""}`;
+
+
+            editorCard.classList.remove(
+                "hidden"
+            );
+
+
+            datosJugadorEl.innerHTML = `
+
+            <div class="jugador">
+
+                <div class="jugador-nombre">
+
+                    ${escapeHtml(
+                jugadorActual.full_name ||
+                `${jugadorActual.last_name || ""}, ${jugadorActual.first_name || ""}`
+            )}
+
+                </div>
+
+                <div class="detalle">
+
+                    Matrícula:
+                    ${escapeHtml(
+                jugadorActual.aag_member_number ||
+                "—"
+            )}
+
+                    · Index:
+                    ${jugadorActual.current_index ?? "—"}
+
+                </div>
+
+            </div>
+        `;
+
+
+            estadoCuentaEl.innerHTML =
+                `<div class="loading">
+                Consultando usuario...
+            </div>`;
+
+
+            try {
+
+                const data =
+                    await llamarFuncion({
+                        action: "status",
+                        player_id:
+                            jugadorActual.id
+                    });
+
+
+                cuentaActual =
+                    data.account;
+
+
+                emailEl.value =
+                    cuentaActual.email || "";
+
+
+                passwordEl.value = "";
+
+                password2El.value = "";
+
+
+                if (
+                    cuentaActual.broken_link
+                ) {
+
+                    estadoCuentaEl.innerHTML = `
+                    <div class="estado error">
+                        VÍNCULO INCOMPLETO
+                    </div>
+
+                    <div class="detalle"
+                         style="margin:8px 0 15px">
+
+                        El jugador tiene profile_id,
+                        pero el usuario no existe
+                        correctamente en Auth.
+
+                    </div>
+                `;
+
+                    guardarBtn.disabled = true;
+
+                    return;
+                }
+
+
+                guardarBtn.disabled = false;
+
+
+                if (cuentaActual.exists) {
+
+                    estadoCuentaEl.innerHTML = `
+
+                    <div class="estado ok">
+                        USUARIO ACTIVO
+                    </div>
+
+                    <div class="detalle"
+                         style="margin:8px 0 15px">
+
+                        Email actual:
+                        <b>
+                            ${escapeHtml(
+                        cuentaActual.email
+                    )}
+                        </b>
+
+                    </div>
+                `;
+
+
+                    passwordLabel.textContent =
+                        "Nueva contraseña";
+
+                    passwordEl.placeholder =
+                        "Dejar vacío para no cambiarla";
+
+                    password2El.placeholder =
+                        "Repetir nueva contraseña";
+
+                    passwordHint.textContent =
+                        "Si no querés cambiar la contraseña, dejá ambos campos vacíos.";
+
+                    guardarBtn.textContent =
+                        "GUARDAR CAMBIOS";
+
+                } else {
+
+                    estadoCuentaEl.innerHTML = `
+
+                    <div class="estado no">
+                        SIN USUARIO
+                    </div>
+
+                    <div class="detalle"
+                         style="margin:8px 0 15px">
+
+                        Este jugador todavía
+                        no tiene acceso al sistema.
+
+                    </div>
+                `;
+
+
+                    passwordLabel.textContent =
+                        "Contraseña";
+
+                    passwordEl.placeholder =
+                        "Contraseña";
+
+                    password2El.placeholder =
+                        "Repetir contraseña";
+
+                    passwordHint.textContent =
+                        "El jugador podrá ingresar inmediatamente. No tendrá que confirmar ningún correo.";
+
+                    guardarBtn.textContent =
+                        "CREAR USUARIO";
+                }
+
+
+            } catch (error) {
+
+                estadoCuentaEl.innerHTML = `
+                <div class="estado error">
+                    ERROR
+                </div>
+            `;
+
+                mostrarMensaje(
+                    error.message,
+                    "error"
+                );
+            }
+        }
+
+
+        async function guardarUsuario() {
+
+            if (
+                !jugadorActual ||
+                !cuentaActual
+            ) {
+
+                return;
+            }
+
+
+            limpiarMensaje();
+
+
+            const email =
+                emailEl.value
+                    .trim()
+                    .toLowerCase();
+
+
+            const password =
+                passwordEl.value;
+
+            const password2 =
+                password2El.value;
+
+
+            if (!email) {
+
+                mostrarMensaje(
+                    "Ingresá un email.",
+                    "error"
+                );
+
+                return;
+            }
+
+
+            if (password !== password2) {
+
+                mostrarMensaje(
+                    "Las contraseñas no coinciden.",
+                    "error"
+                );
+
+                return;
+            }
+
+
+            if (
+                !cuentaActual.exists &&
+                !password
+            ) {
+
+                mostrarMensaje(
+                    "Ingresá una contraseña para crear el usuario.",
+                    "error"
+                );
+
+                return;
+            }
+
+
+            if (
+                password &&
+                password.length < 6
+            ) {
+
+                mostrarMensaje(
+                    "La contraseña debe tener al menos 6 caracteres.",
+                    "error"
+                );
+
+                return;
+            }
+
+
+            guardarBtn.disabled = true;
+
+
+            const textoAnterior =
+                guardarBtn.textContent;
+
+
+            guardarBtn.textContent =
+                "Guardando...";
+
+
+            try {
+
+                let data;
+
+
+                if (cuentaActual.exists) {
+
+                    const emailCambio =
+                        email !==
+                        String(
+                            cuentaActual.email ||
+                            ""
+                        ).toLowerCase();
+
+
+                    if (
+                        !emailCambio &&
+                        !password
+                    ) {
+
+                        mostrarMensaje(
+                            "No hay cambios para guardar.",
+                            "error"
+                        );
+
+                        return;
+                    }
+
+
+                    data =
+                        await llamarFuncion({
+                            action: "update",
+
+                            player_id:
+                                jugadorActual.id,
+
+                            email:
+                                emailCambio
+                                    ? email
+                                    : "",
+
+                            password
+                        });
+
+                } else {
+
+                    data =
+                        await llamarFuncion({
+                            action: "create",
+
+                            player_id:
+                                jugadorActual.id,
+
+                            email,
+
+                            password
+                        });
+
+                }
+
+
+                mostrarMensaje(
+                    data.message ||
+                    "Operación realizada correctamente.",
+                    "ok"
+                );
+
+
+                // Volver a consultar el usuario
+                const estadoNuevo =
+                    await llamarFuncion({
+                        action: "status",
+                        player_id:
+                            jugadorActual.id
+                    });
+
+
+                cuentaActual =
+                    estadoNuevo.account;
+
+
+                emailEl.value =
+                    cuentaActual.email || email;
+
+                passwordEl.value = "";
+
+                password2El.value = "";
+
+
+                estadoCuentaEl.innerHTML = `
+
+                <div class="estado ok">
+                    USUARIO ACTIVO
+                </div>
+
+                <div class="detalle"
+                     style="margin:8px 0 15px">
+
+                    Email actual:
+                    <b>
+                        ${escapeHtml(
+                    cuentaActual.email
+                )}
+                    </b>
+
+                </div>
+            `;
+
+
+                passwordLabel.textContent =
+                    "Nueva contraseña";
+
+                passwordEl.placeholder =
+                    "Dejar vacío para no cambiarla";
+
+                password2El.placeholder =
+                    "Repetir nueva contraseña";
+
+                passwordHint.textContent =
+                    "Si no querés cambiar la contraseña, dejá ambos campos vacíos.";
+
+                guardarBtn.textContent =
+                    "GUARDAR CAMBIOS";
+
+
+            } catch (error) {
+
+                mostrarMensaje(
+                    error.message,
+                    "error"
+                );
+
+            } finally {
+
+                guardarBtn.disabled = false;
+
+                if (
+                    guardarBtn.textContent ===
+                    "Guardando..."
+                ) {
+
+                    guardarBtn.textContent =
+                        textoAnterior;
+                }
+            }
+        }
+
+
+        buscarEl.addEventListener(
+            "input",
+            () => {
+
+                clearTimeout(
+                    searchTimer
+                );
+
+                searchTimer =
+                    setTimeout(
+                        buscarJugadores,
+                        300
+                    );
+            }
+        );
+
+
+        guardarBtn.addEventListener(
+            "click",
+            guardarUsuario
+        );
+
+
+        const permitido =
+            await verificarAdmin();
+
+
+        if (!permitido) {
+
+            throw new Error(
+                "Acceso no autorizado."
+            );
+        }
+
+    </script>
+
+</body>
+
+</html>
