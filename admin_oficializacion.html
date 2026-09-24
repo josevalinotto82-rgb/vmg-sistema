@@ -5710,9 +5710,17 @@
         }
 
         function fontTorneo(txt) {
-            const l = String(txt || "").length;
+            // Adaptar nombres extensos al espacio disponible en la tarjeta.
+            // Los títulos largos se distribuyen en renglones de poca altura.
+            const l = String(txt || "").trim().length;
+            if (l > 180) return 7;
+            if (l > 135) return 8;
+            if (l > 100) return 9;
+            if (l > 70) return 10;
+            if (l > 48) return 11;
             if (l > 35) return 12;
             if (l > 24) return 15;
+            if (l > 18) return 19;
             return 24;
         }
 
@@ -5813,9 +5821,26 @@
 
       .tj-torneo {
         left: 34mm;
-        top: 39mm;
+        /* El ultimo renglon queda donde iba el titulo original (39-46 mm).
+           Si el nombre ocupa mas renglones, crece hacia ARRIBA. */
+        top: 27mm;
         width: 70mm;
+        height: 19mm;
+        line-height: 1.05;
         text-align: center;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+      }
+
+      .tj-torneo-text {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        text-wrap: balance;
       }
 
       .tj-fecha {
@@ -6332,7 +6357,7 @@
       <div class="tarjeta-landscape">
 
         <div class="tj-field tj-torneo" style="font-size:${fontTorneo(torneo)}px;">
-          ${esc(torneo)}
+          <span class="tj-torneo-text">${esc(torneo)}</span>
         </div>
 
         <div class="tj-field tj-fecha" style="font-size:18px;">
@@ -6364,6 +6389,13 @@
         <div class="tj-field tj-datos">
           ${esc(datos)}
         </div>
+
+        <div class="tj-marca-fija" style="position:absolute; left:37mm; top:138mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">5</div>
+        <div class="tj-marca-fija" style="position:absolute; left:92mm; top:138mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">36</div>
+        <div class="tj-marca-fija" style="position:absolute; left:171mm; top:138mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">72</div>
+        <div class="tj-marca-fija" style="position:absolute; left:37mm; top:145.5mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">X</div>
+        <div class="tj-marca-fija" style="position:absolute; left:92mm; top:145.5mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">X</div>
+        <div class="tj-marca-fija" style="position:absolute; left:171mm; top:145.5mm; width:4mm; height:3mm; line-height:3mm; text-align:center; font-size:12px; font-weight:700;">X</div>
 
                 ${golpesAmericana || ""}
 
