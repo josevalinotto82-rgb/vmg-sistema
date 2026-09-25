@@ -848,6 +848,168 @@
                 font-size: 13px;
             }
         }
+
+        /* Vista por clubes: únicamente para el Interclubes. */
+        .ic-leyenda,
+        .ic-regla {
+            color: #526154;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 14px 16px
+        }
+
+        .ic-equipos {
+            padding: 0 14px 14px
+        }
+
+        .interclubes-equipo {
+            border: 1px solid #dce6dd;
+            border-radius: 10px;
+            margin-top: 9px;
+            overflow: hidden
+        }
+
+        .interclubes-equipo>summary {
+            display: grid;
+            grid-template-columns: 40px minmax(0, 1fr) 115px 16px;
+            gap: 12px;
+            align-items: center;
+            padding: 15px;
+            cursor: pointer;
+            list-style: none;
+            background: #f7faf7
+        }
+
+        .interclubes-equipo>summary::-webkit-details-marker {
+            display: none
+        }
+
+        .interclubes-equipo>summary:focus-visible {
+            outline: 3px solid #166534;
+            outline-offset: -3px
+        }
+
+        .ic-pos {
+            font-size: 22px;
+            font-weight: 800;
+            color: #166534
+        }
+
+        .ic-club {
+            font-weight: 700;
+            overflow-wrap: anywhere
+        }
+
+        .ic-total {
+            font-size: 24px;
+            text-align: right;
+            font-weight: 800
+        }
+
+        .ic-club small,
+        .ic-total small,
+        .ic-jugador small {
+            display: block;
+            font-size: 12px;
+            font-weight: 400;
+            color: #637066;
+            margin-top: 4px
+        }
+
+        .ic-jugadores {
+            padding: 0 15px
+        }
+
+        .ic-tarjeta>.ic-jugador {
+            display: grid;
+            list-style: none;
+            cursor: pointer;
+            grid-template-columns: minmax(0, 1fr) 38px 120px;
+            gap: 12px;
+            align-items: center;
+            padding: 12px 0;
+            border-top: 1px solid #e5e7eb;
+            font-size: 14px
+        }
+
+        .ic-tarjeta>summary::-webkit-details-marker {
+            display: none
+        }
+
+        .ic-tarjeta>summary:focus-visible {
+            outline: 2px solid #166534
+        }
+
+        .ic-tarjeta[open]>summary {
+            background: #eef7ef
+        }
+
+        .ic-tarjeta-contenido {
+            padding: 10px 0;
+            overflow-x: auto
+        }
+
+        .ic-jugador strong {
+            text-align: right
+        }
+
+        .ic-estado {
+            font-size: 12px;
+            text-align: center;
+            font-weight: 700
+        }
+
+        .ic-suma {
+            color: #166534;
+            font-weight: 700
+        }
+
+        .ic-descarte {
+            color: #b42318;
+            font-weight: 700
+        }
+
+        .ic-pendiente {
+            color: #647067
+        }
+
+        @media(max-width:600px) {
+            .ic-equipos {
+                padding: 0 8px 8px
+            }
+
+            .interclubes-equipo>summary {
+                grid-template-columns: 27px minmax(0, 1fr) 82px 10px;
+                gap: 7px;
+                padding: 12px 8px
+            }
+
+            .ic-club {
+                font-size: 13px
+            }
+
+            .ic-total {
+                font-size: 20px
+            }
+
+            .ic-total small {
+                font-size: 10px
+            }
+
+            .ic-jugadores {
+                padding: 0 10px
+            }
+
+            .ic-tarjeta>.ic-jugador {
+                grid-template-columns: minmax(0, 1fr) 27px 83px;
+                gap: 8px;
+                font-size: 12px
+            }
+
+            .ic-estado {
+                font-size: 11px
+            }
+        }
     </style>
 </head>
 
@@ -2348,13 +2510,13 @@
             if (esNoValido(j)) return false;
             if (generoJugador(j) !== genero) return false;
 
+            // Damas: todas compiten por Scratch, sin restricción de índex.
+            if (genero === "female") return true;
+
             const idx = parseNumero(j.official_index);
             if (idx === null) return false;
 
-            if (genero === "male") return idx >= -6 && idx <= 9;
-
-            // Damas: todas compiten por Scratch.
-            if (genero === "female") return idx >= -10 && idx <= 54;
+            if (genero === "male") return idx >= -10 && idx <= 9;
 
             return false;
         }
@@ -3684,6 +3846,133 @@
             renderTorneo();
         }
 
+
+        // Excepción exclusiva: 27° Campeonato Provincial Interclubes.
+        async function cargarInterclubes() {
+            const CATEGORIES = [
+                {
+                    name: "Caballeros · Primera División", teams: [
+                        ["CORDOBA GOLF CLUB", [["43801", "PEREZ ORLIACQ, RAMIRO"], ["135264", "LOZADA, PEDRO"], ["156592", "ROSALES, JUSTO"], ["142559", "BEVACQUA, MAURICIO (H)"], ["130497", "OLIVA PINTO, GONZALO"], ["34785", "NOVILLO SARAVIA, MATIAS"]]],
+                        ["ALTA GRACIA GOLF CLUB", [["92836", "PASSERA, JULIÁN"], ["150582", "PALACIO CARRANZA, SANTIAGO"], ["128581", "PEREYRA, LAUTARO"], ["135651", "GOLDCHMIDT, SANTIAGO"], ["176999", "ROCA, OCTAVIO"], ["177042", "BLANCH, ONOFRE (H)"]]],
+                        ["EL TERRON GOLF CLUB", [["70351", "CALSINA, EDUARDO"], ["64555", "CARRERAS, JUAN"], ["113648", "ARDUH, JUAN"], ["64308", "GRUNHAUT, DIEGO"], ["156030", "CESAR LLOPIS, GONZALO"], ["62467", "LOZADA, AGUSTIN (H)"]]],
+                        ["RIO CUARTO GOLF CLUB", [["118865", "ESTIVILL, GUILLERMO (H)"], ["137137", "CERDA, VALENTÍN G."], ["168357", "CARRANZA, CLODOMIRO"], ["120282", "FICCO, IGNACIO"], ["93132", "PICHETTO, SEBASTIAN"]]],
+                        ["VILLA MARIA GOLF CLUB", [["169330", "VENERANDA, BAUTISTA"], ["169314", "GABIOUD, BAUTISTA"], ["176303", "LANZILLOTTA, FELIPE"], ["99545", "MONTAGNER, FEDERICO"], ["180428", "ESCALAREA, TOMAS"], ["116339", "ESPINA, IGNACIO"]]],
+                        ["JOCKEY CLUB CORDOBA", [["69226", "GRANATA, EMILIANO"], ["82126", "Matrícula 82126"], ["101929", "NASIFF, FRANCISCO"], ["115902", "STEFANINI, FRANCISCO"], ["96932", "RODRIGUEZ RIVERA, IGNACIO"], ["135822", "PAGLIA, MATEO"], ["84633", "FIGUEROA, PEDRO"]]]]
+                },
+                {
+                    name: "Caballeros · Segunda División", teams: [
+                        ["LOMAS DE LA CAROLINA", [["167030", "PEREYRA, JUAN CRUZ"], ["155837", "MILLER, FRANCO"], ["169406", "CHAGURI MENZI, FRANCISCO"], ["156608", "ZABLOSKY, GASTON"], ["179524", "COHEN OLIVA, FRANCISCO"]]],
+                        ["BELL VILLE GOLF CLUB", [["130905", "MIHAICH, LEANDRO"], ["156447", "ANCONETANI, VICENTE"], ["152815", "PEÑA DATTA, MANOLO"], ["51823", "MIHAICH, LISANDRO"], ["168354", "ARMANDO, BAUTISTA"]]],
+                        ["ASCOCHINGA GOLF CLUB", [["109046", "CORREA, MARTIN"], ["109195", "VAZQUEZ, IGNACIO"], ["86290", "BRUSASCA, FELIPE"], ["140411", "VAZQUEZ, GULLERMO"], ["117108", "STOLTZING, FACUNDO"]]],
+                        ["VALLE GOLF CLUB", [["46043", "BONINO, LUCIANO"], ["51829", "FONS, FACUNDO"], ["103804", "COSTA, AGUSTIN"], ["132082", "BERNARDI, FEDERICO"], ["130719", "QUAGLIOTTI, JULIO"]]],
+                        ["LAS DELICIAS CAMPO DE GOLF", [["152918", "CECCHETTO, GINO"], ["125354", "SABAGH, ELIAS"], ["175568", "REINAUDO FRANCISCO"], ["150672", "GABELLIERI, FRANCISCO"], ["179801", "BERTUCCIOLI, JULIAN"]]],
+                        ["LA CASCADA GOLF CLUB", [["80565", "SAMPIETRO, AGUSTIN"], ["40006", "LOZA, MATIAS"], ["45295", "CABRAL, AGUSTIN"], ["52491", "CANDIA, JOSE (H)"]]]]
+                },
+                {
+                    name: "Caballeros · Tercera División", teams: [
+                        ["SAN MARTIN GOLF CLUB", [["122510", "LOPEZ, AGUSTIN GUILLERMO"], ["131001", "CAVAGLIA, JUAN PABLO"], ["37367", "BERRI, SERGIO"], ["153284", "BAIGORRIA, TOMAS"], ["106683", "MARZOLA, GUSTAVO"]]],
+                        ["LA CUMBRE GOLF CLUB", [["102787", "HORNER, JUAN PATRICIO"], ["117251", "TADEO, AGUSTIN"], ["135800", "ARBACH, CONSTANTINO"], ["150293", "LUDUEÑA, SANTIAGO"]]],
+                        ["JOCKEY CLUB SAN FRANCISCO", [["79634", "AGODINO, LEOPOLDO"], ["107164", "JAPPERT, AGUSTIN"], ["156444", "GIOINO, JOSÉ MARÍA"], ["137675", "RIVAROSA, LUIS"], ["35519", "GIOINO, JOAQUÍN"]]],
+                        ["LAS VARILLAS GOLF", [["113790", "BALDRICH, MANUEL"], ["136702", "PIGNATA, EMILIO"], ["117003", "CUGGINO, SERGIO"], ["126858", "SCHIBLI, FEDERICO"], ["153213", "CAGLIERO, SANTIAGO"]]],
+                        ["CLUB ATLETICO UNION ALICIA", [["109670", "CAFFARATTI, MAXIMILIANO DAVID"], ["129157", "GUEVARA FIURI, ERNESTO GERHARD"], ["129601", "SILVA, FEDERICO"], ["153480", "MARTINEZ, JOAQUIN"], ["136392", "MARTINEZ, RAMIRO LUIS"]]],
+                        ["ESTANCIA LA PAZ GOLF", [["171058", "HAYES, BENJAMIN"], ["86488", "DE BIASI, EMILIO"], ["139867", "BUSTO, JOAQUIN LEONEL"], ["82130", "MARCISZACK, NICOLAS"], ["169723", "DE BIASI, IGNACIO"]]]]
+                },
+                {
+                    name: "Caballeros · Cuarta División", teams: [
+                        ["LOS EUCALIPTUS GOLF", [["103183", "FERRERO, DIEGO"], ["113156", "FERRERO, CESAR"], ["127012", "ZAMORA, LUCAS"], ["103155", "SAMPIETRO, RAUL"], ["156685", "Matrícula 156685"]]],
+                        ["CORONEL MOLDES GOLF CLUB", [["127383", "ANGELLI, CRISTIAN PABLO"], ["133651", "DIAZ, GUSTAVO ARIEL"], ["152344", "ROSSETTO, BRUNO SALVADOR"], ["136743", "DOMINGUEZ, GERMAN"], ["155373", "RAMIREZ, IVAN DAVID"]]],
+                        ["LA RIOJA CLUB DE GOLF", [["84871", "CASTILLO, CARLOS A."], ["128977", "ROMANAZZI, JUAN MANUEL"], ["65642", "PESCE, JOSÉ PABLO"], ["156166", "AVENTUROSO ARTICO, JERÓNIMO"], ["117101", "MERCADO LUNA, LISANDRO"]]],
+                        ["GOLF CLUB RIO TERCERO", [["178587", "STERPONE, ANDRES NICOLAS"], ["179865", "SIMONELLI, OCTAVIO"], ["106553", "CORNEJO, RICARDO GUSTAVO"], ["141742", "GIGENA, FERNANDO"], ["181167", "CARREON PEÑA, JUAN IGNACIO"]]],
+                        ["EL POTRERILLO DE LARRETA", [["79376", "TISSERA, ANDRES"], ["68558", "PUSIOL, DANTE"], ["116384", "SALEME, LUIS"], ["66375", "AGUIRRE SARAVIA, LUIS"]]]]
+                },
+                {
+                    name: "Caballeros · Quinta División", teams: [
+                        ["ATIPECAS GOLF", [["187944", "LEYRIA, SERGIO"], ["131570", "BUENO, JUAN"], ["93934", "MILOCH, HORACIO"], ["131413", "BUENO, SERGIO"]]],
+                        ["SAN ESTEBAN COUNTRY GOLF", [["74931", "KOHLER, MARTIN"], ["74930", "KOHLER, ARY"], ["91832", "PAGLIARI, ARTURO QUINTO"], ["71104", "PAGLIARI, ARTURO CUARTO"], ["102361", "URQUIA, JUAN MANUEL"]]]]
+                },
+                {
+                    name: "Damas · Primera División", teams: [
+                        ["RIO CUARTO GOLF CLUB", [["152186", "GIULIANO, ANA"], ["132902", "VILLALBA, BERNARDITA"], ["184297", "LENARDON, ALBERTINA"]]],
+                        ["VILLA MARIA GOLF CLUB", [["169321", "BIANCO, GUILLERMINA"], ["171240", "FIURI, AMAIA"], ["185715", "RIBETTI, RENATA"], ["59550", "RETEGUI, LAURA"]]],
+                        ["CÓRDOBA GOLF CLUB", [["173782", "RUBIO, PILAR AGUSTINA"], ["174792", "AVILA BOGGIO, CATALINA MARÍA"], ["153154", "REVUELTA VASQUEZ, AGUSTINA"], ["169108", "OLIVA PINTO, DELFINA"]]],
+                        ["LOMAS DE LA CAROLINA", [["124663", "LUCERO, CARLA"], ["179523", "COHEN OLIVA, JULIETA"], ["100250", "ABOLIO, GABRIELA"], ["54329", "HIRSCH, HELGA"]]],
+                        ["EL POTRERILLO DE LARRETA", [["17689", "ZUBERBUHLER, CYNTHIA"], ["23892", "LAURENTE, VIVIANA"], ["59552", "LOWE, MELODY"], ["89638", "FREYTES, MARIA EUGENIA"]]],
+                        ["VALLE GOLF CLUB", [["113441", "LIBERTINO, GIULIANA"], ["180928", "ZAMPETTI, PAZ"], ["186574", "MONTORO, HUILEN"], ["180772", "SANCHEZ, PAULINA"]]]]
+                }];
+
+            const ALL_MEMBER_NUMBERS = [...new Set(CATEGORIES.flatMap(category => category.teams.flatMap(team => team[1].map(player => player[0]))))];
+            let cardsByMember = new Map(), namesByMember = new Map(), screenIndex = 0, cycleToken = 0, realtimeChannel = null, loading = false, lastDataSignature = null;
+            const esc = v => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+            const number = v => { const x = Number(String(v ?? "").replace(",", ".")); return Number.isFinite(x) && x > 0 ? x : null };
+            const validCard = c => c && String(c.card_status || "").toLowerCase() === "valid" && number(c.gross) !== null;
+            function requiredCards(categoryIndex) { return categoryIndex === 0 ? 4 : categoryIndex === 5 ? 2 : 3 }
+            function holeStroke(card, hole) { const value = card?.hole_scores?.[hole] ?? card?.hole_scores?.[String(hole)]; return number(value && typeof value === "object" ? value.strokes : value) }
+            function closingScore(card, from) { let total = 0; for (let hole = from; hole <= 18; hole++) { const value = holeStroke(card, hole); if (value === null) return null; total += value } return total }
+            function compareCards(a, b) {
+                if (a.score !== b.score) return a.score - b.score;
+                for (const from of [10, 13, 16, 18]) { const av = closingScore(a.card, from), bv = closingScore(b.card, from); if (av !== null && bv !== null && av !== bv) return av - bv; if (av !== null && bv === null) return -1; if (av === null && bv !== null) return 1 }
+                return a.name.localeCompare(b.name, "es");
+            }
+            function teamResult(raw, required) {
+                const players = raw[1].map(([member, excelName]) => { const card = cardsByMember.get(String(member)); const name = namesByMember.get(String(member)) || card?.display_name || excelName; return { member, name, card, score: validCard(card) ? number(card.gross) : null } });
+                const scored = players.filter(p => p.score !== null).sort(compareCards); const missing = players.filter(p => p.score === null).sort((a, b) => a.name.localeCompare(b.name, "es")); const orderedPlayers = [...scored, ...missing]; const used = new Set(scored.slice(0, required).map(p => p.member));
+                return { club: raw[0], players: orderedPlayers, required, complete: scored.length >= required, count: scored.length, total: scored.length >= required ? scored.slice(0, required).reduce((s, p) => s + p.score, 0) : null, partial: scored.reduce((s, p) => s + p.score, 0), used };
+            }
+            function rankedCategory(cat, categoryIndex) {
+                const required = requiredCards(categoryIndex); const teams = cat.teams.map(team => teamResult(team, required)).sort((a, b) => { if (a.complete !== b.complete) return a.complete ? -1 : 1; if (a.complete) return a.total - b.total || a.club.localeCompare(b.club, "es"); return b.count - a.count || a.partial - b.partial || a.club.localeCompare(b.club, "es") });
+                let rank = 0, last = null; teams.forEach((t, i) => { if (t.complete) { if (last === null || t.total !== last) rank = i + 1; t.rank = rank; last = t.total } else t.rank = null }); return teams;
+            }
+
+            async function actualizar() {
+                if (loading) return;
+                loading = true;
+                try {
+                    const [{ data: cards, error }, { data: names, error: namesError }, { data: cats, error: catsError }] = await Promise.all([
+                        supabase.from("scorecards").select("*").eq("tournament_id", torneoId),
+                        supabase.from("players").select("aag_member_number,full_name").in("aag_member_number", ALL_MEMBER_NUMBERS),
+                        supabase.from("tournament_categories").select("*").eq("tournament_id", torneoId)
+                    ]);
+                    if (error) throw error;
+                    if (catsError) throw catsError;
+                    categorias = cats || [];
+                    hoyosPorScorecard = {};
+                    (cards || []).forEach(reconstruirHoyosScorecard);
+                    if (!namesError) namesByMember = new Map((names || []).map(p => [String(p.aag_member_number || "").trim(), p.full_name]));
+                    cardsByMember = new Map((cards || []).map(c => [String(c.aag_member_number || "").trim(), c]));
+                    const abiertos = new Set([...document.querySelectorAll(".interclubes-equipo[open], .ic-tarjeta[open]")].map(e => e.id));
+                    const signature = JSON.stringify({ cards, cats, names: [...namesByMember] });
+                    if (signature !== lastDataSignature) {
+                        document.getElementById("contenido").innerHTML = '<p class="ic-leyenda">Clasificación por equipos · Suma de gross. <span class="ic-suma">Suma</span>: tarjeta computada. <span class="ic-descarte">Descartada</span>: no integra el total. Abrí un club para ver sus jugadores y tocá un jugador para ver su tarjeta.</p>' + CATEGORIES.map((cat, index) => {
+                            const required = requiredCards(index);
+                            return '<section class="categoria-card"><div class="categoria-header">' + esc(cat.name) + '</div><p class="ic-regla">Suman las ' + required + ' mejores tarjetas válidas · ' + cat.teams.length + ' clubes</p><div class="ic-equipos">' + rankedCategory(cat, index).map((team, teamIndex) => {
+                                const id = 'ic-' + index + '-' + cat.teams.findIndex(t => t[0] === team.club);
+                                const encontrado = busquedaJugador && team.players.filter(p => p.score !== null).some(p => coincideBusquedaJugador(p.name, busquedaJugador) || p.member === busquedaJugador.trim());
+                                const open = abiertos.has(id) || (!lastDataSignature && encontrado);
+                                return '<details id="' + id + '" class="interclubes-equipo"' + (open ? ' open' : '') + '><summary><span class="ic-pos">' + (team.rank ? team.rank + '°' : '–') + '</span><span class="ic-club">' + esc(team.club) + '<small>' + team.count + ' tarjetas válidas</small></span><span class="ic-total">' + (team.complete ? team.total : 'Parcial') + '<small>' + (team.complete ? 'Gross · ' + required + ' mejores' : team.count + '/' + required + ' necesarias') + '</small></span><span aria-hidden="true">⌄</span></summary><div class="ic-jugadores">' + team.players.filter(p => p.score !== null).map(p => {
+                                    const used = team.used.has(p.member);
+                                    const label = p.score !== null ? (used ? 'Suma' : 'Descartada') : (p.card ? 'Sin tarjeta válida' : 'Sin tarjeta');
+                                    const clase = p.score !== null ? (used ? 'ic-suma' : 'ic-descarte') : 'ic-pendiente';
+                                    const tarjetaId = id + '-jugador-' + p.member;
+                                    return '<details class="ic-tarjeta" id="' + esc(tarjetaId) + '"' + (abiertos.has(tarjetaId) ? ' open' : '') + '><summary class="ic-jugador"><span>' + esc(p.name) + '<small>Matrícula ' + esc(p.member) + ' · Ver tarjeta</small></span><strong>' + p.score + '</strong><span class="ic-estado ' + clase + '">' + label + '</span></summary><div class="ic-tarjeta-contenido"><p class="ic-regla">Gross: <strong>' + p.score + '</strong> · ' + esc(label) + '</p>' + detalleDesktop(p.card) + detalleMobile(p.card) + '</div></details>';
+                                }).join('') + '</div></details>';
+                            }).join('') + '</div></section>';
+                        }).join('') + '<p id="ic-actualizacion" class="ic-leyenda" role="status"></p>';
+                        lastDataSignature = signature;
+                    }
+                    document.getElementById("ic-actualizacion").textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-AR') + ' · Actualización automática cada 15 segundos.';
+                } catch (error) {
+                    console.error(error);
+                    const estado = document.getElementById("ic-actualizacion");
+                    if (estado) estado.textContent = 'No se pudo actualizar. Se muestran los últimos resultados recibidos; se reintentará automáticamente.';
+                    else document.getElementById("contenido").innerHTML = '<div class="empty">No se pudieron cargar los resultados. Se reintentará automáticamente.</div>';
+                } finally { loading = false; }
+            }
+            document.getElementById("subtitulo").textContent = formatearFecha(torneoActual.tournament_date) + ' · Medal Play por equipos';
+            await actualizar();
+            const timer = setInterval(actualizar, 15000);
+            window.addEventListener('pagehide', () => clearInterval(timer), { once: true });
+        }
+
         async function cargarTorneo() {
             try {
 
@@ -3717,6 +4006,11 @@
                 }
 
                 torneoActual = torneo;
+                if (torneoId === "f1f556b8-ff1a-41f5-9315-68981e0a3389") {
+                    document.getElementById("titulo").textContent = torneo.name;
+                    await cargarInterclubes();
+                    return;
+                }
 
                 document.getElementById("titulo").textContent = torneo.name;
                 document.getElementById("subtitulo").textContent =
@@ -4402,8 +4696,8 @@
                     });
 
                 /*
-                 * Scratch siempre muestra únicamente
-                 * los tres primeros puestos.
+                 * Scratch muestra a todos los participantes que cumplen
+                 * los requisitos, sin límite de puestos.
                  */
                 const listaScratchFinal = listaScratch
                     .filter(j => {
@@ -4415,8 +4709,7 @@
                         }
 
                         return cumpleMinimoSerie(j, true);
-                    })
-                    .slice(0, 3);
+                    });
 
                 renderTablaCategoria(
                     titulo,
