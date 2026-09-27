@@ -1941,7 +1941,7 @@
         }
 
         function compararAcumulado(a, b, campo) {
-            const prioridad = Number(clasificaAcumulado(b)) - Number(clasificaAcumulado(a));
+            const prioridad = Number(b.rounds_played || 0) - Number(a.rounds_played || 0);
             return prioridad || a[campo] - b[campo] ||
                 String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
         }
@@ -1999,7 +1999,7 @@
             html += renderBloquesInformeJugadores(scorecards.filter(esTarjetaValida));
             if (serieActual) {
                 html += `<h2 class="print-section-title">${esc(serieActual.name || "Serie")} · Acumulado de las fechas jugadas</h2>
-                    <p>Primero clasifican quienes presentaron dos o más tarjetas, de menor a mayor total de golpes. Con una sola tarjeta figuran al final, sin puesto. Categoría e índice de su última fecha válida.</p>`;
+                    <p>Clasifican quienes presentaron dos o más tarjetas. Se ordenan por mayor cantidad de tarjetas presentadas y, a igual cantidad, por menor total de golpes. Con una sola tarjeta figuran al final, sin puesto. Categoría e índice de su última fecha válida.</p>`;
                 html += renderBloquesInformeJugadores(acumuladoInformeJugadores(), true);
             }
             el("printArea").innerHTML = html + `</div>`;
@@ -2586,7 +2586,7 @@
                 <b>${esc(serieActual.name || "Serie")}</b><br>
                 Este torneo es la fecha <b>${esc(torneoActual.series_round_number || "—")}</b> de la serie.
                 Para clasificar en el acumulado se exige presentar <b>dos o más tarjetas</b>. Con una sola tarjeta se muestra el resultado al final, sin puesto.
-                El orden principal se calcula por <b>${labelScore}</b>. El mejor 18 toma la mejor vuelta individual de cada jugador.
+                En el acumulado se prioriza la <b>mayor cantidad de tarjetas presentadas</b> y, a igual cantidad, el <b>menor ${labelScore} acumulado</b>. El mejor 18 toma la mejor vuelta individual de cada jugador.
             `;
 
             renderSerieAcumulado();
@@ -2645,6 +2645,7 @@
             const esMejor36 = tipo === "mejor36";
 
             const ordenarScratch = (a, b) => {
+                if (tipo === "acumulado") return compararAcumulado(a, b, "total_gross");
 
                 if (esMejor18) {
 
@@ -2727,6 +2728,7 @@
                 catItems
                     .slice()
                     .sort((a, b) => {
+                        if (tipo === "acumulado") return compararAcumulado(a, b, "score");
 
                         if (esMejor18) {
 
@@ -2776,7 +2778,7 @@
 
         function renderSerieAcumulado() {
             const { completos, incompletos, required, field } = calcularAcumuladoSerie();
-            let html = '<div class="series-note">Ganadores del acumulado con dos o más tarjetas. Se muestran los puestos configurados arriba. Los jugadores con una sola tarjeta figuran debajo, sin puesto.</div>';
+            let html = '<div class="series-note">Ganadores del acumulado con dos o más tarjetas: primero mayor cantidad de tarjetas presentadas y, a igual cantidad, menor suma de golpes. Se muestran los puestos configurados arriba. Los jugadores con una sola tarjeta figuran debajo, sin puesto.</div>';
             html += renderTablaSeriePorCategorias({ tipo: "acumulado", items: completos, field, required });
             if (incompletos.length) {
                 html += '<h3>Una tarjeta presentada · Sin puesto en el acumulado</h3>';
@@ -3893,6 +3895,7 @@
             const esMejor36 = tipo === "mejor36";
 
             const ordenarScratch = (a, b) => {
+                if (tipo === "acumulado") return compararAcumulado(a, b, "total_gross");
 
                 if (esMejor18) {
 
@@ -3977,6 +3980,7 @@
                 catItems
                     .slice()
                     .sort((a, b) => {
+                        if (tipo === "acumulado") return compararAcumulado(a, b, "score");
 
                         if (esMejor18) {
 
@@ -4149,6 +4153,7 @@
             const esMejor18 = tipo === "mejor18";
 
             const ordenarCategoria = (a, b) => {
+                if (tipo === "acumulado") return compararAcumulado(a, b, "score");
 
                 if (esMejor18) {
 
@@ -4182,6 +4187,7 @@
 
 
             const ordenarScratch = (a, b) => {
+                if (tipo === "acumulado") return compararAcumulado(a, b, "total_gross");
 
                 if (esMejor18) {
 
@@ -4263,7 +4269,7 @@
     `;
 
             if (tipo === "acumulado") {
-                html += `<div class="print-meta">Clasifican jugadores con dos o más tarjetas presentadas. Se muestran los puestos configurados en pantalla.</div>`;
+                html += `<div class="print-meta">Clasifican jugadores con dos o más tarjetas presentadas. Primero mayor cantidad de tarjetas y, a igual cantidad, menor suma de golpes. Se muestran los puestos configurados en pantalla.</div>`;
             }
 
             categoriasOrdenadas.forEach(([cat, catItems]) => {
