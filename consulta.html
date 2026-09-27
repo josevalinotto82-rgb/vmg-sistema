@@ -1266,6 +1266,19 @@
             background: #166534;
             transform: scale(1.05);
         }
+    
+        @media print {
+            .print-page.print-player-report {
+                height: auto;
+                overflow: visible;
+                page-break-after: auto;
+                break-after: auto;
+            }
+            .print-player-report thead { display: table-header-group; }
+            .print-player-report th { position: static; }
+            .print-player-report tr { break-inside: avoid; }
+            .print-player-report .print-section-title { break-after: avoid; }
+        }
     </style>
 </head>
 
@@ -1459,9 +1472,20 @@
             window.print();
         });
 
-        el("btnInformeJugadores").addEventListener("click", () => {
-            renderInformeJugadores();
-            window.print();
+        el("btnInformeJugadores").addEventListener("click", async () => {
+            if (!torneoActual) return;
+            const boton = el("btnInformeJugadores");
+            boton.disabled = true;
+            try {
+                if (torneoActual.series_id) await cargarDatosSerie(torneoActual);
+                renderInformeJugadores();
+                window.print();
+            } catch (error) {
+                console.error(error);
+                setEstado("No se pudieron cargar las fechas de la serie: " + error.message, "error");
+            } finally {
+                boton.disabled = false;
+            }
         });
 
         torneoSelect.addEventListener("change", cargarInforme);
@@ -1828,7 +1852,161 @@
                 .localeCompare(String(b.display_name), "es");
         }
 
+        // Informe completo: independiente de los límites de premios.
+        function generoInformeJugador(sc) {
+            const meta = categoriaMetaPorScorecard(sc);
+            for (const valor of [sc.player_gender, meta?.gender, sc.category_name, sc.tee_name]) {
+                const genero = normalizarGenero(valor);
+                if (genero === "female" || genero === "male") return genero;
+                const texto = String(valor || "").toLowerCase();
+                if (/dama|mujer|roja/.test(texto)) return "female";
+                if (/caballero|hombre/.test(texto)) return "male";
+            }
+            return "unknown";
+        }
+
+        function indexInformeJugador(sc) {
+            return nNullable(sc.official_index) ?? nNullable(sc.manual_index);
+        }
+
+        function crearIdentidadInforme(tarjetas) {
+            const padres = new Map();
+            const buscar = clave => {
+                if (!padres.has(clave)) padres.set(clave, clave);
+                if (padres.get(clave) !== clave) padres.set(clave, buscar(padres.get(clave)));
+                return padres.get(clave);
+            };
+            const claves = sc => [
+                sc.aag_member_number ? "mat:" + String(sc.aag_member_number).trim() : null,
+                sc.linked_player_id ? "id:" + String(sc.linked_player_id).trim() : null
+            ].filter(Boolean);
+            tarjetas.forEach(sc => {
+                const ids = claves(sc);
+                if (ids.length > 1) padres.set(buscar(ids[1]), buscar(ids[0]));
+            });
+            const nombres = new Map();
+            tarjetas.forEach(sc => {
+                const ids = claves(sc);
+                const nombre = normalizarTextoClave(sc.display_name || "");
+                if (!nombre || !ids.length) return;
+                if (!nombres.has(nombre)) nombres.set(nombre, new Set());
+                nombres.get(nombre).add(buscar(ids[0]));
+            });
+            return sc => {
+                const ids = claves(sc);
+                if (ids.length) return buscar(ids[0]);
+                const nombre = normalizarTextoClave(sc.display_name || "");
+                const candidatos = nombres.get(nombre);
+                if (candidatos?.size === 1) return [...candidatos][0];
+                // No mezclar homónimos identificados como jugadores diferentes.
+                return candidatos?.size > 1 || !nombre ? "tarjeta:" + sc.id : "nombre:" + nombre;
+            };
+        }
+
+        function acumuladoInformeJugadores() {
+            const grupos = new Map();
+            // La clasificación usa la categoría e índice de la última fecha válida.
+            const tarjetas = scorecardsSerie.filter(esTarjetaValida).slice().sort((a, b) => {
+                const ta = torneoSeriePorId(a.tournament_id);
+                const tb = torneoSeriePorId(b.tournament_id);
+                return String(ta?.tournament_date || "").localeCompare(String(tb?.tournament_date || "")) ||
+                    (Number(ta?.series_round_number) || 0) - (Number(tb?.series_round_number) || 0);
+            });
+            const identidad = crearIdentidadInforme(tarjetas);
+            for (const sc of tarjetas) {
+                const key = identidad(sc);
+                if (!grupos.has(key)) grupos.set(key, new Map());
+                grupos.get(key).set(String(sc.tournament_id), sc);
+            }
+            return [...grupos.values()].map(fechas => {
+                const rounds = [...fechas.values()];
+                const ultima = rounds[rounds.length - 1];
+                const sumar = campo => {
+                    const resultados = rounds.map(s => nNullable(s[campo])).filter(v => v != null);
+                    return resultados.length ? resultados.reduce((total, v) => total + v, 0) : null;
+                };
+                return { ...ultima, key: identidad(ultima), gross: sumar("gross"), net: sumar("net"), total: sumar("total"),
+                    rounds, rounds_played: rounds.length, playing_handicap: null };
+            });
+        }
+
+        function participaCategoriaNeto(item) {
+            if (generoInformeJugador(item) !== "female") return true;
+            const idx = indexInformeJugador(item);
+            return idx != null && idx >= 9.1 && idx <= 54;
+        }
+
+        function clasificaAcumulado(item) {
+            return Number(item.rounds_played || 0) >= 2;
+        }
+
+        function compararAcumulado(a, b, campo) {
+            const prioridad = Number(clasificaAcumulado(b)) - Number(clasificaAcumulado(a));
+            return prioridad || a[campo] - b[campo] ||
+                String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+        }
+
+        function renderListadoInforme(titulo, items, campo, acumulado) {
+            const jugadores = items.filter(s => nNullable(s[campo]) != null).slice().sort((a, b) =>
+                acumulado
+                    ? compararAcumulado(a, b, campo)
+                    : compareScore(a, b, campo)
+            );
+            let html = `<div class="print-section-title">${esc(titulo)}</div>`;
+            if (!jugadores.length) return html + `<p>Sin tarjetas válidas con resultado.</p>`;
+            const valor = (v, dec = 0) => nNullable(v) == null ? "—" : fmt(v, dec);
+            html += `<table class="print-series-table informe-jugadores"><thead><tr>
+                <th>Pos</th><th>Matrícula</th><th class="left">Jugador</th>
+                <th>${campo === "gross" ? "Gross" : "Neto"}${acumulado ? " acumulado" : ""}</th>
+                </tr></thead><tbody>`;
+            jugadores.forEach((j, i) => {
+                html += `<tr><td>${acumulado && !clasificaAcumulado(j) ? "—" : i + 1}</td><td>${esc(j.aag_member_number || "—")}</td>
+                    <td class="left"><b>${esc(j.display_name || "")}</b>${acumulado && !clasificaAcumulado(j) ? " · Una tarjeta, sin puesto" : ""}</td>
+                    <td><b>${valor(j[campo])}</b></td></tr>`;
+            });
+            return html + `</tbody></table>`;
+        }
+
+        function renderBloquesInformeJugadores(items, acumulado = false) {
+            const scratch = genero => items.filter(s => {
+                const index = indexInformeJugador(s);
+                return generoInformeJugador(s) === genero && index != null && index >= -10 && index <= 9;
+            });
+            let html = renderListadoInforme("Scratch Caballeros · Index -10 a 9", scratch("male"), "gross", acumulado);
+            const grupos = new Map();
+            items.filter(s => generoInformeJugador(s) !== "female").forEach(s => {
+                const meta = categoriaMetaPorScorecard(s);
+                const categoria = meta?.name || s.category_name || "Sin categoría";
+                if (!grupos.has(categoria)) grupos.set(categoria, []);
+                grupos.get(categoria).push(s);
+            });
+            [...grupos.entries()].sort((a, b) => ordenCategoria(a[0]) - ordenCategoria(b[0]) || a[0].localeCompare(b[0], "es"))
+                .forEach(([nombre, jugadores]) => {
+                    html += renderListadoInforme(nombre, jugadores, "net", acumulado);
+                });
+            html += renderListadoInforme("Scratch Damas · Index -10 a 9", scratch("female"), "gross", acumulado);
+            html += renderListadoInforme("Damas · Index 9,1 a 54", items.filter(s => generoInformeJugador(s) === "female" && participaCategoriaNeto(s)), "net", acumulado);
+            return html;
+        }
+
         function renderInformeJugadores() {
+            if (!torneoActual) return;
+            if (esFourballAmericana() || esTorneoGross()) return renderInformeJugadoresAnterior();
+            let html = `<div class="print-page print-player-report">
+                <div class="print-title">${esc(torneoActual.name)}</div>
+                <div class="print-date">Informe completo de jugadores · ${fechaTexto(torneoActual.tournament_date)}</div>
+                <h2>Resultados de la fecha</h2>`;
+            html += renderBloquesInformeJugadores(scorecards.filter(esTarjetaValida));
+            if (serieActual) {
+                html += `<h2 class="print-section-title">${esc(serieActual.name || "Serie")} · Acumulado de las fechas jugadas</h2>
+                    <p>Primero clasifican quienes presentaron dos o más tarjetas, de menor a mayor total de golpes. Con una sola tarjeta figuran al final, sin puesto. Categoría e índice de su última fecha válida.</p>`;
+                html += renderBloquesInformeJugadores(acumuladoInformeJugadores(), true);
+            }
+            el("printArea").innerHTML = html + `</div>`;
+        }
+
+
+        function renderInformeJugadoresAnterior() {
 
             const validas = scorecards.filter(s =>
                 s.card_status === "valid" || s.card_status === "cargada"
@@ -2098,6 +2276,9 @@
             const ids = torneosSerie.map(t => t.id);
             if (!ids.length) return;
 
+            const todasLasTarjetas = [];
+            const pageSize = 500;
+            for (let offset = 0; ; offset += pageSize) {
             const { data: cardsSerie, error: errorCardsSerie } = await supabase
                 .from("scorecards")
                 .select(`
@@ -2112,9 +2293,14 @@
                         playing_handicap_min,playing_handicap_max,playing_tee_aag_teeout_id
                     )
                 `)
-                .in("tournament_id", ids);
+                .in("tournament_id", ids)
+                .order("id", { ascending: true })
+                .range(offset, offset + pageSize - 1);
             if (errorCardsSerie) throw errorCardsSerie;
-            scorecardsSerie = cardsSerie || [];
+            todasLasTarjetas.push(...(cardsSerie || []));
+            if (!cardsSerie || cardsSerie.length < pageSize) break;
+            }
+            scorecardsSerie = todasLasTarjetas;
         }
 
         function esTorneoGross() {
@@ -2154,60 +2340,24 @@
 
         function calcularAcumuladoSerie() {
             const field = getSerieScoringField();
-            const validas = scorecardsSerie.filter(s => esTarjetaValida(s) && n(s[field]) != null);
-            const grupos = new Map();
-
-            for (const sc of validas) {
-                const key = jugadorKey(sc);
-                if (!grupos.has(key)) {
-                    grupos.set(key, {
-                        key,
-                        linked_player_id: sc.linked_player_id,
-                        display_name: sc.display_name,
-                        aag_member_number: sc.aag_member_number,
-                        player_gender: sc.player_gender,
-                        official_index: n(sc.official_index ?? sc.manual_index),
-                        manual_index: n(sc.manual_index),
-                        category_name: sc.category_name,
-                        tee_name: sc.tee_name,
-                        rounds: [],
-                        total_net: 0,
-                        total_gross: 0,
-                        total_total: 0
-                    });
-                }
-                const g = grupos.get(key);
-                if (!g.category_name && sc.category_name) g.category_name = sc.category_name;
-                if (!g.tee_name && sc.tee_name) g.tee_name = sc.tee_name;
-                if (!g.player_gender && sc.player_gender) g.player_gender = sc.player_gender;
-                if (g.official_index == null) g.official_index = n(sc.official_index ?? sc.manual_index);
-                const torneo = torneoSeriePorId(sc.tournament_id);
-                g.rounds.push({
-                    tournament_id: sc.tournament_id,
-                    tournament_name: torneo?.name || "Fecha",
-                    tournament_date: torneo?.tournament_date,
-                    round_number: torneo?.series_round_number,
-                    net: n(sc.net),
-                    gross: n(sc.gross),
-                    total: n(sc.total),
-                    score: n(sc[field])
-                });
-                g.total_net += n(sc.net) || 0;
-                g.total_gross += n(sc.gross) || 0;
-                g.total_total += n(sc.total) || 0;
-            }
-
-            const required = Number(serieActual?.required_rounds || torneosSerie.length || 0);
-            const todos = [...grupos.values()].map(g => {
-                g.rounds.sort((a, b) => (n(a.round_number) ?? 999) - (n(b.round_number) ?? 999) || String(a.tournament_date || "").localeCompare(String(b.tournament_date || "")));
-                g.rounds_played = new Set(g.rounds.map(r => String(r.tournament_id))).size;
-                g.complete = required ? g.rounds_played >= required : true;
-                g.score = field === "gross" ? g.total_gross : field === "total" ? g.total_total : g.total_net;
-                return g;
-            });
-
-            const completos = todos.filter(g => g.complete).sort((a, b) => a.score - b.score || a.total_gross - b.total_gross || String(a.display_name).localeCompare(String(b.display_name), "es"));
-            const incompletos = todos.filter(g => !g.complete).sort((a, b) => b.rounds_played - a.rounds_played || a.score - b.score || String(a.display_name).localeCompare(String(b.display_name), "es"));
+            const required = 2;
+            const todos = acumuladoInformeJugadores().filter(g => nNullable(g[field]) != null).map(g => ({
+                ...g,
+                total_net: g.net,
+                total_gross: g.gross,
+                total_total: g.total,
+                score: g[field],
+                complete: clasificaAcumulado(g),
+                rounds: g.rounds.map(sc => {
+                    const torneo = torneoSeriePorId(sc.tournament_id);
+                    return { ...sc, score: nNullable(sc[field]),
+                        tournament_name: torneo?.name || "Fecha",
+                        tournament_date: torneo?.tournament_date,
+                        round_number: torneo?.series_round_number };
+                })
+            }));
+            const completos = todos.filter(g => g.complete).sort((a, b) => compararAcumulado(a, b, "score"));
+            const incompletos = todos.filter(g => !g.complete).sort((a, b) => compararAcumulado(a, b, "score"));
             return { completos, incompletos, required, field };
         }
 
@@ -2348,7 +2498,7 @@
         }
 
         function generoSerie(item) {
-            return normalizarGenero(item.player_gender || item.gender || "");
+            return generoInformeJugador(item);
         }
 
         function scoreScratchSerie(item, tipo) {
@@ -2371,8 +2521,8 @@
                         key,
                         display_name: sc.display_name,
                         player_gender: sc.player_gender,
-                        official_index: n(sc.official_index ?? sc.manual_index),
-                        manual_index: n(sc.manual_index),
+                        official_index: indexInformeJugador(sc),
+                        manual_index: nNullable(sc.manual_index),
                         category_name: sc.category_name,
                         rounds: []
                     });
@@ -2435,7 +2585,7 @@
             el("serieInfo").innerHTML = `
                 <b>${esc(serieActual.name || "Serie")}</b><br>
                 Este torneo es la fecha <b>${esc(torneoActual.series_round_number || "—")}</b> de la serie.
-                Para el acumulado se exige completar <b>${required || "todas las"}</b> fechas.
+                Para clasificar en el acumulado se exige presentar <b>dos o más tarjetas</b>. Con una sola tarjeta se muestra el resultado al final, sin puesto.
                 El orden principal se calcula por <b>${labelScore}</b>. El mejor 18 toma la mejor vuelta individual de cada jugador.
             `;
 
@@ -2465,21 +2615,8 @@
         }
 
         function esElegibleScratchSerie(item, generoFiltro = "male") {
-            /*
-             * SCRATCH DAMAS:
-             * participan TODAS las damas válidas, sin límite de Index.
-             * En VMGC hay una sola categoría femenina, por lo que el Scratch
-             * Damas comprende todo el rango de participantes.
-             *
-             * SCRATCH CABALLEROS:
-             * conserva el criterio histórico vigente.
-             */
-            if (generoFiltro === "female") {
-                return true;
-            }
-
-            const idx = n(item.official_index ?? item.manual_index);
-            return idx != null && idx >= -6 && idx <= 9;
+            const idx = indexInformeJugador(item);
+            return idx != null && idx >= -10 && idx <= 9;
         }
 
         function agruparPorCategoriaOrdenada(items) {
@@ -2498,6 +2635,7 @@
         }
 
         function renderTablaSeriePorCategorias({ tipo, items, field, required = null }) {
+            if (tipo === "acumulado") items = items.filter(clasificaAcumulado);
             const topCategoria = Math.max(1, Number(el("topCategoria").value || 3));
             const topScratchCab = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratch")?.value || 0));
             const topScratchDam = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratchDamas")?.value || 0));
@@ -2558,7 +2696,7 @@
                 ...scratchDam.map(x => String(x.key || x.id || x.linked_player_id || x.display_name))
             ]);
 
-            const itemsParaCategorias = items.filter(x => !scratchIds.has(String(x.key || x.id || x.linked_player_id || x.display_name)));
+            const itemsParaCategorias = items.filter(x => participaCategoriaNeto(x) && !scratchIds.has(String(x.key || x.id || x.linked_player_id || x.display_name)));
             const grupos = agruparPorCategoriaOrdenada(itemsParaCategorias);
 
             let html = `<div class="table-wrap"><table><thead><tr>`;
@@ -2637,9 +2775,13 @@
         }
 
         function renderSerieAcumulado() {
-            const { completos, required, field } = calcularAcumuladoSerie();
-            let html = `<div class="series-note">Acumulado de la serie por categoría. Solo aparecen los jugadores que completaron ${required || "todas las"} fechas. Se muestran los mismos puestos configurados arriba.</div>`;
+            const { completos, incompletos, required, field } = calcularAcumuladoSerie();
+            let html = '<div class="series-note">Ganadores del acumulado con dos o más tarjetas. Se muestran los puestos configurados arriba. Los jugadores con una sola tarjeta figuran debajo, sin puesto.</div>';
             html += renderTablaSeriePorCategorias({ tipo: "acumulado", items: completos, field, required });
+            if (incompletos.length) {
+                html += '<h3>Una tarjeta presentada · Sin puesto en el acumulado</h3>';
+                html += renderBloquesInformeJugadores(incompletos, true);
+            }
             el("panelSerieAcumulado").innerHTML = html;
         }
 
@@ -3356,7 +3498,7 @@
 
             const validas = validasBase.filter(s => {
                 const catName = String(s.category_name || "").toLowerCase();
-                return s.category_name &&
+                return s.category_name && participaCategoriaNeto(s) &&
                     !catName.includes("scratch") &&
                     !catName.includes("scrach") &&
                     !scratchIds.has(String(s.id));
@@ -3472,33 +3614,12 @@
         }
 
         function obtenerScratchItems(generoFiltro = "all") {
-            let items = scorecards.filter(s => (s.card_status === "valid" || s.card_status === "cargada") && n(s.gross) != null);
-
-            // En Scratch Damas participan todas las tarjetas válidas: la
-            // clasificación se define exclusivamente por el menor gross.
-            // Se conserva el límite histórico de índice para Caballeros.
-            if (generoFiltro !== "female") {
-                items = items.filter(s => {
-                    const idx = n(s.official_index ?? s.manual_index);
-                    return idx != null && idx >= -6 && idx <= 9;
-                });
-            }
-
-            if (generoFiltro !== "all") {
-                items = items.filter(s => {
-                    const meta = categoriaMetaPorScorecard(s);
-                    const referenciaGenero = s.player_gender || meta?.gender || s.category_name || s.tee_name;
-                    const textoGenero = String(referenciaGenero || "").toLowerCase();
-                    const genero = textoGenero.includes("dama") || textoGenero.includes("mujer") || textoGenero.includes("roja")
-                        ? "female"
-                        : textoGenero.includes("caballero") || textoGenero.includes("hombre")
-                            ? "male"
-                            : normalizarGenero(referenciaGenero);
-                    return genero === generoFiltro;
-                });
-            }
-
-            return items.sort((a, b) => compareScore(a, b, "gross"));
+            return scorecards.filter(s => {
+                const idx = indexInformeJugador(s);
+                return esTarjetaValida(s) && nNullable(s.gross) != null &&
+                    idx != null && idx >= -10 && idx <= 9 &&
+                    (generoFiltro === "all" || generoInformeJugador(s) === generoFiltro);
+            }).sort((a, b) => compareScore(a, b, "gross"));
         }
 
         function renderScratch() {
@@ -3762,6 +3883,7 @@
         }
 
         function renderPrintTablaSeriePorCategorias({ tipo, items, field, required = null }) {
+            if (tipo === "acumulado") items = items.filter(clasificaAcumulado);
             const topCategoria = Math.max(1, Number(el("topCategoria").value || 3));
             const topScratchCab = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratch")?.value || 0));
             const topScratchDam = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratchDamas")?.value || 0));
@@ -3818,7 +3940,7 @@
                 ...scratchDam.map(x => String(x.key || x.id || x.linked_player_id || x.display_name))
             ]);
 
-            const itemsParaCategorias = items.filter(x => !scratchIds.has(String(x.key || x.id || x.linked_player_id || x.display_name)));
+            const itemsParaCategorias = items.filter(x => participaCategoriaNeto(x) && !scratchIds.has(String(x.key || x.id || x.linked_player_id || x.display_name)));
             const grupos = agruparPorCategoriaOrdenada(itemsParaCategorias);
 
             let html = `<table class="print-series-table"><thead><tr>`;
@@ -3909,7 +4031,7 @@
             let html = "";
 
             html += renderPrintPremiosSeriePage({
-                titulo: "Ganadores por categoría jugando todas las fechas",
+                titulo: "Ganadores del acumulado por categoría",
                 subtitulo: `${tituloSerie} · ${esc(torneoActual.name || "")}`,
                 tipo: "acumulado",
                 items: acumulado.completos,
@@ -4019,6 +4141,7 @@
         }
 
         function renderPrintPremiosSeriePage({ titulo, subtitulo, tipo, items, field, required = null }) {
+            if (tipo === "acumulado") items = items.filter(clasificaAcumulado);
             const topCategoria = Math.max(1, Number(el("topCategoria")?.value || 2));
             const topScratchCab = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratch")?.value || 0));
             const topScratchDam = esTorneoGross() ? 0 : Math.max(0, Number(el("topScratchDamas")?.value || 0));
@@ -4117,7 +4240,7 @@
             const grupos = new Map();
 
             items
-                .filter(x => !scratchIds.has(itemSerieId(x)))
+                .filter(x => participaCategoriaNeto(x) && !scratchIds.has(itemSerieId(x)))
                 .forEach(item => {
                     const cat = item.category_name || "Sin categoría";
                     if (esCategoriaScratch(cat)) return;
@@ -4140,7 +4263,7 @@
     `;
 
             if (tipo === "acumulado") {
-                html += `<div class="print-meta">Se toman únicamente jugadores que completaron ${required || "todas las"} fechas.</div>`;
+                html += `<div class="print-meta">Clasifican jugadores con dos o más tarjetas presentadas. Se muestran los puestos configurados en pantalla.</div>`;
             }
 
             categoriasOrdenadas.forEach(([cat, catItems]) => {
@@ -4602,7 +4725,7 @@
                         n(esTorneoGross() ? s.gross : s.net) != null &&
                         !catName.includes("scratch") &&
                         !catName.includes("scrach") &&
-                        !scratchWinnerIds.has(String(s.id));
+                        !scratchWinnerIds.has(String(s.id)) && (esTorneoGross() || participaCategoriaNeto(s));
                 })
                 .forEach(s => {
                     const key = s.category_name || "Sin categoría";
