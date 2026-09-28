@@ -1933,17 +1933,70 @@
         function participaCategoriaNeto(item) {
             if (generoInformeJugador(item) !== "female") return true;
             const idx = indexInformeJugador(item);
-            return idx != null && idx >= 9.1 && idx <= 54;
+            return idx != null && idx >= -10 && idx <= 54;
         }
 
         function clasificaAcumulado(item) {
             return Number(item.rounds_played || 0) >= 2;
         }
 
+        // Comparador único para acumulado y mejores 36 en todas las vistas.
+        function compararValorSerie(a, b) {
+            const va = nNullable(a), vb = nNullable(b);
+            if (va == null) return vb == null ? 0 : 1;
+            if (vb == null) return -1;
+            return Math.abs(va - vb) < 1e-9 ? 0 : va - vb;
+        }
+
+        function tarjetasCronologicasSerie(item) {
+            return (item.rounds || []).slice().sort((a, b) => {
+                const ta = torneoSeriePorId(a.tournament_id);
+                const tb = torneoSeriePorId(b.tournament_id);
+                return String(tb?.tournament_date || b.tournament_date || "")
+                    .localeCompare(String(ta?.tournament_date || a.tournament_date || "")) ||
+                    Number(tb?.series_round_number || b.round_number || 0) -
+                    Number(ta?.series_round_number || a.round_number || 0);
+            });
+        }
+
+        function valorHoyosDesempateSerie(sc, cantidad, divisor, campo) {
+            if (!sc) return null;
+            const hoyos = activeHoles(sc.hole_segment).slice(-cantidad);
+            const rows = holeRowsForScorecard(sc);
+            const golpes = hoyos.map(h => nNullable(rows.get(h)?.strokes));
+            if (hoyos.length !== cantidad || golpes.some(v => v == null)) return null;
+            const hcp = campo === "gross" ? 0 : nNullable(sc.playing_handicap);
+            if (hcp == null) return null;
+            return golpes.reduce((s, v) => s + v, 0) - hcp / divisor;
+        }
+
+        function compararResultadoSerie(a, b, campo, tipo) {
+            if (tipo === "acumulado") {
+                const cantidad = Number(b.rounds_played || 0) - Number(a.rounds_played || 0);
+                if (cantidad) return cantidad;
+            }
+            const total = compararValorSerie(a[campo], b[campo]);
+            if (total) return total;
+            const field = campo === "score" ? getSerieScoringField() :
+                campo === "total_gross" ? "gross" : campo;
+            // En mejores 36 se comparan todas las tarjetas presentadas,
+            // incluida la última aunque no integre las dos seleccionadas.
+            const ra = tarjetasCronologicasSerie(a), rb = tarjetasCronologicasSerie(b);
+            for (let i = 0; i < Math.min(ra.length, rb.length); i++) {
+                const resultado = compararValorSerie(ra[i][field], rb[i][field]);
+                if (resultado) return resultado;
+            }
+            for (const [cantidad, divisor] of [[9, 2], [6, 3], [3, 6], [1, 9]]) {
+                const resultado = compararValorSerie(
+                    valorHoyosDesempateSerie(ra[0], cantidad, divisor, field),
+                    valorHoyosDesempateSerie(rb[0], cantidad, divisor, field));
+                if (resultado) return resultado;
+            }
+            return String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+        }
+
         function compararAcumulado(a, b, campo) {
-            const prioridad = Number(b.rounds_played || 0) - Number(a.rounds_played || 0);
-            return prioridad || a[campo] - b[campo] ||
-                String(a.display_name || "").localeCompare(String(b.display_name || ""), "es");
+            return compararResultadoSerie(a, b, campo, "acumulado");
         }
 
         function renderListadoInforme(titulo, items, campo, acumulado) {
@@ -1985,7 +2038,7 @@
                     html += renderListadoInforme(nombre, jugadores, "net", acumulado);
                 });
             html += renderListadoInforme("Scratch Damas · Index -10 a 9", scratch("female"), "gross", acumulado);
-            html += renderListadoInforme("Damas · Index 9,1 a 54", items.filter(s => generoInformeJugador(s) === "female" && participaCategoriaNeto(s)), "net", acumulado);
+            html += renderListadoInforme("Damas · Index -10 a 54", items.filter(s => generoInformeJugador(s) === "female" && participaCategoriaNeto(s)), "net", acumulado);
             return html;
         }
 
@@ -2529,6 +2582,7 @@
                 }
 
                 grupos.get(key).rounds.push({
+                    ...sc,
                     tournament_id: sc.tournament_id,
                     tournament_name: torneo?.name || "Fecha",
                     tournament_date: torneo?.tournament_date,
@@ -2555,7 +2609,7 @@
                     return g;
                 })
                 .filter(Boolean)
-                .sort((a, b) => a.score - b.score || a.total_gross - b.total_gross || String(a.display_name).localeCompare(String(b.display_name), "es"));
+                .sort((a, b) => compararResultadoSerie(a, b, "score", "mejor36"));
         }
 
         function activarTabSerie(tab) {
@@ -2646,6 +2700,7 @@
 
             const ordenarScratch = (a, b) => {
                 if (tipo === "acumulado") return compararAcumulado(a, b, "total_gross");
+                if (tipo === "mejor36") return compararResultadoSerie(a, b, "total_gross", tipo);
 
                 if (esMejor18) {
 
@@ -2729,6 +2784,7 @@
                     .slice()
                     .sort((a, b) => {
                         if (tipo === "acumulado") return compararAcumulado(a, b, "score");
+                if (tipo === "mejor36") return compararResultadoSerie(a, b, "score", tipo);
 
                         if (esMejor18) {
 
@@ -3896,6 +3952,7 @@
 
             const ordenarScratch = (a, b) => {
                 if (tipo === "acumulado") return compararAcumulado(a, b, "total_gross");
+                if (tipo === "mejor36") return compararResultadoSerie(a, b, "total_gross", tipo);
 
                 if (esMejor18) {
 
@@ -3981,6 +4038,7 @@
                     .slice()
                     .sort((a, b) => {
                         if (tipo === "acumulado") return compararAcumulado(a, b, "score");
+                if (tipo === "mejor36") return compararResultadoSerie(a, b, "score", tipo);
 
                         if (esMejor18) {
 
@@ -4154,6 +4212,7 @@
 
             const ordenarCategoria = (a, b) => {
                 if (tipo === "acumulado") return compararAcumulado(a, b, "score");
+                if (tipo === "mejor36") return compararResultadoSerie(a, b, "score", tipo);
 
                 if (esMejor18) {
 
@@ -4188,6 +4247,7 @@
 
             const ordenarScratch = (a, b) => {
                 if (tipo === "acumulado") return compararAcumulado(a, b, "total_gross");
+                if (tipo === "mejor36") return compararResultadoSerie(a, b, "total_gross", tipo);
 
                 if (esMejor18) {
 
