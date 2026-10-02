@@ -212,41 +212,10 @@
         width: 100%;
       }
     }
-
-    .home-btn {
-      position: fixed;
-      top: 30px;
-      right: 27px;
-      width: 38px;
-      height: 38px;
-      border-radius: 6px;
-      background: #166534;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      cursor: pointer;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-      z-index: 9999;
-      transition: transform 0.15s, background 0.15s;
-    }
-
-    .home-btn:hover {
-      background: #14532d;
-      transform: scale(1.05);
-    }
   </style>
 </head>
 
 <body>
-
-  <div class="home-btn" id="btnHome" title="Volver al panel">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
-        stroke-width="2" />
-    </svg>
-  </div>
 
   <div class="container">
 
@@ -399,59 +368,6 @@
       return ids;
     }
 
-    async function buscarIdsPorJugadorHistorico(textoBusqueda) {
-      const palabras = separarPalabras(textoBusqueda);
-
-      if (palabras.length === 0) return new Set();
-
-      let query = supabase
-        .from("historical_player_index")
-        .select("tournament_id")
-        .limit(1000);
-
-      palabras.forEach(palabra => {
-        query = query.ilike("jugador_normalizado", `%${palabra}%`);
-      });
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error(error);
-        return new Set();
-      }
-
-      return new Set((data || []).map(r => r.tournament_id));
-    }
-
-    async function cargarIndiceHistoricoJugadores() {
-
-      let todos = [];
-
-      let desde = 0;
-
-      const bloque = 1000;
-
-      while (true) {
-
-        const { data, error } = await supabase
-          .from("historical_player_index")
-          .select("tournament_id, jugador")
-          .range(desde, desde + bloque - 1);
-
-        if (error) throw error;
-
-        todos = todos.concat(data || []);
-
-        if (!data || data.length < bloque) {
-          break;
-        }
-
-        desde += bloque;
-      }
-
-      return todos;
-    }
-
     async function renderTorneos() {
       const textoOriginal = document.getElementById("buscador").value;
       const texto = normalizarTexto(textoOriginal);
@@ -463,13 +379,7 @@
       let idsJugador = new Set();
 
       if (texto) {
-        const idsJugadorModernos = buscarIdsPorJugador(texto);
-        const idsJugadorHistoricos = await buscarIdsPorJugadorHistorico(texto);
-
-        idsJugador = new Set([
-          ...idsJugadorModernos,
-          ...idsJugadorHistoricos
-        ]);
+        idsJugador = buscarIdsPorJugador(texto);
       }
 
       const filtrados = torneos.filter(t => {
@@ -528,7 +438,8 @@
         status.textContent = "Cargando torneos...";
 
         // =========================
-        // TORNEOS MODERNOS
+        // TODOS LOS TORNEOS V2 PUBLICADOS
+        // Los torneos históricos ya fueron migrados a esta tabla.
         // =========================
 
         const { data: torneosData, error: errorTorneos } = await supabase
@@ -545,6 +456,7 @@
               )
           `)
           .in("status", ["officialized", "archived"])
+          .eq("data_schema_version", 2)
           .eq("published", true)
           .order("tournament_date", { ascending: false });
 
@@ -581,48 +493,17 @@
         }
 
         // =========================
-        // TORNEOS HISTORICOS
+        // NORMALIZAR TORNEOS V2
         // =========================
 
-        const { data: historicosData, error: errorHistoricos } = await supabase
-          .from("historical_tournaments")
-          .select("id, fecha, torneo, modalidad")
-          .order("fecha", { ascending: false });
-
-        if (errorHistoricos) throw errorHistoricos;
-
-        // =========================
-        // NORMALIZAR TORNEOS
-        // =========================
-
-        const torneosModernos = (torneosData || []).map(t => ({
+        torneos = (torneosData || []).map(t => ({
           id: t.id,
           name: t.name,
           tournament_date: t.tournament_date,
           game_modes: {
             name: t.game_modes?.name || ""
-          },
-          legacy: false
+          }
         }));
-
-        const torneosHistoricos = (historicosData || []).map(t => ({
-          id: t.id,
-          name: t.torneo || "TORNEO HISTÓRICO SIN NOMBRE",
-          tournament_date: t.fecha,
-          game_modes: {
-            name: t.modalidad || ""
-          },
-          legacy: true
-        }));
-
-        // =========================
-        // COMBINAR
-        // =========================
-
-        torneos = [
-          ...torneosModernos,
-          ...torneosHistoricos
-        ];
 
         // =========================
         // ORDENAR POR FECHA
@@ -642,13 +523,6 @@
         // =========================
 
         construirIndiceJugadores(scorecardsData || []);
-
-        // =========================
-        // JUGADORES HISTORICOS
-        // =========================
-
-        // agregar jugadores históricos
-
 
         // =========================
         // FILTRO AÑOS
@@ -694,10 +568,6 @@
     });
 
     cargar();
-
-    document.getElementById("btnHome").addEventListener("click", () => {
-      window.location.href = "panel.html";
-    });
   </script>
 </body>
 
