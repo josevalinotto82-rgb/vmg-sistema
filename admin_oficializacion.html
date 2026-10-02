@@ -3072,6 +3072,19 @@
                 }
                 torneoFecha.value = fechaTexto(torneo.tournament_date);
 
+                const categoriasPromise = supabase
+                        .from("tournament_categories")
+                        .select("id, category_id, category_system, name, index_min, index_max, tee_id, display_order, gender, slope, course_rating, par, hole_segment, tee_rules, playing_handicap_min, playing_handicap_max, playing_tee_aag_teeout_id")
+                        .eq("tournament_id", torneo.id)
+                        .order("display_order", { ascending: true });
+                // Los torneos nuevos usan tee_rules y no necesitan la tabla legacy.
+                const reglasLegacyPromise = Promise.resolve(categoriasPromise).then((resultado) => {
+                    if (resultado.error || !(resultado.data || []).length || resultado.data.some(esCategoriaNueva)) {
+                        return { data: [], error: null };
+                    }
+                    return supabase.from("tee_handicap_rules")
+                        .select("id, tee_id, slope, course_rating, par");
+                });
                 const [
                     categoriasRes,
                     teesRes,
@@ -3080,20 +3093,14 @@
                     pagosRes
                 ] = await Promise.all([
 
-                    supabase
-                        .from("tournament_categories")
-                        .select("id, category_id, category_system, name, index_min, index_max, tee_id, display_order, gender, slope, course_rating, par, hole_segment, tee_rules, playing_handicap_min, playing_handicap_max, playing_tee_aag_teeout_id")
-                        .eq("tournament_id", torneo.id)
-                        .order("display_order", { ascending: true }),
+                    categoriasPromise,
 
                     supabase
                         .from("tees")
                         .select("id, name, display_order")
                         .order("display_order", { ascending: true }),
 
-                    supabase
-                        .from("tee_handicap_rules")
-                        .select("id, tee_id, slope, course_rating, par"),
+                    reglasLegacyPromise,
 
                     supabase
                         .from("registrations")
@@ -3184,7 +3191,7 @@
                     ])
                 );
 
-                if (teeHandicapRules.length !== 4) {
+                if (categorias.length && !categorias.some(esCategoriaNueva) && teeHandicapRules.length !== 4) {
                     console.warn(
                         "No se cargaron las cuatro reglas necesarias para Fourball Clásico.",
                         teeHandicapRules
