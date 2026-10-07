@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tarjeta libre · VMGC</title>
+  <link rel="stylesheet" href="vmgc.css">
+  <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsrsasign@10.8.6/lib/jsrsasign-all-min.js"></script>
+  <script src="./qz-ticket.js?v=999"></script>
+</head>
+<body class="free-card-page">
+  <header class="free-card-topbar">
+    <div class="free-card-brand"><img src="escudo.png" alt="Escudo VMGC"><div><small>Herramienta independiente</small><strong>Tarjeta libre</strong></div></div>
+    <div class="free-card-top-actions"><span class="status info" id="freeCardStatus">Preparando…</span><button class="btn secondary" id="newFreeCard">Nueva tarjeta</button><button class="btn outline" id="closeFreeCard">Cerrar</button></div>
+  </header>
+  <main class="free-card-shell">
+    <section class="free-card-search card">
+      <div class="card-head"><div><div class="eyebrow">1 · Jugador</div><h2>Buscar en Players y AAG</h2></div></div>
+      <div class="card-body">
+        <div class="field"><label>Nombre, apellido o matrícula</label><input class="control" id="freePlayerSearch" autocomplete="off" placeholder="Ej.: Juan Pérez o 123456"></div>
+        <div class="free-player-results" id="freePlayerResults"><div class="empty-state compact">Escribí al menos dos caracteres.</div></div>
+      </div>
+    </section>
+
+    <section class="free-card-main">
+      <article class="card free-card-game">
+        <div class="card-head"><div><div class="eyebrow">2 · Configuración</div><h2 id="freePlayerName">Seleccioná un jugador</h2><div class="subtle" id="freePlayerMeta">El sistema asignará categoría, tee y HCP automáticamente.</div></div></div>
+        <div class="card-body" id="freeGamePanel"><div class="empty-state">Primero seleccioná un jugador.</div></div>
+      </article>
+
+      <aside class="card free-card-coupon">
+        <div class="card-head"><div><div class="eyebrow">Green fee</div><h2>Cupón</h2></div></div>
+        <div class="card-body">
+          <div class="field"><label>Importe</label><input class="control" id="freeCouponAmount" inputmode="numeric" placeholder="$ 0,00"></div>
+          <div class="field"><label>Forma de pago</label><select class="control" id="freeCouponMethod"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Débito">Débito</option><option value="Crédito">Crédito</option><option value="Pendiente">Pendiente</option></select></div>
+          <button class="btn secondary" id="printFreeCoupon" disabled>Cupón</button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="card free-score-section">
+      <div class="card-head"><div><div class="eyebrow">3 · Resultado</div><h2>Cargar golpes</h2></div><div class="free-score-totals" id="freeScoreTotals"></div></div>
+      <div class="card-body" id="freeScorePanel"><div class="empty-state">La carga de hoyos aparecerá al seleccionar un jugador.</div></div>
+    </section>
+  </main>
+  <div id="printRoot"></div>
+  <script type="module" src="js/free_scorecard_page.js"></script>
+</body>
+</html>

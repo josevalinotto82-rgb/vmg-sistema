@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Control TV · VMGC</title><link rel="stylesheet" href="vmgc.css"></head>
+<body class="tv-tool-page">
+  <header class="tv-tool-topbar"><div class="tv-tool-brand"><img src="escudo.png" alt="VMGC"><div><small>Proyección del club</small><strong>Control TV</strong></div></div><div class="tv-tool-actions"><span class="status info" id="tvControlState">Cargando…</span><button class="btn outline" id="closeTvControl">Cerrar</button></div></header>
+  <main class="tv-tool-shell">
+    <section class="tv-control-hero"><div><div class="eyebrow">Configuración de proyección</div><h1>Elegí qué se muestra en el TV</h1><p>Este control guarda la configuración. El equipo de proyección la consulta automáticamente cada 5 segundos.</p></div></section>
+    <div class="tv-control-layout">
+      <section class="card tv-control-primary">
+        <div class="card-head"><div><div class="eyebrow">Contenido deportivo</div><h2>Torneo y resultados</h2></div></div>
+        <div class="card-body">
+          <div class="field"><label>Torneo en pantalla</label><select class="control" id="tvTournament"><option>Cargando torneos…</option></select></div>
+          <div class="field"><label>Vista de resultados</label><select class="control" id="tvSeriesMode"><option value="daily">Resultados del día</option><option value="aggregate">Acumulado de la serie</option></select><small id="tvSeriesHelp">El acumulado se habilita para torneos de una serie.</small></div>
+          <div class="tv-option-grid">
+            <label class="tv-option"><input type="checkbox" id="tvScratchMale"><span><strong>Scratch Caballeros</strong><small>Mostrar premiación scratch masculina</small></span></label>
+            <label class="tv-option"><input type="checkbox" id="tvScratchFemale"><span><strong>Scratch Damas</strong><small>Mostrar premiación scratch femenina</small></span></label>
+            <label class="tv-option"><input type="checkbox" id="tvExcludeScratch"><span><strong>Excluir scratch</strong><small>No repetir al ganador en su categoría</small></span></label>
+            <label class="tv-option"><input type="checkbox" id="tvMusic"><span><strong>Música ambiental</strong><small>Reproducir el MP3 cargado</small></span></label>
+          </div>
+        </div>
+      </section>
+      <aside class="card tv-control-preview">
+        <div class="card-head"><div><div class="eyebrow">Resumen</div><h2>Configuración actual</h2></div></div>
+        <div class="card-body" id="tvControlSummary"></div>
+      </aside>
+    </div>
+    <section class="card">
+      <div class="card-head"><div><div class="eyebrow">Bloques visuales</div><h2>Multimedia</h2></div></div>
+      <div class="card-body"><div class="tv-option-grid">
+        <label class="tv-option"><input type="checkbox" id="tvPhotos"><span><strong>Fotos del torneo</strong><small>Carpeta leaderboard</small></span></label>
+        <label class="tv-option"><input type="checkbox" id="tvSponsors"><span><strong>Sponsors</strong><small>Rotación de patrocinadores</small></span></label>
+        <label class="tv-option"><input type="checkbox" id="tvLogo"><span><strong>Escudo / logo</strong><small>Imagen institucional fija</small></span></label>
+        <label class="tv-option"><input type="checkbox" id="tvQr"><span><strong>Código QR</strong><small>Acceso público o inscripción</small></span></label>
+      </div><label class="tv-option tv-single-mode"><input type="checkbox" id="tvSingleCategory"><span><strong>Modo una categoría</strong><small>Oculta multimedia y muestra diez posiciones completas</small></span></label></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><div><div class="eyebrow">Ritmo de pantalla</div><h2>Velocidad de rotación</h2></div></div>
+      <div class="card-body tv-speed-grid"><div class="field"><label>Leaderboard</label><div class="tv-number-control"><input class="control" type="number" id="tvLeaderSeconds" min="5" max="120"><span>segundos</span></div></div><div class="field"><label>Fotos y sponsors</label><div class="tv-number-control"><input class="control" type="number" id="tvMediaSeconds" min="3" max="120"><span>segundos</span></div></div></div>
+    </section>
+    <footer class="tv-tool-footer"><span id="tvLastUpdate">Última actualización: —</span><button class="btn primary" id="saveTvControl">Guardar y actualizar TV</button></footer>
+  </main>
+  <script type="module" src="js/tv_control_page.js"></script>
+</body>
+</html>

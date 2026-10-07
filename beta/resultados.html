@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Resultados VMGC</title>
+  <link rel="stylesheet" href="vmgc.css">
+</head>
+<body>
+  <div data-app-shell></div>
+  <main class="shell results-page">
+    <section class="hero stage-hero">
+      <div><h1>Resultados</h1></div>
+      <div class="hero-actions"><button class="btn secondary" id="printWinnersButton">Imprimir premiados</button><button class="btn primary" id="printReportButton">Imprimir informe</button></div>
+    </section>
+    <div id="pageState" class="notice info">Cargando resultados…</div>
+    <div id="tournamentStrip"></div>
+    <section id="resultsWorkspace" hidden>
+      <article class="card results-toolbar-card"><div class="card-body results-toolbar">
+        <div class="field grow"><label>Buscar jugador</label><input class="control" id="resultSearch" placeholder="Nombre, apellido o matrícula"></div>
+        <div class="field" id="viewField" hidden><label>Vista</label><select class="control" id="resultView"><option value="day">Resultado del día</option><option value="series">Acumulado de serie</option><option value="best18">Mejor 18 hoyos</option><option value="best36">Mejor 36 hoyos</option></select></div>
+        <div class="results-summary" id="resultsSummary"></div>
+      </div></article>
+      <details class="card results-awards-config" id="awardsConfig" hidden>
+        <summary><span><b>Configurar premiación</b><small>Cantidad de ganadores, Scratch y premios especiales</small></span><span class="chev">⌄</span></summary>
+        <div class="card-body">
+          <div class="awards-count-grid">
+            <div class="field"><label>Ganadores por categoría</label><input class="control" id="categoryWinnerCount" type="number" min="1" max="10" value="2"></div>
+            <div class="field" data-scratch-setting><label>Scratch Caballeros</label><input class="control" id="scratchMenCount" type="number" min="0" max="10" value="0"><small>0 desactiva el premio</small></div>
+            <div class="field" data-scratch-setting><label>Scratch Damas</label><input class="control" id="scratchWomenCount" type="number" min="0" max="10" value="0"><small>0 desactiva el premio</small></div>
+          </div>
+          <div class="divider"></div>
+          <div class="eyebrow">Premios especiales</div>
+          <div class="special-prize-editor" id="specialPrizeEditor"></div>
+          <div class="awards-config-footer"><span id="awardsSaveState"></span><button class="btn primary" id="saveAwardsButton" type="button">Guardar premiación</button></div>
+        </div>
+      </details>
+      <div id="seriesNotice"></div>
+      <div id="specialPrizes"></div>
+      <div id="rankings" class="results-rankings"></div>
+    </section>
+  </main>
+  <div id="resultsPrintRoot"></div>
+  <script type="module" src="js/results_page.js"></script>
+</body>
+</html>

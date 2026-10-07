@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TV Multimedia · VMGC</title><link rel="stylesheet" href="vmgc.css"></head>
+<body class="tv-tool-page">
+  <header class="tv-tool-topbar"><div class="tv-tool-brand"><img src="escudo.png" alt="VMGC"><div><small>Contenido de pantalla</small><strong>TV Multimedia</strong></div></div><div class="tv-tool-actions"><span class="status info" id="tvMediaState">Leyendo archivos…</span><button class="btn outline" id="closeTvMedia">Cerrar</button></div></header>
+  <main class="tv-tool-shell">
+    <section class="tv-control-hero"><div><div class="eyebrow">Biblioteca proyectable</div><h1>Fotos, identidad, sponsors y música</h1><p>Todo se optimiza antes de subirlo al espacio <b>tv-media</b>.</p></div><button class="btn secondary" id="refreshTvMedia">Actualizar vista</button></section>
+    <section class="card tv-media-section">
+      <div class="card-head"><div><div class="eyebrow">Hasta 10 imágenes</div><h2>Fotos del día</h2><div class="subtle">Al reemplazarlas se eliminan únicamente las fotos anteriores del torneo.</div></div><button type="button" class="btn primary" id="chooseTvPhotos">Elegir fotos</button><input class="tv-hidden-file" type="file" id="tvPhotoInput" accept="image/*" multiple></div>
+      <div class="card-body"><div class="tv-media-actions"><button class="btn primary" id="uploadTvPhotos">Comprimir y reemplazar</button><button class="btn danger" id="deleteTvPhotos">Borrar fotos</button><span id="tvPhotoStatus">Listo.</span></div><div class="tv-media-grid" id="tvPhotoGrid"></div></div>
+    </section>
+    <div class="tv-media-two">
+      <section class="card tv-media-section"><div class="card-head"><div><div class="eyebrow">Imagen fija</div><h2>Logo</h2></div><button type="button" class="btn secondary" id="chooseTvLogo">Elegir imagen</button><input class="tv-hidden-file" type="file" id="tvLogoInput" accept="image/*"></div><div class="card-body"><button class="btn primary" id="uploadTvLogo">Reemplazar logo</button><span class="tv-inline-status" id="tvLogoStatus">fixed/logo.png</span><div class="tv-media-grid compact" id="tvLogoGrid"></div></div></section>
+      <section class="card tv-media-section"><div class="card-head"><div><div class="eyebrow">Imagen fija</div><h2>Código QR</h2></div><button type="button" class="btn secondary" id="chooseTvQr">Elegir imagen</button><input class="tv-hidden-file" type="file" id="tvQrInput" accept="image/*"></div><div class="card-body"><button class="btn primary" id="uploadTvQr">Reemplazar QR</button><span class="tv-inline-status" id="tvQrStatus">fixed/qr.png</span><div class="tv-media-grid compact" id="tvQrGrid"></div></div></section>
+    </div>
+    <section class="card tv-media-section">
+      <div class="card-head"><div><div class="eyebrow">Ambientación</div><h2>Música</h2><div class="subtle">Archivo MP3 de hasta 30 MB, reproducido en loop por la pantalla.</div></div><button type="button" class="btn secondary" id="chooseTvAudio">Elegir MP3</button><input class="tv-hidden-file" type="file" id="tvAudioInput" accept="audio/mpeg,audio/mp3,.mp3"></div>
+      <div class="card-body"><div class="tv-media-actions"><button class="btn primary" id="uploadTvAudio">Reemplazar música</button><button class="btn danger" id="deleteTvAudio">Borrar música</button><span id="tvAudioStatus">audio/musica.mp3</span></div><div id="tvAudioPlayer"></div></div>
+    </section>
+    <section class="card tv-media-section">
+      <div class="card-head"><div><div class="eyebrow">Hasta 20 imágenes</div><h2>Sponsors</h2><div class="subtle">Se conservan separados de las fotos, el logo y el QR.</div></div><button type="button" class="btn primary" id="chooseTvSponsors">Elegir sponsors</button><input class="tv-hidden-file" type="file" id="tvSponsorInput" accept="image/*" multiple></div>
+      <div class="card-body"><div class="tv-media-actions"><button class="btn primary" id="uploadTvSponsors">Optimizar y reemplazar</button><button class="btn danger" id="deleteTvSponsors">Borrar sponsors</button><span id="tvSponsorStatus">Listo.</span></div><div class="tv-media-grid" id="tvSponsorGrid"></div></div>
+    </section>
+  </main>
+  <script type="module" src="js/tv_media_page.js"></script>
+</body>
+</html>

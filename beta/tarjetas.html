@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VMGC · Carga de tarjetas</title>
+  <link rel="stylesheet" href="vmgc.css">
+</head>
+<body>
+  <div data-app-shell></div>
+  <main class="shell">
+    <section class="hero stage-hero">
+      <div><h1>Tarjetas</h1></div>
+      <div class="hero-actions">
+        <button class="btn secondary" id="reloadButton">Actualizar</button>
+        <button class="btn danger" id="archiveButton">Archivar torneo</button>
+      </div>
+    </section>
+
+    <div id="tournamentStrip"></div>
+
+    <section class="scorecard-kpis" aria-label="Resumen de tarjetas">
+      <article class="kpi"><strong id="totalCards">0</strong><span>Total</span></article>
+      <article class="kpi"><strong id="pendingCards">0</strong><span>Sin presentar</span></article>
+      <article class="kpi"><strong id="incompleteCards">0</strong><span>DESC</span></article>
+      <article class="kpi"><strong id="validCards">0</strong><span>Cargadas</span></article>
+      <article class="kpi gold"><strong id="exportCards">0</strong><span>Listas AAG</span></article>
+    </section>
+
+    <section class="scorecard-workspace">
+      <article class="card scorecard-list-card">
+        <div class="card-head"><div><h2>Tarjetas</h2><div class="subtle" id="listSummary">Cargando…</div></div></div>
+        <div class="card-body">
+          <div class="field"><label>Buscar jugador o matrícula</label><input class="control" id="cardSearch" autocomplete="off" placeholder="Ej. Juan Pérez o 12345"></div>
+          <div class="scorecard-status-filters" id="statusFilters">
+            <button class="filter-tab active" data-filter="all">Todas</button>
+            <button class="filter-tab" data-filter="pending">Pendientes</button>
+            <button class="filter-tab" data-filter="valid">Cargadas</button>
+          </div>
+          <div class="scorecard-player-list" id="cardList"></div>
+        </div>
+      </article>
+
+      <article class="card scorecard-editor-card">
+        <div id="pageState" class="notice">Cargando información real de Supabase…</div>
+        <div id="cardEditor" class="hidden"></div>
+      </article>
+    </section>
+
+    <div class="flow-footer-actions">
+      <a class="btn secondary" href="oficializacion.html" id="backOfficialization">← Volver a Adm. torneo</a>
+      <button class="btn primary" id="continueResults" disabled>Resultados · próximo paso</button>
+    </div>
+    <div class="footer-note">Sistema VMGC · Carga de tarjetas</div>
+  </main>
+  <script type="module" src="js/scorecards_page.js"></script>
+</body>
+</html>
