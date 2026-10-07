@@ -2368,6 +2368,8 @@
 
         function categoriaPorRangoResultado(j, cat) {
             if (!j || !cat) return false;
+            const genero = generoCategoria(cat);
+            if (genero && generoJugador(j) !== genero) return false;
 
             /*
              * PRIORIDAD PARA CATEGORÍAS NEW
@@ -2417,50 +2419,38 @@
                 );
             }
 
-            const usaRangoIndex =
-                parseNumero(cat.index_min) !== null ||
-                parseNumero(cat.index_max) !== null;
-
-            if (usaRangoIndex) {
-                const participantes = registrosParticipantesScorecard(j);
-
-                if (participantes.length) {
-                    const alguno = participantes.some(reg =>
-                        valorEnRangoResultado(
-                            reg.reported_index,
-                            cat.index_min,
-                            cat.index_max
-                        )
-                    );
-
-                    if (alguno) return true;
-                }
-
+            const reglas = Array.isArray(cat.tee_rules) ? cat.tee_rules : [];
+            return reglas.some(regla => {
+                const generoRegla = normalizarGenero(regla.gender) ||
+                    (regla.reference?.category === 1 ? "female" :
+                        regla.reference?.category === 0 ? "male" : "");
+                if (generoRegla && generoJugador(j) !== generoRegla) return false;
                 return valorEnRangoResultado(
                     j.manual_index ?? j.official_index,
-                    cat.index_min,
-                    cat.index_max
+                    regla.index_min,
+                    regla.index_max
                 );
-            }
-
-            return false;
+            });
         }
 
         function scorecardPerteneceCategoriaTorneo(j, cat) {
             if (!j || !cat) return false;
 
+            // Una tarjeta individual no puede cruzar categorías de género.
+            // Americana usa las categorías de cada inscripción de la pareja.
+            const genero = generoCategoria(cat);
+            if (!esFourballAmericana() && genero && generoJugador(j) &&
+                generoJugador(j) !== genero) return false;
+
             const participantes = registrosParticipantesScorecard(j);
-
-            if (
-                participantes.some(reg =>
-                    categoriaCoincideIdResultado(reg.category_id, cat)
-                )
-            ) {
-                return true;
+            const asignados = participantes.filter(reg =>
+                categorias.some(c => categoriaCoincideIdResultado(reg.category_id, c))
+            );
+            if (asignados.length) {
+                return asignados.some(reg => categoriaCoincideIdResultado(reg.category_id, cat));
             }
-
-            if (categoriaCoincideIdResultado(j.category_id, cat)) {
-                return true;
+            if (categorias.some(c => categoriaCoincideIdResultado(j.category_id, c))) {
+                return categoriaCoincideIdResultado(j.category_id, cat);
             }
 
             const nombreSc = normalizarTexto(
@@ -2469,11 +2459,8 @@
                 ""
             );
 
-            if (
-                nombreSc &&
-                nombreSc === normalizarTexto(cat.name || "")
-            ) {
-                return true;
+            if (nombreSc && categorias.some(c => normalizarTexto(c.name || "") === nombreSc)) {
+                return nombreSc === normalizarTexto(cat.name || "");
             }
 
             return categoriaPorRangoResultado(j, cat);
@@ -2487,6 +2474,13 @@
         }
 
         function generoCategoria(cat) {
+            const reglas = Array.isArray(cat?.tee_rules) ? cat.tee_rules : [];
+            if (reglas.some(r => r.gender === "mixed")) return "";
+            const generos = new Set(reglas.map(r => normalizarGenero(r.gender) ||
+                (r.reference?.category === 1 ? "female" :
+                    r.reference?.category === 0 ? "male" : "")).filter(Boolean));
+            if (generos.size === 1) return [...generos][0];
+            if (generos.size > 1) return "";
             const directo = normalizarGenero(cat?.gender);
             if (directo) return directo;
 
