@@ -1,4 +1,0 @@
-import { supabase } from "./supabase_beta.js";
-import { setBusy, showState } from "./ui_beta.js";
-const form=document.getElementById("passwordForm"),button=document.getElementById("passwordButton"),status=document.getElementById("formStatus");
-form.addEventListener("submit",async event=>{event.preventDefault();const password=document.getElementById("password").value;if(password.length<6)return showState(status,"La contraseña debe tener al menos 6 caracteres.","error");try{setBusy(button,true,"Guardando...");const{error}=await supabase.auth.updateUser({password});if(error)throw error;showState(status,"Contraseña actualizada correctamente.","success");setTimeout(()=>location.href="login_beta.html",1400)}catch(error){let message=error.message||"No se pudo cambiar la contraseña.";if(message.includes("different from the old password"))message="La nueva contraseña no puede ser igual a la anterior.";showState(status,message,"error");setBusy(button,false)}});
