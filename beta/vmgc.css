@@ -7196,3 +7196,17 @@ h3 {
   .home-page .home-main-grid .card-body { padding-bottom:8px; }
   .home-page .home-shell { padding-top:8px; padding-bottom:6px; }
 }
+/* Monitores del club: 1366 x 768 con las barras normales de Chrome. */
+@media screen and (min-width:900px) and (max-height:720px) {
+  .home-page .home-shell { padding-top:6px; padding-bottom:4px; }
+  .home-page .home-hero { margin-bottom:6px; }
+  .home-page .home-hero .lead { display:none; }
+  .home-page #panelContent { gap:6px; }
+  .home-page .tournament-strip { padding:7px 12px; }
+  .home-page .home-main-grid .card-head { padding:7px 12px; }
+  .home-page .home-main-grid .card-body { padding:7px 12px; }
+  .home-page .home-next-notice { padding:6px 9px; margin-bottom:5px; }
+  .home-page .action-list { gap:6px; }
+  .home-page .action { padding:6px 9px; }
+  .home-page .footer-note { margin-top:4px; padding-top:0; }
+}
