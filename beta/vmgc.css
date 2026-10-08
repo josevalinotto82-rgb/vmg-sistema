@@ -7210,3 +7210,11 @@ h3 {
   .home-page .action { padding:6px 9px; }
   .home-page .footer-note { margin-top:4px; padding-top:0; }
 }
+
+/* Acciones de bloqueo directo, exclusivas de la grilla administrativa. */
+.slot-quick-wrap { position:relative; min-width:0; display:flex; flex-direction:column; }
+.slot-quick-wrap > .slot { width:100%; flex:1; padding-bottom:32px; }
+.slot-quick-block { position:absolute; bottom:5px; right:7px; border:1px solid #d5dad7; border-radius:6px; background:#fff; color:#7c3030; font:inherit; font-size:11px; padding:3px 7px; cursor:pointer; }
+.line-quick-block { display:block; margin:6px auto 0; border:1px solid #d5dad7; border-radius:6px; background:white; color:#7c3030; font:inherit; font-size:11px; padding:4px 6px; cursor:pointer; }
+.slot-quick-block:disabled, .line-quick-block:disabled { opacity:.45; cursor:default; }
+.slot-quick-block:focus-visible, .line-quick-block:focus-visible { outline:2px solid #166534; outline-offset:2px; }
