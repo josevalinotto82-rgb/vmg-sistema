@@ -152,10 +152,8 @@ export async function loadScorecardWorkspace(tournamentId) {
   if (!expectedGroups.length && !scorecards.length) {
     throw new Error("El torneo todavía no tiene inscriptos ni tarjetas para cargar.");
   }
-  if (expectedGroups.length && missingGroups.length) {
-    throw new Error(`Todavía faltan crear ${missingGroups.length} tarjeta(s) en Adm. torneo. Completá el 100 % antes de ingresar a Carga de tarjetas.`);
-  }
-  return { tournament: tournamentResult.data, categories, scorecards, standalone: expectedGroups.length === 0 };
+  // Las tarjetas creadas se pueden cargar sin esperar al resto de los inscriptos.
+  return { tournament: tournamentResult.data, categories, scorecards, standalone: expectedGroups.length === 0, pendingCreation: missingGroups.length };
 }
 
 export async function saveScorecard(scorecardId, payload) {

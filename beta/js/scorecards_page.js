@@ -50,7 +50,7 @@ function renderKpis() {
   byId("exportCards").textContent = cards.filter(card => card.export_ready).length;
   byId("listSummary").textContent = bundle.standalone
     ? `${cards.length} tarjeta${cards.length === 1 ? "" : "s"} independiente${cards.length === 1 ? "" : "s"}`
-    : `${cards.length} tarjeta${cards.length === 1 ? "" : "s"} creadas en Adm. torneo`;
+    : `${cards.length} tarjeta${cards.length === 1 ? "" : "s"} creadas en Adm. torneo${bundle.pendingCreation ? ` · ${bundle.pendingCreation} pendiente${bundle.pendingCreation === 1 ? "" : "s"} de crear` : ""}`;
 }
 
 function cardSecondary(card) {
@@ -162,6 +162,8 @@ async function toggleDesc() {
 async function reload({ preserveSelection = false, focusEditor = true } = {}) {
   const id = requestedTournamentId();
   if (!id) { location.replace(PAGES.panel); return; }
+  renderStageNavigation(tournamentStrip, 3, id);
+  byId("backOfficialization").href = `oficializacion.html?torneo=${encodeURIComponent(id)}`;
   const previous = preserveSelection ? selectedId : "";
   bundle = await loadScorecardWorkspace(id); setActiveTournament(bundle.tournament);
   selectedId = bundle.scorecards.some(card => String(card.id) === String(previous)) ? previous : sortedCards()[0]?.id || "";
