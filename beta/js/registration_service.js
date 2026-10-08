@@ -166,11 +166,19 @@ export async function blockEmptySlots(slotIds) {
   return data.length;
 }
 
-export async function blockSlot(slotId, blocked=true) {
-  if (blocked) return blockEmptySlots([slotId]);
+export async function unblockSlots(slotIds) {
   await requireGridAdmin();
-  const { error } = await supabase.from("line_slots").update(resetSlot()).eq("id",slotId).eq("participant_type","blocked");
-  if(error)throw error;
+  const ids = [...new Set(slotIds)];
+  if (!ids.length) throw new Error("No hay casilleros para desbloquear.");
+  const { data, error } = await supabase.from("line_slots").update(resetSlot())
+    .in("id", ids).eq("participant_type", "blocked").is("linked_player_id", null).select("id");
+  if (error) throw error;
+  if (data?.length !== ids.length) throw new Error("La línea cambió. Solo se desbloquearon los lugares que seguían bloqueados. Actualizá la grilla.");
+  return data.length;
+}
+
+export async function blockSlot(slotId, blocked=true) {
+  return blocked ? blockEmptySlots([slotId]) : unblockSlots([slotId]);
 }
 
 export async function moveRegistration(sourceId,destinationId,{requiresPartner=false,isAdmin=false,memberPlayerId=null,memberNumber=null}={}){

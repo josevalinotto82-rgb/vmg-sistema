@@ -1,7 +1,7 @@
 import { requireSession } from "./auth.js";
 import { mountShell, getActiveTournament, setActiveTournament, renderStageNavigation } from "./shell.js";
 import { escapeHtml, notify, showState, confirmAction, setBusy } from "./ui.js";
-import { listAvailableTournaments, loadGrid, getMemberPlayer, searchPlayers, ensurePlayer, createManualPlayer, lockLine, unlockLine, registerPlayers, reserveSlot, releaseSlot, blockSlot, blockEmptySlots, moveRegistration, validateSlotChoice, isEmpty, isReservation, subscribeGrid } from "./registration_service.js";
+import { listAvailableTournaments, loadGrid, getMemberPlayer, searchPlayers, ensurePlayer, createManualPlayer, lockLine, unlockLine, registerPlayers, reserveSlot, releaseSlot, blockSlot, blockEmptySlots, unblockSlots, moveRegistration, validateSlotChoice, isEmpty, isReservation, subscribeGrid } from "./registration_service.js";
 
 const context = await requireSession({ admin: true });
 const isAdmin = context.profile.role === "admin";
@@ -41,14 +41,18 @@ function renderSlotContent(slot){if(slot.participant_type==="blocked")return `<b
 function canQuickBlock(slot) { return isAdmin && canEdit() && isEmpty(slot) && !lockOther(slot); }
 function renderSlot(slot) {
   const content = renderSlotContent(slot);
-  if (!canQuickBlock(slot)) return content;
-  return `<div class="slot-quick-wrap">${content}<button type="button" class="slot-quick-block" data-quick-block="${slot.id}" aria-label="Bloquear casillero ${slot.slot_number}" title="Bloquear este casillero">⊘ Bloquear</button></div>`;
+  const blocked = slot.participant_type === "blocked";
+  if (!isAdmin || !canEdit() || (!blocked && !canQuickBlock(slot))) return content;
+  const label = blocked ? "Desbloquear" : "Bloquear";
+  return `<div class="slot-quick-wrap">${content}<button type="button" class="slot-quick-block" data-quick-block="${slot.id}" data-unblock="${blocked}" aria-label="${label} casillero ${slot.slot_number}" title="${label} este casillero">${blocked ? '↺' : '⊘'} ${label}</button></div>`;
 }
 function renderLineBlockAction(line) {
   const slots = byLine(line.id);
   if (!isAdmin || !canEdit()) return "";
-  const canBlock = slots.length === 4 && slots.some(slot => slot.participant_type !== "blocked") && slots.every(slot => slot.participant_type === "blocked" || canQuickBlock(slot));
-  return `<button type="button" class="line-quick-block" data-block-line="${line.id}" ${canBlock ? '' : 'disabled'} title="${canBlock ? 'Bloquear los cuatro lugares de esta salida' : 'La línea debe tener cuatro lugares libres o ya bloqueados'}">⊘ Bloquear 4</button>`;
+  const allBlocked = slots.length === 4 && slots.every(slot => slot.participant_type === "blocked");
+  const canBlock = slots.length === 4 && slots.every(slot => slot.participant_type === "blocked" || canQuickBlock(slot));
+  const label = allBlocked ? "Desbloquear 4" : "Bloquear 4";
+  return `<button type="button" class="line-quick-block" data-block-line="${line.id}" data-unblock="${allBlocked}" ${canBlock ? '' : 'disabled'} title="${canBlock ? label + ' lugares de esta salida' : 'La línea debe tener cuatro lugares libres o ya bloqueados'}">${allBlocked ? '↺' : '⊘'} ${label}</button>`;
 }
 
 function screenBlockTitle(block){if(state.tournament?.start_type==="simultanea")return block.name||"Salida simultánea";const firstLine=blockLines(block.id)[0],fallback=/bloque\s*2/i.test(String(block.name||""))?10:1;return`Salida por Hoyo ${Number(firstLine?.starting_hole||fallback)}`}
@@ -75,12 +79,13 @@ dom.grid.addEventListener("click",async event=>{
     event.preventDefault();
     if (!isAdmin || !canEdit() || quick.disabled) return;
     if (state.moveSource) return notify("Terminá o cancelá el movimiento antes de bloquear.","error");
-    setBusy(quick,true,"Bloqueando…");
+    const unblock = quick.dataset.unblock === "true";
+    setBusy(quick,true,unblock ? "Desbloqueando…" : "Bloqueando…");
     try {
       const ids = quick.hasAttribute("data-block-line") ? byLine(quick.dataset.blockLine).map(slot => slot.id) : [quick.dataset.quickBlock];
-      await blockEmptySlots(ids);
+      if (unblock) await unblockSlots(ids); else await blockEmptySlots(ids);
       await reload({quiet:true});
-      notify(ids.length === 4 ? "Línea de cuatro casilleros bloqueada." : "Casillero bloqueado.");
+      notify(ids.length === 4 ? (unblock ? "Línea de cuatro casilleros desbloqueada." : "Línea de cuatro casilleros bloqueada.") : (unblock ? "Casillero desbloqueado." : "Casillero bloqueado."));
     } catch(error) { notify(error.message,"error"); await reload({quiet:true}); }
     finally { setBusy(quick,false); }
     return;

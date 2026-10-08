@@ -5,6 +5,7 @@ import { confirmAction, escapeHtml, formatDate, notify } from "./ui.js";
 import { executeAagSync, getAagSyncStatus, linkManualPlayer, listAagSyncReports, prepareAagSync } from "./aag_sync_service.js";
 import { listCurrentAagExports, refreshAllAagStatuses, syncAagFields } from "./aag_exports_service.js";
 import { loadTournamentStatistics } from "./statistics_service.js";
+import { statisticsContent, printStatisticsReport } from "./statistics_report.js";
 
 const stages = [
   { page: PAGES.tournaments, label: "Configuración", param: "torneo_id" },
@@ -390,7 +391,10 @@ async function hydrateStatistics(detail) {
       const rows = tournaments.filter(item => words.every(word => `${item.name} ${item.tournament_date}`.toLocaleLowerCase("es").includes(word)));
       return rows.length ? rows.map(item => `<label class="statistics-tournament-row"><input type="checkbox" value="${item.id}" ${selected.has(item.id) ? "checked" : ""}><span><strong>${escapeHtml(item.name)}</strong><small>${formatDate(item.tournament_date)} · ${escapeHtml(item.game_modes?.name || "Torneo")}</small></span></label>`).join("") : '<div class="empty-state compact">No hay torneos que coincidan.</div>';
     };
-    host.innerHTML = `<div class="statistics-controls"><div class="field"><label>Buscar torneos</label><input class="control" data-statistics-search placeholder="Nombre del torneo"></div><div class="statistics-tournament-list" data-statistics-tournaments>${tournamentRows("")}</div><div class="statistics-filter-grid"><div class="field"><label>Index mínimo</label><input class="control" data-statistics-min type="number" step="0.1" placeholder="Sin mínimo"></div><div class="field"><label>Index máximo</label><input class="control" data-statistics-max type="number" step="0.1" placeholder="Sin máximo"></div></div><button class="btn primary" type="button" data-statistics-run>Calcular dificultad</button></div><div data-statistics-results><div class="empty-state compact">Elegí uno o varios torneos. El ranking combinará todas las tarjetas válidas seleccionadas.</div></div>`;
+    host.innerHTML = `<div class="statistics-controls"><div class="field"><label>Buscar torneos</label><input class="control" data-statistics-search placeholder="Nombre del torneo"></div><div class="statistics-tournament-list" data-statistics-tournaments>${tournamentRows("")}</div><div class="statistics-filter-grid"><div class="field"><label>Index mínimo</label><input class="control" data-statistics-min type="number" step="0.1" placeholder="Sin mínimo"></div><div class="field"><label>Index máximo</label><input class="control" data-statistics-max type="number" step="0.1" placeholder="Sin máximo"></div></div><div class="statistics-run-actions"><button class="btn primary" type="button" data-statistics-run>Calcular dificultad</button><button class="btn secondary" type="button" data-statistics-print disabled>Imprimir A4</button></div></div><div data-statistics-results><div class="empty-state compact">Elegí uno o varios torneos. El ranking combinará todas las tarjetas válidas seleccionadas.</div></div>`;
+    let lastReport = null, lastMeta = null;
+    const printButton = host.querySelector("[data-statistics-print]");
+    printButton.addEventListener("click", () => { if (lastReport) printStatisticsReport(lastReport,lastMeta); });
     const list = host.querySelector("[data-statistics-tournaments]");
     const bindChecks = () => list.querySelectorAll('input[type="checkbox"]').forEach(input => input.addEventListener("change", () => { input.checked ? selected.add(input.value) : selected.delete(input.value); }));
     bindChecks();
@@ -399,11 +403,14 @@ async function hydrateStatistics(detail) {
       const button = event.currentTarget, results = host.querySelector("[data-statistics-results]");
       try {
         button.disabled = true; button.textContent = "Calculando…";
-        const report = await loadTournamentStatistics([...selected], { indexMin: host.querySelector("[data-statistics-min]").value, indexMax: host.querySelector("[data-statistics-max]").value });
-        const fmt = value => value === null || value === undefined ? "—" : Number(value).toFixed(2).replace(".", ",");
-        const ranking = report.ranking.map((row, index) => `<div><b>${index + 1}°</b><strong>Hoyo ${row.hole}</strong><span>${fmt(row.averageVsPar)} vs par</span></div>`).join("");
-        const rows = report.holes.filter(row => row.count).map(row => `<tr><td><b>H${row.hole}</b></td><td>${escapeHtml(row.par ?? "—")}</td><td>${escapeHtml(row.handicap ?? "—")}</td><td>${row.count}</td><td>${fmt(row.average)}</td><td><strong>${Number(row.averageVsPar) >= 0 ? "+" : ""}${fmt(row.averageVsPar)}</strong></td><td>${row.eagles}</td><td>${row.birdies}</td><td>${row.pars}</td><td>${row.bogeys}</td><td>${row.doublePlus}</td></tr>`).join("");
-        results.innerHTML = `<div class="statistics-kpis"><div><strong>${selected.size}</strong><span>Torneos</span></div><div><strong>${report.cards}</strong><span>Tarjetas incluidas</span></div><div><strong>${report.observations}</strong><span>Hoyos evaluados</span></div><div><strong>${report.excluded}</strong><span>Tarjetas excluidas</span></div></div><h3>Ranking de dificultad</h3><div class="statistics-ranking">${ranking}</div><div class="table-wrap statistics-table"><table class="table"><thead><tr><th>Hoyo</th><th>Par</th><th>HCP</th><th>Muestras</th><th>Prom. golpes</th><th>Prom. vs par</th><th>Águilas</th><th>Birdies</th><th>Par</th><th>Bogey</th><th>Doble +</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        printButton.disabled = true; lastReport = null;
+        const selectedIds = [...selected];
+        const reportMeta = { tournaments:tournaments.filter(item => selectedIds.includes(item.id)), indexMin:host.querySelector("[data-statistics-min]").value, indexMax:host.querySelector("[data-statistics-max]").value };
+        const report = await loadTournamentStatistics(selectedIds,reportMeta);
+        lastReport = report;
+        lastMeta = reportMeta;
+        results.innerHTML = statisticsContent(report,lastMeta);
+        printButton.disabled = false;
       } catch (error) { results.innerHTML = `<div class="notice warn">${escapeHtml(error.message)}</div>`; }
       finally { button.disabled = false; button.textContent = "Calcular dificultad"; }
     });
@@ -420,33 +427,31 @@ function openSettings(initialItem = "") {
   document.body.appendChild(drawer);
   const detail = drawer.querySelector("[data-settings-detail]");
   let activeItem = "";
-  const close = () => drawer.remove();
+  const onToolMessage = event => {
+    const frame = detail.querySelector("iframe.settings-tool-frame");
+    if (event.origin === location.origin && frame && event.source === frame.contentWindow && event.data?.type === "vmgc:close-tool") hideDetail();
+  };
+  window.addEventListener("message",onToolMessage);
+  const close = () => { window.removeEventListener("message",onToolMessage); drawer.remove(); };
   const hideDetail = () => {
     activeItem = "";
-    detail.classList.remove("open");
+    detail.innerHTML = "";
+    detail.classList.remove("open","settings-detail-wide");
     detail.setAttribute("aria-hidden", "true");
     drawer.querySelectorAll("[data-settings-item]").forEach(button => button.classList.remove("active"));
   };
   const showDetail = id => {
-    if (id === "free-card") {
-      window.open(PAGES.freeCard, "vmgcTarjetaLibre", "width=1280,height=900,resizable=yes,scrollbars=yes");
-      return;
-    }
-    if (id === "tv-control") {
-      window.open(PAGES.tvControl, "vmgcTvControl", "width=1180,height=900,resizable=yes,scrollbars=yes");
-      return;
-    }
-    if (id === "notifications") { location.href='notificaciones.html'; return; }
-    if (id === "tv-media") {
-      window.open(PAGES.tvMedia, "vmgcTvMedia", "width=1180,height=900,resizable=yes,scrollbars=yes");
-      return;
-    }
     if (activeItem === id && detail.classList.contains("open")) return hideDetail();
     const item = settingsItems.find(entry => entry.id === id);
     if (!item) return;
     activeItem = id;
     drawer.querySelectorAll("[data-settings-item]").forEach(button => button.classList.toggle("active", button.dataset.settingsItem === id));
-    detail.innerHTML = settingsDetail(item);
+    const toolPages = { "free-card":PAGES.freeCard, "tv-control":PAGES.tvControl, "tv-media":PAGES.tvMedia, notifications:"notificaciones.html" };
+    const toolPage = toolPages[id];
+    detail.classList.toggle("settings-detail-wide", !!toolPage || id === "statistics");
+    detail.innerHTML = toolPage
+      ? '<div class="settings-detail-head"><button class="btn secondary small" data-settings-detail-close>← Volver</button><h2>' + escapeHtml(item.label) + '</h2></div><iframe class="settings-tool-frame" title="' + escapeHtml(item.label) + '" src="' + toolPage + '?embedded=1"></iframe>'
+      : settingsDetail(item);
     detail.classList.add("open");
     detail.setAttribute("aria-hidden", "false");
     detail.querySelector("[data-settings-detail-close]").addEventListener("click", hideDetail);

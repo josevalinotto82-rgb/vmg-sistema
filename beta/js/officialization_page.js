@@ -357,13 +357,27 @@ async function printAllCards() {
 }
 
 function renderPayments() {
-  const allRows = bundle.registrations.map(registration => { const payment = bundle.paymentMap.get(String(registration.id)) || {}; return { display_name: registration.display_name, payment_method: payment.payment_method || "pending", amount: Number(payment.amount || 0) } });
+  const allRows = bundle.registrations.map(registration => {
+    const payment = bundle.paymentMap.get(String(registration.id)) || {};
+    return { display_name: registration.display_name || "Sin nombre", payment_method: payment.payment_method || "pending", amount: Number(payment.amount || 0) };
+  }).sort((a,b) => a.display_name.localeCompare(b.display_name,"es",{sensitivity:"base"}));
+  const totals = {};
+  for (const payment of allRows) {
+    const item = totals[payment.payment_method] ||= { count:0, amount:0 };
+    item.count++; item.amount += payment.amount;
+  }
+  if (currentPaymentFilter !== "all" && !totals[currentPaymentFilter]) currentPaymentFilter = "all";
   const rows = currentPaymentFilter === "all" ? allRows : allRows.filter(row => row.payment_method === currentPaymentFilter);
-  const totals = {}; for (const method of Object.keys(PAYMENT_METHODS)) totals[method] = { count: 0, amount: 0 };
-  for (const payment of rows) { const item = totals[payment.payment_method] || totals.pending; item.count++; item.amount += payment.amount }
-  const grandTotal = rows.reduce((sum, item) => sum + item.amount, 0);
-  byId("paymentsContent").innerHTML = `<div class="field payment-filter"><label>Filtrar por forma de pago</label><select class="control" id="paymentSummaryFilter"><option value="all">Todas las formas de pago</option>${Object.entries(PAYMENT_METHODS).map(([value, label]) => `<option value="${value}" ${currentPaymentFilter === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></div><div class="kpis payment-kpis">${Object.entries(totals).filter(([, item]) => item.count).map(([method, item]) => `<div class="kpi"><span>${escapeHtml(PAYMENT_METHODS[method])}</span><strong>${money(item.amount)}</strong><small>${item.count} jugador(es)</small></div>`).join("") || '<div class="notice">No hay jugadores con este tipo de pago.</div>'}</div><div class="payment-total"><span>Total filtrado</span><strong>${money(grandTotal)}</strong></div><div class="table-wrap payment-table-wrap"><table class="table"><thead><tr><th>Jugador</th><th>Método</th><th>Importe</th></tr></thead><tbody>${rows.map(payment => `<tr><td>${escapeHtml(payment.display_name)}</td><td>${escapeHtml(PAYMENT_METHODS[payment.payment_method] || payment.payment_method)}</td><td>${money(payment.amount)}</td></tr>`).join("")}</tbody></table></div>`;
-  byId("paymentSummaryFilter")?.addEventListener("change", event => { currentPaymentFilter = event.target.value; renderPayments() });
+  const grandTotal = rows.reduce((sum,item) => sum + item.amount,0);
+  const total = allRows.reduce((sum,item) => sum + item.amount,0);
+  const filterButton = (method,label,count,amount) => `<button type="button" class="payment-summary-chip ${currentPaymentFilter === method ? 'active' : ''}" data-payment-filter="${escapeHtml(method)}" aria-pressed="${currentPaymentFilter === method}"><span>${escapeHtml(label)}</span><strong>${money(amount)}</strong><small>${count} ${count === 1 ? 'jugador' : 'jugadores'}</small></button>`;
+  const methods = [...Object.keys(PAYMENT_METHODS), ...Object.keys(totals).filter(key => !(key in PAYMENT_METHODS))];
+  byId("paymentsContent").innerHTML = `<div class="payment-summary-top"><div class="payment-summary-filters" aria-label="Filtrar por forma de pago">${filterButton('all','Todos',allRows.length,total)}${methods.filter(method => totals[method]?.count).map(method => filterButton(method,PAYMENT_METHODS[method] || method,totals[method].count,totals[method].amount)).join('')}</div><div class="payment-visible-total"><span>${escapeHtml(currentPaymentFilter === 'all' ? 'Todos los pagos' : PAYMENT_METHODS[currentPaymentFilter] || currentPaymentFilter)} · ${rows.length} ${rows.length === 1 ? 'jugador' : 'jugadores'}</span><strong>${money(grandTotal)}</strong></div></div><div class="payment-detail-list" aria-label="Detalle por jugador">${rows.map(payment => `<article class="payment-detail-item"><div class="payment-detail-person"><strong>${escapeHtml(payment.display_name)}</strong><span>${escapeHtml(PAYMENT_METHODS[payment.payment_method] || payment.payment_method)}</span></div><strong class="payment-detail-amount">${money(payment.amount)}</strong></article>`).join('') || '<div class="empty-state compact">No hay pagos para mostrar.</div>'}</div>`;
+  byId("paymentsContent").querySelectorAll("[data-payment-filter]").forEach(button => button.addEventListener("click", () => {
+    const method = button.dataset.paymentFilter;
+    currentPaymentFilter = currentPaymentFilter === method ? "all" : method;
+    renderPayments();
+  }));
 }
 
 

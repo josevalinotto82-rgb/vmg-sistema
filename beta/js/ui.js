@@ -53,3 +53,13 @@ export function confirmAction({ title, message, confirmText = "Confirmar", dange
     wrap.querySelector("[data-confirm]").addEventListener("click", () => close(true));
   });
 }
+
+// Cerrar desde el fondo usando la misma acción de la X de cada panel.
+// Así se conservan la limpieza del formulario y la liberación de selecciones.
+document.addEventListener("click", event => {
+  const drawer = event.target;
+  if (event.defaultPrevented || !(drawer instanceof Element) || !drawer.matches(".drawer.open") || !drawer.isConnected) return;
+  const closeButton = drawer.querySelector(".drawer-head button") || drawer.querySelector("[data-cancel]");
+  if (!closeButton || closeButton.disabled || closeButton.hidden) return;
+  closeButton.click();
+});
