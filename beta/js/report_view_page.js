@@ -6,7 +6,7 @@ import { loadResultsWorkspace } from "./results_service.js";
 import { buildPaymentReport, paymentReportOptions } from "./payment_report.js";
 import { buildTournamentReport } from "./results_report.js";
 
-await requireSession();
+await requireSession({ admin: true });
 
 const params = new URLSearchParams(location.search);
 const type = params.get("tipo");

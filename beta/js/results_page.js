@@ -3,7 +3,7 @@ import { mountShell, getActiveTournament, setActiveTournament, renderStageNaviga
 import { escapeHtml, showState } from "./ui.js";
 import { loadResultsWorkspace, saveResultsConfiguration, normalizeText, normalizeGender, isGross, isAmerican, validCard, statusText, primaryScore, compareCards, compareSeriesItems, categoryForCard, scratchEligible, aggregateSeries } from "./results_service.js";
 
-const context=await requireSession(); mountShell({context,activeStep:4});
+const context=await requireSession({ admin: true }); mountShell({context,activeStep:4});
 const $=id=>document.getElementById(id); let bundle,view="day",query="",config;
 const prizeFields=[["approach-3","Approach Hoyo 3","approach","3"],["approach-5","Approach Hoyo 5","approach","5"],["approach-11","Approach Hoyo 11","approach","11"],["approach-13","Approach Hoyo 13","approach","13"],["long-drive","Long Drive","long_drive"],["precision-drive","Precisión Drive","precision_drive"]];
 const clamp=(value,fallback=0,min=0,max=10)=>{const n=parseInt(value,10);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback};

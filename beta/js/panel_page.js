@@ -4,7 +4,7 @@ import { listOperationalTournaments, listPublishedOpenTournaments, getTournament
 import { escapeHtml, formatDate, notify } from "./ui.js";
 import { mountHcpLookup } from "./hcp_lookup.js";
 
-const context = await requireSession();
+const context = await requireSession({ admin: true });
 document.body.classList.add("home-page");
 mountShell({ context, showSteps: false, showSettings: true });
 const content = document.getElementById("panelContent"), title = document.getElementById("welcomeTitle"), subtitle = document.getElementById("welcomeText"), role = document.getElementById("panelRole"), heroActions = document.getElementById("heroActions");

@@ -1,14 +1,16 @@
-import { getAuthContext, signIn } from "./auth.js";
+import { getAuthContext, signIn, signOut } from "./auth.js";
 import { PAGES } from "./config.js";
 import { setBusy, showState } from "./ui.js";
 
 const form = document.getElementById("loginForm");
 const button = document.getElementById("loginButton");
 const status = document.getElementById("formStatus");
+if (new URLSearchParams(location.search).has("admin_required")) showState(status,"Este sistema es exclusivo para administradores.","error");
 
 try {
   const context = await getAuthContext();
-  if (context.session && context.profile?.active) location.replace(PAGES.panel);
+  if (context.session && context.profile?.active && context.profile.role === "admin") location.replace(PAGES.panel);
+  else if (context.session) await signOut();
 } catch (error) { console.error(error); }
 
 form.addEventListener("submit", async event => {

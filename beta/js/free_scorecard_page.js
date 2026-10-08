@@ -4,7 +4,7 @@ import { nextCouponNumber } from "./officialization_service.js";
 import { preprintedCardCss } from "./officialization_print.js";
 import { enabledHoles, loadFreeCardCatalogs, localDate, normalizeSegment, playerFromResult, saveFreeScorecard, searchFreePlayers, suggestedCategory, teeConfiguration, toNumber, weekday } from "./free_scorecard_service.js";
 
-const context=await requireSession();
+const context=await requireSession({ admin: true });
 if(context.profile.role!=="admin"){location.replace("panel.html");throw new Error("Acceso restringido")}
 if(!localStorage.getItem("ticket_branch_code")){const email=String(context.user?.email||"").toLowerCase(),branches={"lau_m2000@hotmail.com":"S1","giselaantonino@gmail.com":"S2"};localStorage.setItem("ticket_branch_code",branches[email]||"S1")}
 const byId=id=>document.getElementById(id),search=byId("freePlayerSearch"),results=byId("freePlayerResults"),gamePanel=byId("freeGamePanel"),scorePanel=byId("freeScorePanel"),status=byId("freeCardStatus"),totals=byId("freeScoreTotals");

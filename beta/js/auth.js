@@ -31,7 +31,9 @@ export async function requireSession({ admin = false } = {}) {
     throw new Error("Usuario inactivo");
   }
   if (admin && context.profile.role !== "admin") {
-    location.replace(PAGES.panel);
+    await supabase.auth.signOut();
+    cachedContext = null;
+    location.replace(`${PAGES.login}?admin_required=1`);
     throw new Error("Permiso de administrador requerido");
   }
   return context;
@@ -41,6 +43,12 @@ export async function signIn(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   cachedContext = null;
+  const context = await getAuthContext();
+  if (!context.profile?.active || context.profile.role !== "admin") {
+    await supabase.auth.signOut();
+    cachedContext = null;
+    throw new Error("Este sistema es exclusivo para administradores activos.");
+  }
   return data;
 }
 

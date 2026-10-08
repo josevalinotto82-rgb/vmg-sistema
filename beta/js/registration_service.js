@@ -1,4 +1,5 @@
 import { supabase } from "./supabase.js";
+import { getAuthContext } from "./auth.js";
 
 const SESSION_KEY = "vmgc_grid_session";
 export const GRID_SESSION = sessionStorage.getItem(SESSION_KEY) || crypto.randomUUID();
@@ -133,7 +134,44 @@ export async function registerPlayers({tournamentId,slotId,players,isAdmin,membe
 
 export async function reserveSlot(slotId,{isAdmin,memberPlayerId}) { const slot=await freshSlot(slotId); if(!isEmpty(slot))throw new Error("El lugar ya no está libre."); if(!isAdmin){const slots=await lineSlots(slot.starting_line_id);const first=slots.find(s=>Number(s.slot_number)===1);if(String(first?.linked_player_id||"")!==String(memberPlayerId||""))throw new Error("Solo podés reservar en tu línea si estás anotado en el lugar 1.");} const payload=isAdmin?{display_name:"Reservado",participant_type:"admin",locked_by_session:"RESERVA_ADMIN",locked_by_player_id:null,lock_expires_at:"2099-12-31T23:59:59.000Z",notes:"RESERVA_ADMIN"}:{locked_by_session:null,locked_by_player_id:memberPlayerId,lock_expires_at:new Date(now()+24*3600000).toISOString(),notes:"RESERVA_24H_SOCIO"};const {error}=await supabase.from("line_slots").update(payload).eq("id",slotId);if(error)throw error; }
 export async function releaseSlot(slotId,{isAdmin,memberPlayerId,tournamentDate,requiresPartner=false}) { const slot=await freshSlot(slotId);const allowed=isAdmin||String(slot.linked_player_id||"")===String(memberPlayerId||"")||String(slot.created_by_player_id||"")===String(memberPlayerId||"")||String(slot.locked_by_player_id||"")===String(memberPlayerId||"");if(!allowed)throw new Error("No tenés permiso para liberar este lugar.");if(!isAdmin){const [year,month,day]=String(tournamentDate||"").split("-").map(Number);const cutoff=new Date(year,month-1,day,12,0,0,0);cutoff.setDate(cutoff.getDate()-1);if(now()>=cutoff.getTime())throw new Error("La baja web ya cerró. Comunicate con administración por WhatsApp.");}let ids=[slot.id];if(requiresPartner){const numbers=pairBlock(slot.slot_number);ids=(await lineSlots(slot.starting_line_id)).filter(item=>numbers.includes(Number(item.slot_number))).map(item=>item.id);}const {error:de}=await supabase.from("registrations").delete().in("line_slot_id",ids);if(de)throw de;const {error}=await supabase.from("line_slots").update(resetSlot()).in("id",ids);if(error)throw error; }
-export async function blockSlot(slotId,blocked=true){const payload=blocked?{...resetSlot(),participant_type:"blocked",notes:"BLOCKED_BY_ADMIN"}:resetSlot();const{error}=await supabase.from("line_slots").update(payload).eq("id",slotId);if(error)throw error;}
+async function requireGridAdmin() {
+  const context = await getAuthContext();
+  if (!context.session || !context.profile?.active || context.profile.role !== "admin") throw new Error("Solo administración puede bloquear casilleros.");
+}
+
+export async function blockEmptySlots(slotIds) {
+  await requireGridAdmin();
+  const ids = [...new Set(slotIds)];
+  if (!ids.length) throw new Error("No hay casilleros para bloquear.");
+  const { data: slots, error: readError } = await supabase.from("line_slots").select("*").in("id", ids);
+  if (readError) throw readError;
+  if (slots?.length !== ids.length) throw new Error("La línea cambió. Actualizá la grilla.");
+  if (slots.some(slot => slot.participant_type !== "blocked" && (!isEmpty(slot) || slot.linked_player_id))) throw new Error("Hay jugadores o reservas en esta línea. Solo se pueden bloquear lugares libres.");
+  if (slots.some(slot => isActiveLock(slot) && slot.locked_by_session !== GRID_SESSION)) throw new Error("Hay casilleros que están siendo seleccionados. Intentá nuevamente en unos instantes.");
+  const targets = slots.filter(slot => slot.participant_type !== "blocked").map(slot => slot.id);
+  if (!targets.length) return 0;
+  const cutoff = new Date().toISOString();
+  // Revalidar disponibilidad al escribir para no pisar una inscripción reciente.
+  const { data, error } = await supabase.from("line_slots")
+    .update({ ...resetSlot(), participant_type:"blocked", notes:"BLOCKED_BY_ADMIN" })
+    .in("id", targets)
+    .or("display_name.is.null,display_name.eq.,display_name.eq.LIBRE")
+    .or("participant_type.is.null,participant_type.neq.blocked")
+    .is("linked_player_id", null)
+    .or("notes.is.null,notes.neq.RESERVA_ADMIN")
+    .or("lock_expires_at.is.null,lock_expires_at.lte." + cutoff + ",locked_by_session.eq." + GRID_SESSION)
+    .select("id");
+  if (error) throw error;
+  if (data?.length !== targets.length) throw new Error("La disponibilidad cambió durante el bloqueo. Actualizá la grilla para ver qué lugares quedaron bloqueados.");
+  return data.length;
+}
+
+export async function blockSlot(slotId, blocked=true) {
+  if (blocked) return blockEmptySlots([slotId]);
+  await requireGridAdmin();
+  const { error } = await supabase.from("line_slots").update(resetSlot()).eq("id",slotId).eq("participant_type","blocked");
+  if(error)throw error;
+}
 
 export async function moveRegistration(sourceId,destinationId,{requiresPartner=false,isAdmin=false,memberPlayerId=null,memberNumber=null}={}){
   if(sourceId===destinationId)return;const source=await freshSlot(sourceId),destination=await freshSlot(destinationId);if(isEmpty(source)||isReservation(source)||source.participant_type==="blocked")throw new Error("El lugar de origen no contiene un jugador.");if(!isEmpty(destination))throw new Error("El lugar de destino ya no está libre.");
