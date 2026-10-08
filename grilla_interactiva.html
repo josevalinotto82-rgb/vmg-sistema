@@ -1765,6 +1765,28 @@ const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawCl
       return texto.replace(/\b\w/g, l => l.toUpperCase());
     }
 
+    function getBlocksForDisplay() {
+      const blocks = [...state.blocks];
+      if (!isSimultaneousTournament()) return blocks;
+
+      // A igual horario, conservar el orden original de los bloques.
+      return blocks.sort((a, b) => {
+        const timeA = timeTextToMinutes(a.start_time) ?? Infinity;
+        const timeB = timeTextToMinutes(b.start_time) ?? Infinity;
+        if (timeA === timeB) return 0;
+        return timeA < timeB ? -1 : 1;
+      });
+    }
+
+    function getLinesForExport() {
+      if (!isSimultaneousTournament()) return sortLinesForDisplay(state.lines);
+
+      // Exportar cada bloque completo en el mismo orden que la pantalla.
+      return getBlocksForDisplay().flatMap(block => sortLinesForDisplay(
+        state.lines.filter(line => String(line.starting_block_id) === String(block.id))
+      ));
+    }
+
     function sortLinesForDisplay(lines) {
       const items = Array.isArray(lines) ? [...lines] : [];
 
@@ -3339,7 +3361,7 @@ const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawCl
           <tbody>
     `;
 
-      const lines = sortLinesForDisplay(state.lines);
+      const lines = getLinesForExport();
 
       let lastHole = null;
       let lastBlockId = null;
@@ -3717,11 +3739,11 @@ const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawCl
 
       dom.contenido.innerHTML = `
     <div class="desktop-grid">
-      ${state.blocks.map(renderBlock).join("")}
+      ${getBlocksForDisplay().map(renderBlock).join("")}
     </div>
 
     <div class="mobile-grid">
-      ${state.blocks.map(renderMobileBlock).join("")}
+      ${getBlocksForDisplay().map(renderMobileBlock).join("")}
     </div>
   `;
     }
