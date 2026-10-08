@@ -68,11 +68,6 @@ export function teeRuleForScorecard(bundle, scorecard) {
     const found = rules.find(rule => String(rule?.aag_teeout_id || "") === playingTee);
     if (found) return found;
   }
-  const teeId = String(scorecard?.tee_id || "");
-  if (teeId) {
-    const found = rules.find(rule => String(rule?.aag_teeout_id || "") === teeId);
-    if (found) return found;
-  }
   const teeName = normalizeText(scorecard?.tee_name);
   if (teeName) {
     const found = rules.find(rule => normalizeText(rule?.reference?.tee_name) === teeName);
@@ -129,7 +124,7 @@ export async function loadScorecardWorkspace(tournamentId) {
     supabase.from("tournaments").select("id,name,tournament_date,status,hole_count,start_type,scoring_mode,data_schema_version,game_modes(id,name,participation_type,calculation_params)").eq("id", tournamentId).single(),
     supabase.from("tournament_categories").select("id,tournament_id,category_id,category_system,name,display_order,hole_segment,tee_rules,playing_tee_aag_teeout_id").eq("tournament_id", tournamentId).order("display_order"),
     supabase.from("registrations").select("id,partner_registration_id").eq("tournament_id", tournamentId).neq("registration_status", "cancelled"),
-    supabase.from("scorecards").select("id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,playing_handicap,player_1_playing_handicap,player_2_playing_handicap,category_id,category_name,tee_id,tee_name,player_gender,hole_segment,gross,net,total,card_status,hole_scores,export_ready,aag_exportable,exported_to_aag").eq("tournament_id", tournamentId)
+    supabase.from("scorecards").select("id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,playing_handicap,player_1_playing_handicap,player_2_playing_handicap,category_id,category_name,tee_name,player_gender,hole_segment,gross,net,total,card_status,hole_scores,export_ready,aag_exportable,exported_to_aag").eq("tournament_id", tournamentId)
   ]);
   for (const result of [tournamentResult, categoriesResult, registrationsResult, scorecardsResult]) if (result.error) throw result.error;
   if (Number(tournamentResult.data?.data_schema_version) !== 2) throw new Error("Esta pantalla administra únicamente torneos V2.");

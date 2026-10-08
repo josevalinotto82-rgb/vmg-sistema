@@ -231,6 +231,7 @@
             }
         }
     </style>
+<script src="./snapshot-client.js"></script>
 </head>
 
 <body>
@@ -302,9 +303,8 @@
 
     <script type="module">
 
-        import {
-            createClient
-        } from "https://esm.sh/@supabase/supabase-js@2";
+        import { createClient as createRawClient } from "https://esm.sh/@supabase/supabase-js@2";
+const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
 
 
         const supabase = createClient(

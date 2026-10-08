@@ -1,3 +1,4 @@
+import { categoryFromRules } from "./category_snapshot.js";
 import { supabase } from "./supabase.js";
 import { OfficializationRules, baseIndex, getLine, getScorecard, getSlot, isNewCategory, memberNumber, normalizeGender } from "./officialization_rules.js";
 
@@ -14,9 +15,9 @@ export async function listOfficializationTournaments({ includeArchived = false }
 export async function loadOfficialization(tournamentId) {
   const [tournamentResult, categoryResult, registrationResult, scorecardResult, paymentResult] = await Promise.all([
     supabase.from("tournaments").select("id,name,tournament_date,status,published,hole_count,start_type,scoring_mode,data_schema_version,game_mode_id,game_modes(id,name,participation_type,calculation_params)").eq("id", tournamentId).eq("data_schema_version", 2).single(),
-    supabase.from("tournament_categories").select("id,category_id,category_system,name,index_min,index_max,tee_id,display_order,gender,slope,course_rating,par,hole_segment,tee_rules,playing_handicap_min,playing_handicap_max,playing_tee_aag_teeout_id").eq("tournament_id", tournamentId).order("display_order"),
+    supabase.from("tournament_categories").select("id,category_id,category_system,name,display_order,hole_segment,tee_rules,playing_handicap_min,playing_handicap_max,playing_tee_aag_teeout_id").eq("tournament_id", tournamentId).order("display_order"),
     supabase.from("registrations").select("id,tournament_id,linked_player_id,display_name,participant_type,aag_member_number,club_name,country,reported_index,category_id,registration_status,needs_admin_review,partner_registration_id,starting_line_id,line_slot_id,created_at,player:players!registrations_linked_player_id_fkey(gender,aag_member_number,current_index,club_name,option_club_id),line_slot:line_slots!registrations_line_slot_id_fkey(id,manual_index,aag_member_number),starting_line:starting_lines!registrations_starting_line_id_fkey(id,line_time,starting_hole,label)").eq("tournament_id", tournamentId).neq("registration_status", "cancelled").order("created_at"),
-    supabase.from("scorecards").select("id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,official_index,manual_index,playing_handicap,player_1_playing_handicap,player_2_playing_handicap,category_id,category_name,tee_id,tee_name,card_status,aag_exportable,export_ready,hole_segment,slope,course_rating,par,hole_scores,starting_time,starting_hole").eq("tournament_id", tournamentId),
+    supabase.from("scorecards").select("id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,official_index,manual_index,playing_handicap,player_1_playing_handicap,player_2_playing_handicap,category_id,category_name,tee_name,card_status,aag_exportable,export_ready,hole_segment,slope,course_rating,par,hole_scores,starting_time,starting_hole").eq("tournament_id", tournamentId),
     supabase.from("tournament_payments").select("*").eq("tournament_id", tournamentId)
   ]);
   for (const result of [tournamentResult, categoryResult, registrationResult, scorecardResult]) if (result.error) throw result.error;
@@ -40,7 +41,7 @@ export async function loadOfficialization(tournamentId) {
   const payments = paymentResult.error ? [] : paymentResult.data || [];
   const paymentMap = new Map(payments.map(payment => [String(payment.registration_id), payment]));
   const noPayMap = await loadMonthlyNoPaySuggestions(tournament, registrations);
-  return { tournament, categories: categoryResult.data || [], registrations, scorecards, payments, paymentMap, noPayMap, rules: new OfficializationRules({ tournament, categories: categoryResult.data || [] }) };
+  return { tournament, categories: (categoryResult.data || []).map(categoryFromRules), registrations, scorecards, payments, paymentMap, noPayMap, rules: new OfficializationRules({ tournament, categories: (categoryResult.data || []).map(categoryFromRules) }) };
 }
 
 function playerBenefitKey(registration) {
@@ -124,9 +125,7 @@ export async function saveSingle(bundle, registration, form = {}) {
   if (data.error) throw new Error(data.error);
   const line = getLine(registration), category = data.category;
   await upsertScorecard(registration, {
-    category_id: category.id,
-    tee_id: isNewCategory(category) ? null : category.tee_id || null,
-    official_index: data.officialIndex,
+    category_id: category.id, official_index: data.officialIndex,
     manual_index: data.manualIndex,
     playing_handicap: data.playingHandicap,
     player_1_playing_handicap: null,
@@ -153,13 +152,13 @@ export async function savePair(bundle, group, forms = []) {
     const data = bundle.rules.classicPair(first, second, { firstIndex: forms[0]?.manualIndex, secondIndex: forms[1]?.manualIndex });
     if (data.error) throw new Error(data.error);
     category = data.category;
-    payload = { category_id: category.id, tee_id: isNewCategory(category) ? null : category.tee_id || null, official_index: data.officialIndex, manual_index: data.manualIndex, playing_handicap: data.playingHandicap, player_1_playing_handicap: null, player_2_playing_handicap: null, display_name: `${first.display_name} / ${second.display_name}` };
+    payload = { category_id: category.id, official_index: data.officialIndex, manual_index: data.manualIndex, playing_handicap: data.playingHandicap, player_1_playing_handicap: null, player_2_playing_handicap: null, display_name: `${first.display_name} / ${second.display_name}` };
     firstData = secondData = { category, officialIndex: null };
   } else {
     firstData = bundle.rules.single(first, forms[0]); secondData = bundle.rules.single(second, forms[1]);
     if (firstData.error || secondData.error) throw new Error(firstData.error || secondData.error);
     category = firstData.category;
-    payload = { category_id: category.id, tee_id: isNewCategory(category) ? null : category.tee_id || null, official_index: firstData.officialIndex, manual_index: firstData.manualIndex, playing_handicap: firstData.playingHandicap, player_1_playing_handicap: firstData.playingHandicap, player_2_playing_handicap: secondData.playingHandicap, display_name: `${first.display_name} (${firstData.playingHandicap}) / ${second.display_name} (${secondData.playingHandicap})` };
+    payload = { category_id: category.id, official_index: firstData.officialIndex, manual_index: firstData.manualIndex, playing_handicap: firstData.playingHandicap, player_1_playing_handicap: firstData.playingHandicap, player_2_playing_handicap: secondData.playingHandicap, display_name: `${first.display_name} (${firstData.playingHandicap}) / ${second.display_name} (${secondData.playingHandicap})` };
   }
   await upsertScorecard(first, { ...payload, starting_time: line?.line_time || null, starting_hole: line?.starting_hole || null, card_status: "npt", aag_member_number: null, player_gender: null, aag_exportable: false, hole_scores: emptyHoles(), ...categorySnapshot(category, bundle.rules) });
   await updateRegistration(first, firstData.category.id, firstData.officialIndex ?? baseIndex(first));

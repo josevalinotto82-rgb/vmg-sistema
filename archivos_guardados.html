@@ -1093,6 +1093,7 @@
     }
   </style>
   <link rel="preload" href="escudo_pagina.png" as="image">
+<script src="./snapshot-client.js"></script>
 </head>
 
 <body>
@@ -1161,7 +1162,8 @@
   <div id="printArea"></div>
 
   <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    import { createClient as createRawClient } from "https://esm.sh/@supabase/supabase-js@2";
+const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
 
     const supabase = createClient("https://bnnfolhrqxgxjmobclrm.supabase.co", "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ", { global: { fetch: (url, options = {}) => { const h = new Headers(options.headers || {}); h.set("Cache-Control", "no-store"); h.set("Pragma", "no-cache"); return fetch(url, { ...options, cache: "no-store", headers: h }); } } });
 

@@ -447,6 +447,7 @@
             }
         }
     </style>
+<script src="./snapshot-client.js"></script>
 </head>
 
 <body>
@@ -491,7 +492,8 @@
     </div>
 
     <script type="module">
-        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+        import { createClient as createRawClient } from "https://esm.sh/@supabase/supabase-js@2";
+const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
 
         const SUPABASE_URL = "https://bnnfolhrqxgxjmobclrm.supabase.co";
         const SUPABASE_KEY = "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ";

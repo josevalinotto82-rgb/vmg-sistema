@@ -1,4 +1,6 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient as createRawClient } from "https://esm.sh/@supabase/supabase-js@2";
+import "./snapshot-client.js";
+const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./config.js";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {

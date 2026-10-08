@@ -92,6 +92,7 @@
     .status.error { background: #fef2f2; color: #991b1b; }
     @media (max-width: 760px) { .grid, .grid3 { grid-template-columns: 1fr; } .header { align-items: flex-start; flex-direction: column; } }
   </style>
+<script src="./snapshot-client.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -173,7 +174,8 @@
   </div>
 
   <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    import { createClient as createRawClient } from "https://esm.sh/@supabase/supabase-js@2";
+const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
 
     const supabase = createClient(
       "https://bnnfolhrqxgxjmobclrm.supabase.co",

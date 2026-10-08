@@ -33,10 +33,8 @@ function categoryRule(card, categories) {
   const category = categories.get(String(card.category_id || ""));
   const rules = Array.isArray(category?.tee_rules) ? category.tee_rules : [];
   if (!rules.length) return null;
-  const teeId = String(card.tee_id || "");
   const teeName = String(card.tee_name || "").trim().toLocaleLowerCase("es");
-  return rules.find(rule => String(rule?.aag_teeout_id || "") === teeId)
-    || rules.find(rule => String(rule?.reference?.tee_name || "").trim().toLocaleLowerCase("es") === teeName)
+  return rules.find(rule => String(rule?.reference?.tee_name || "").trim().toLocaleLowerCase("es") === teeName)
     || (rules.length === 1 ? rules[0] : null);
 }
 
@@ -64,7 +62,7 @@ async function selectAll(table, columns, tournamentIds) {
 export async function loadTournamentStatistics(tournamentIds, { indexMin = null, indexMax = null } = {}) {
   if (!Array.isArray(tournamentIds) || !tournamentIds.length) throw new Error("Elegí al menos un torneo.");
   const [cards, categoryRows] = await Promise.all([
-    selectAll("scorecards", "id,tournament_id,display_name,card_status,official_index,manual_index,hole_segment,category_id,tee_id,tee_name,hole_scores", tournamentIds),
+    selectAll("scorecards", "id,tournament_id,display_name,card_status,official_index,manual_index,hole_segment,category_id,tee_name,hole_scores", tournamentIds),
     selectAll("tournament_categories", "id,tournament_id,tee_rules", tournamentIds)
   ]);
   const categories = new Map(categoryRows.map(row => [String(row.id), row]));

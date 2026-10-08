@@ -1,6 +1,7 @@
+import { categoryFromRules } from "./category_snapshot.js";
 import { supabase } from "./supabase.js";
 
-const CARD_FIELDS = "id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,category_id,category_name,tee_id,tee_name,official_index,playing_handicap,player_1_playing_handicap,player_2_playing_handicap,gross,net,total,card_status,hole_scores,player_gender,hole_segment,starting_time,starting_hole,created_at";
+const CARD_FIELDS = "id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,category_id,category_name,tee_name,official_index,playing_handicap,player_1_playing_handicap,player_2_playing_handicap,gross,net,total,card_status,hole_scores,player_gender,hole_segment,starting_time,starting_hole,created_at";
 
 export function normalizeText(value) {
   return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/,/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
@@ -19,7 +20,7 @@ export async function loadResultsWorkspace(tournamentId) {
   if (tournamentResult.error) throw tournamentResult.error;
   const tournament = tournamentResult.data;
   const [categoriesResult, cardsResult, registrationsResult] = await Promise.all([
-    supabase.from("tournament_categories").select("id,category_id,name,gender,index_min,index_max,display_order,hole_segment,playing_handicap_min,playing_handicap_max,playing_tee_aag_teeout_id,tee_rules").eq("tournament_id", tournamentId).order("display_order"),
+    supabase.from("tournament_categories").select("id,category_id,name,display_order,hole_segment,playing_handicap_min,playing_handicap_max,playing_tee_aag_teeout_id,tee_rules").eq("tournament_id", tournamentId).order("display_order"),
     supabase.from("scorecards").select(CARD_FIELDS).eq("tournament_id", tournamentId).order("display_name"),
     supabase.from("registrations").select("id,linked_player_id,display_name,aag_member_number,registration_status,player:players!registrations_linked_player_id_fkey(gender,option_club_id,is_club_member)").eq("tournament_id", tournamentId).neq("registration_status", "cancelled")
   ]);
@@ -43,7 +44,7 @@ export async function loadResultsWorkspace(tournamentId) {
       seriesCards = result.data || [];
     }
   }
-  return { tournament, categories:categoriesResult.data || [], cards:cardsResult.data || [], registrations:registrationsResult.data || [], series, rounds, seriesCards };
+  return { tournament, categories:(categoriesResult.data || []).map(categoryFromRules), cards:cardsResult.data || [], registrations:registrationsResult.data || [], series, rounds, seriesCards };
 }
 
 export function isGross(bundle) { return String(bundle.tournament.scoring_mode || "net") === "gross"; }

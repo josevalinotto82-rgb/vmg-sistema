@@ -1280,6 +1280,7 @@
             .print-player-report .print-section-title { break-after: avoid; }
         }
     </style>
+<script src="./snapshot-client.js"></script>
 </head>
 
 <body>
@@ -1413,7 +1414,8 @@
     <div id="printArea" class="print-only"></div>
 
     <script type="module">
-        import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+        import { createClient as createRawClient } from "https://esm.sh/@supabase/supabase-js@2";
+const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
 
         console.log("SCRIPT NUEVO CARGADO - VERSION 1");
 

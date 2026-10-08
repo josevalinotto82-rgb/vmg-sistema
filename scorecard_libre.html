@@ -401,6 +401,7 @@
   <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsrsasign@10.8.6/lib/jsrsasign-all-min.js"></script>
   <script src="./qz-ticket.js?v=999"></script>
+<script src="./snapshot-client.js"></script>
 </head>
 
 <body>
@@ -505,7 +506,8 @@
   <div id="print-root"></div>
 
   <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    import { createClient as createRawClient } from "https://esm.sh/@supabase/supabase-js@2";
+const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
 
     const CLUB_NOMBRE = "Villa María Golf Club";
 
