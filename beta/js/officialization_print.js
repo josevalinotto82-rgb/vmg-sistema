@@ -5,7 +5,13 @@ const HOLE_LEFT = {1:32.5,2:39,3:46,4:52.5,5:59.5,6:66.5,7:73,8:80,9:86,10:102,1
 const text = value => escapeHtml(String(value ?? ""));
 const timeText = value => value ? String(value).slice(0,5) : "—";
 const fontPlayer = value => String(value || "").length > 38 ? 10 : String(value || "").length > 30 ? 11 : 12;
-const fontTournament = value => String(value || "").length > 35 ? 12 : String(value || "").length > 24 ? 15 : 24;
+const fontTournament = value => {
+  const length = String(value || "").trim().length;
+  for (const [limit,size] of [[180,7],[135,8],[100,9],[70,10],[48,11],[35,12],[24,15],[18,19]]) {
+    if (length > limit) return size;
+  }
+  return 24;
+};
 const teeText = value => [...new Set(String(value || "").split("/").map(item => visibleTeeName(item)).filter(item => item && item !== "—"))].join(" / ") || "—";
 
 function holeLabel(line) {
@@ -62,7 +68,11 @@ function cardHtml({ bundle, players, handicap="", index="", tee="—", marks="" 
   const numbers = players.map(player => memberNumber(player) || "—").join("/");
   const details = `${timeText(line?.line_time)} hs. / Tee: ${teeText(tee)} / ${holeLabel(line)}`;
   if (bundle.rules.isGross()) { handicap = ""; index = ""; marks = ""; }
-  return `<div class="tarjeta-page"><div class="tarjeta-landscape"><div class="tj-field tj-tournament" style="font-size:${fontTournament(bundle.tournament.name)}px">${text(bundle.tournament.name)}</div><div class="tj-field tj-date">${text(formatDate(bundle.tournament.tournament_date))}</div><div class="tj-field ${pair?"tj-player-pair":"tj-player-single"}" style="font-size:${fontPlayer(names[0])}px">${text(names[0])}</div>${pair?`<div class="tj-field tj-player-two" style="font-size:${fontPlayer(names[1])}px">${text(names[1])}</div>`:""}<div class="tj-field tj-handicap">${text(handicap)}</div><div class="tj-field tj-number">${text(numbers)}</div><div class="tj-field tj-index">${index?`(${text(index)})<br>INDEX`:""}</div><div class="tj-field tj-details">${text(details)}</div>${marks}</div></div>`;
+  marks += [
+    [37,138,"5"], [92,138,"36"], [171,138,"72"],
+    [37,145.5,"X"], [92,145.5,"X"], [171,145.5,"X"]
+  ].map(([left,top,value]) => `<div class="tj-marca-fija" style="position:absolute;left:${left}mm;top:${top}mm;width:4mm;height:3mm;line-height:3mm;text-align:center;font-size:12px;font-weight:700">${value}</div>`).join("");
+  return `<div class="tarjeta-page"><div class="tarjeta-landscape"><div class="tj-field tj-tournament" style="font-size:${fontTournament(bundle.tournament.name)}px"><span class="tj-tournament-text">${text(bundle.tournament.name)}</span></div><div class="tj-field tj-date">${text(formatDate(bundle.tournament.tournament_date))}</div><div class="tj-field ${pair?"tj-player-pair":"tj-player-single"}" style="font-size:${fontPlayer(names[0])}px">${text(names[0])}</div>${pair?`<div class="tj-field tj-player-two" style="font-size:${fontPlayer(names[1])}px">${text(names[1])}</div>`:""}<div class="tj-field tj-handicap">${text(handicap)}</div><div class="tj-field tj-number">${text(numbers)}</div><div class="tj-field tj-index">${index?`(${text(index)})<br>INDEX`:""}</div><div class="tj-field tj-details">${text(details)}</div>${marks}</div></div>`;
 }
 
 export function printableGroup(bundle, group) {
@@ -83,7 +93,7 @@ export function printableGroup(bundle, group) {
 }
 
 export function preprintedCardCss() {
-  return `<style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0!important;padding:0!important;width:210mm!important;background:#fff!important}.topbar,[data-app-shell],main,.drawer,.toast{display:none!important}#printRoot{display:block!important;position:absolute!important;inset:0 auto auto 0;width:210mm!important;margin:0!important;padding:0!important;background:#fff!important}}.tarjeta-page{position:relative;width:210mm;height:297mm;margin:0;padding:0;overflow:hidden;background:#fff;page-break-after:always;break-after:page}.tarjeta-page:last-child{page-break-after:auto;break-after:auto}.tarjeta-landscape{position:absolute;width:297mm;height:210mm;left:0;top:297mm;transform-origin:top left;transform:rotate(-90deg);font-family:Arial,sans-serif;color:#000}.tj-field{position:absolute;height:7mm;line-height:7mm;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tj-tournament{left:34mm;top:39mm;width:70mm;text-align:center}.tj-date{left:107mm;top:39mm;width:25mm;text-align:center;font-size:18px}.tj-player-pair{left:34mm;top:54mm;width:50mm}.tj-player-single{left:34mm;top:54mm;width:70mm}.tj-player-two{left:85mm;top:54mm;width:50mm;text-align:right}.tj-handicap{left:136mm;top:54mm;width:27mm;text-align:center;font-size:15px}.tj-number{left:170mm;top:54mm;width:27mm;text-align:center;font-size:14px}.tj-index{left:120mm;top:39mm;width:60mm;text-align:center;font-size:14px;line-height:1.05}.tj-details{left:99mm;top:67mm;width:100mm;text-align:center;font-size:18px}.tj-hole-stroke{position:absolute;width:4mm;height:3mm;line-height:3mm;font-size:8px;font-weight:700;text-align:center}</style>`;
+  return `<style>@page{size:A4 portrait;margin:0}@media print{html,body{margin:0!important;padding:0!important;width:210mm!important;background:#fff!important}.topbar,[data-app-shell],main,.drawer,.toast{display:none!important}#printRoot{display:block!important;position:absolute!important;inset:0 auto auto 0;width:210mm!important;margin:0!important;padding:0!important;background:#fff!important}}.tarjeta-page{position:relative;width:210mm;height:297mm;margin:0;padding:0;overflow:hidden;background:#fff;page-break-after:always;break-after:page}.tarjeta-page:last-child{page-break-after:auto;break-after:auto}.tarjeta-landscape{position:absolute;width:297mm;height:210mm;left:0;top:297mm;transform-origin:top left;transform:rotate(-90deg);font-family:Arial,sans-serif;color:#000}.tj-field{position:absolute;height:7mm;line-height:7mm;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tj-tournament{left:34mm;top:27mm;width:70mm;height:19mm;line-height:1.05;text-align:center;display:flex;align-items:flex-end;justify-content:center;white-space:normal;overflow-wrap:anywhere;text-overflow:clip}.tj-tournament-text{display:block;width:100%;max-width:100%;text-wrap:balance}.tj-date{left:107mm;top:39mm;width:25mm;text-align:center;font-size:18px}.tj-player-pair{left:34mm;top:54mm;width:50mm}.tj-player-single{left:34mm;top:54mm;width:70mm}.tj-player-two{left:85mm;top:54mm;width:50mm;text-align:right}.tj-handicap{left:136mm;top:54mm;width:27mm;text-align:center;font-size:15px}.tj-number{left:170mm;top:54mm;width:27mm;text-align:center;font-size:14px}.tj-index{left:120mm;top:39mm;width:60mm;text-align:center;font-size:14px;line-height:1.05}.tj-details{left:99mm;top:67mm;width:100mm;text-align:center;font-size:18px}.tj-hole-stroke{position:absolute;width:4mm;height:3mm;line-height:3mm;font-size:8px;font-weight:700;text-align:center}</style>`;
 }
 
 export function printPreprintedCards(root, htmlCards) {
