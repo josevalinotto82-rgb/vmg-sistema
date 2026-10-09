@@ -1,3 +1,4 @@
+import { mountPublicResults } from "./public_results_page.js";
 import { PAGES, ACTIVE_TOURNAMENT_ID_KEY, ACTIVE_TOURNAMENT_NAME_KEY } from "./config.js";
 import { signOut } from "./auth.js";
 import { supabase } from "./supabase.js";
@@ -251,15 +252,15 @@ function settingsDetail(item) {
   const notes = {
     aag: "Estado de los torneos enviados a AAG, actualización de índices y sincronización de campos y salidas.",
     "free-card": "Acá se abrirá la carga completa de una tarjeta presentada fuera de un torneo programado.",
-    "public-results": "Acá se administrará qué resultados quedan visibles para jugadores y público.",
+    "public-results": "Consultá los torneos publicados y sus clasificaciones oficiales.",
     statistics: "Compará la dificultad de cada hoyo entre uno o varios torneos y filtrá por rango de índice.",
     "tv-control": "Acá se elegirán torneo, vista, rotación y contenido de la pantalla de TV.",
     "tv-media": "Acá se administrarán fotos, logo, QR, música y patrocinadores de TV.",
     reports: "Informes imprimibles de torneos y del historial de actualización de índices."
   };
-  const live = item.id === "reports" ? "reports-content" : item.id === "aag" ? "aag-settings" : item.id === "statistics" ? "statistics-settings" : "";
+  const live = item.id === "reports" ? "reports-content" : item.id === "aag" ? "aag-settings" : item.id === "statistics" ? "statistics-settings" : item.id === "public-results" ? "public-results" : "";
   const content = live ? `<div class="settings-live-content" data-${live}><div class="empty-state compact">Cargando información…</div></div>` : '<div class="settings-placeholder"><strong>Espacio preparado</strong><p>La función se incorporará acá sin mezclarla con el recorrido normal de un torneo.</p></div>';
-  return `<div class="settings-detail-head"><button class="btn secondary small mobile-detail-back" data-settings-detail-close>← Volver</button><span class="settings-detail-icon">${item.icon}</span><div><div class="eyebrow">Herramienta</div><h2>${escapeHtml(item.label)}</h2></div></div><div class="notice info">${escapeHtml(notes[item.id])}</div>${content}`;
+  return `<div class="settings-detail-head"><span class="settings-detail-icon">${item.icon}</span><div class="settings-tool-title"><div class="eyebrow">Herramienta</div><h2>${escapeHtml(item.label)}</h2></div><button type="button" class="settings-tool-close" data-settings-detail-close aria-label="Cerrar ${escapeHtml(item.label)}"><span aria-hidden="true">×</span> Cerrar</button></div><div class="notice info">${escapeHtml(notes[item.id])}</div>${content}`;
 }
 
 const dateTime = value => value ? new Intl.DateTimeFormat("es-AR", { dateStyle:"medium", timeStyle:"short", timeZone:"America/Argentina/Cordoba" }).format(new Date(value)) : "Sin registro";
@@ -446,18 +447,22 @@ function openSettings(initialItem = "") {
     if (!item) return;
     activeItem = id;
     drawer.querySelectorAll("[data-settings-item]").forEach(button => button.classList.toggle("active", button.dataset.settingsItem === id));
-    const toolPages = { "free-card":PAGES.freeCard, "tv-control":PAGES.tvControl, "tv-media":PAGES.tvMedia, notifications:"notificaciones.html" };
+    const toolPages = { "free-card":PAGES.freeCard, "tv-control":PAGES.tvControl, "tv-media":PAGES.tvMedia, notifications:"notificaciones.html",  };
     const toolPage = toolPages[id];
-    detail.classList.toggle("settings-detail-wide", !!toolPage || id === "statistics");
+    detail.classList.toggle("settings-detail-wide", !!toolPage || id === "statistics" || id === "public-results");
     detail.innerHTML = toolPage
-      ? '<div class="settings-detail-head"><button class="btn secondary small" data-settings-detail-close>← Volver</button><h2>' + escapeHtml(item.label) + '</h2></div><iframe class="settings-tool-frame" title="' + escapeHtml(item.label) + '" src="' + toolPage + '?embedded=1"></iframe>'
+      ? '<div class="settings-detail-head"></div><iframe class="settings-tool-frame" title="' + escapeHtml(item.label) + '" src="' + toolPage + '?embedded=1"></iframe>'
       : settingsDetail(item);
+    if (toolPage || id === "statistics" || id === "public-results") {
+      detail.querySelector(".settings-detail-head").outerHTML = '<header class="settings-detail-head unified-tool-header"><div class="unified-tool-brand"><img src="escudo.png" alt="Escudo VMGC"><div><small>Villa María Golf Club</small><h2>' + escapeHtml(item.label) + '</h2></div></div><button type="button" class="settings-tool-close" data-settings-detail-close aria-label="Cerrar ' + escapeHtml(item.label) + '"><span aria-hidden="true">×</span> Cerrar</button></header>';
+    }
     detail.classList.add("open");
     detail.setAttribute("aria-hidden", "false");
     detail.querySelector("[data-settings-detail-close]").addEventListener("click", hideDetail);
     if (id === "reports") hydrateReportsPanel(detail);
     if (id === "aag") hydrateAagSettings(detail);
     if (id === "statistics") hydrateStatistics(detail);
+    if (id === "public-results") mountPublicResults(detail.querySelector("[data-public-results]"));
   };
   drawer.querySelector("[data-settings-close]").addEventListener("click", close);
   drawer.addEventListener("click", event => { if (event.target === drawer) close(); });

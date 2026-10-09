@@ -14,9 +14,11 @@ export function normalizeGender(value) {
   return "";
 }
 
-export async function loadResultsWorkspace(tournamentId) {
+export async function loadResultsWorkspace(tournamentId, { publicOnly = false } = {}) {
   if (!tournamentId) throw new Error("Elegí un torneo desde Inicio.");
-  const tournamentResult = await supabase.from("tournaments").select("id,name,tournament_date,status,published,hole_count,scoring_mode,data_schema_version,series_id,series_round_number,special_prizes,game_modes(id,name,participation_type,calculation_params)").eq("id", tournamentId).eq("data_schema_version", 2).single();
+  let tournamentQuery = supabase.from("tournaments").select("id,name,tournament_date,status,published,hole_count,scoring_mode,data_schema_version,series_id,series_round_number,special_prizes,game_modes(id,name,participation_type,calculation_params)").eq("id", tournamentId).eq("data_schema_version", 2);
+  if(publicOnly) tournamentQuery=tournamentQuery.eq("published",true).in("status",["officialized","archived"]);
+  const tournamentResult=await tournamentQuery.single();
   if (tournamentResult.error) throw tournamentResult.error;
   const tournament = tournamentResult.data;
   const [categoriesResult, cardsResult, registrationsResult] = await Promise.all([
@@ -31,7 +33,7 @@ export async function loadResultsWorkspace(tournamentId) {
   if (tournament.series_id) {
     const [seriesResult, roundsResult] = await Promise.all([
       supabase.from("tournament_series").select("id,name,description,required_rounds,scoring_mode,best18_enabled,status").eq("id", tournament.series_id).single(),
-      supabase.from("tournaments").select("id,name,tournament_date,series_round_number,status,special_prizes").eq("series_id", tournament.series_id).eq("data_schema_version", 2).order("series_round_number")
+      (() => {let query=supabase.from("tournaments").select("id,name,tournament_date,series_round_number,status,special_prizes").eq("series_id", tournament.series_id).eq("data_schema_version", 2);if(publicOnly)query=query.eq("published",true).in("status",["officialized","archived"]);return query.order("series_round_number");})()
     ]);
     if (seriesResult.error) throw seriesResult.error;
     if (roundsResult.error) throw roundsResult.error;

@@ -7300,3 +7300,39 @@ h3 {
 @media(max-width:480px) {
   .statistics-hole-grid { grid-template-columns:minmax(0,1fr); }
 }
+
+/* Cierre unificado de herramientas: mismo botón, arriba a la derecha. */
+.settings-tool-title { min-width:0; flex:1; }
+.settings-tool-title h2 { overflow-wrap:anywhere; }
+.settings-tool-close { display:inline-flex; align-items:center; justify-content:center; gap:7px; margin-left:auto; min-height:40px; padding:8px 15px; border:1px solid #b6cdbf; border-radius:11px; background:#fff; color:#0d3b25; font:inherit; font-weight:700; cursor:pointer; flex-shrink:0; transition:background .15s,border-color .15s; }
+.settings-tool-close span { font-size:23px; font-weight:400; line-height:1; }
+.settings-tool-close:hover { background:#e8f4eb; border-color:#166534; }
+.settings-tool-close:focus-visible { outline:2px solid #166534; outline-offset:3px; }
+.embedded-tool #closeFreeCard, .embedded-tool #closeTvControl, .embedded-tool #closeTvMedia, .embedded-tool a[href="panel.html"] { display:none; }
+
+/* Un único encabezado institucional para las cinco herramientas. */
+.settings-detail-wide > .unified-tool-header { background:#092b1b; color:#fff; border-radius:16px; padding:13px 20px; gap:16px; min-height:72px; box-shadow:0 5px 15px #0d3b2518; }
+.unified-tool-brand { min-width:0; display:flex; align-items:center; gap:12px; }
+.unified-tool-brand img { width:40px; height:47px; object-fit:contain; flex-shrink:0; }
+.unified-tool-brand small { display:block; color:#cfe1d5; font-size:10px; text-transform:uppercase; font-weight:800; letter-spacing:.04em; }
+.unified-tool-brand h2 { margin:3px 0 0; font-size:20px; color:#fff; overflow-wrap:anywhere; }
+.unified-tool-header .settings-tool-close { border-color:#d8e7dd; background:#edf5ef; color:#0d3b25; }
+.unified-tool-header .settings-tool-close:hover { background:#fff; }
+.embedded-tool .free-card-brand, .embedded-tool .tv-tool-brand { display:none; }
+.embedded-tool .free-card-topbar, .embedded-tool .tv-tool-topbar { position:static; background:transparent; box-shadow:none; min-height:0; padding:6px 20px; justify-content:flex-end; }
+.embedded-tool .shell > .hero h1, .embedded-tool .shell > .hero .eyebrow { display:none; }
+.embedded-tool .shell > .hero { margin-bottom:14px; }
+@media(max-width:560px) {
+  .settings-detail-wide > .unified-tool-header { padding:10px 12px; gap:10px; }
+  .unified-tool-brand { gap:8px; }
+  .unified-tool-brand h2 { font-size:17px; }
+  .unified-tool-brand img { width:30px; height:38px; }
+  .unified-tool-header .settings-tool-close { padding:7px 10px; }
+}
+.public-tournament-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+.public-tournament { padding:20px; display:flex; flex-direction:column; align-items:flex-start; text-align:left; gap:12px; color:inherit; cursor:pointer; font:inherit; }
+.public-tournament > strong { font-size:18px; }
+.public-tournament:hover { border-color:#166534; }
+.public-pagination, .public-result-heading, .public-result-filters { display:flex; align-items:center; gap:18px; margin:18px 0; flex-wrap:wrap; }
+.public-result-heading h2 { margin:0 0 5px; }
+.public-result-filters .field { flex:1; min-width:220px; }
