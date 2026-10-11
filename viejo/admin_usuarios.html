@@ -231,7 +231,11 @@
             }
         }
     </style>
-<script src="./snapshot-client.js"></script>
+    <script src="./snapshot-client.js"></script>
+    <link rel="icon" type="image/png" href="contrase%C3%B1a.png">
+    <link rel="apple-touch-icon" href="contrase%C3%B1a.png">
+    <meta name="theme-color" content="#092b1b">
+    <meta name="apple-mobile-web-app-title" content="VMGC Usuarios">
 </head>
 
 <body>
@@ -304,7 +308,7 @@
     <script type="module">
 
         import { createClient as createRawClient } from "https://esm.sh/@supabase/supabase-js@2";
-const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
+        const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
 
 
         const supabase = createClient(
