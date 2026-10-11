@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Villa María Golf Club · Administración",
+  "short_name": "VMGC Admin",
+  "lang": "es",
+  "start_url": "./panel.html",
+  "scope": "./",
+  "display": "browser",
+  "background_color": "#f4f8f5",
+  "theme_color": "#092b1b",
+  "icons": [
+    {
+      "src": "icono_adm.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
