@@ -1,0 +1,5425 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grilla interactiva corregida - Villa María Golf</title>
+  <style>
+    :root {
+      --bg: #f4f8f2;
+      --card: #ffffff;
+      --text: #1d2c1d;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --line-strong: #d1d5db;
+      --green: #166534;
+      --green-soft: #ecfdf5;
+      --green-dot: #a0d3b3;
+      --orange-soft: #fff0da;
+      --orange-dot: #ffb340;
+      --amber-soft: #fff4e5;
+      --amber-dot: #f5d9a8;
+      --red: #b91c1c;
+      --gray-soft: #f9fafb;
+      --lock-other: #e5e7eb;
+      --lock-mine: #ecfdf5;
+      --violet-soft: #f3e8ff;
+      --violet-dot: #c4a7e7;
+      --shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      --radius: 14px;
+      --slot-height: 44px;
+      --hour-col: 92px;
+      /* tocá este valor */
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    #tituloPrincipal {
+      text-align: center;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .header-torneo {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    #tituloPrincipal {
+      font-size: 48px;
+      font-weight: 800;
+      margin: 0;
+      line-height: 1.1;
+    }
+
+    #subTituloTorneo {
+      font-size: 14px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 20px;
+    }
+
+    .status-item strong {
+      display: inline-block;
+      min-width: 72px;
+    }
+
+    .ok {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .error {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .bloque-card {
+      padding: 14px 14px 12px;
+    }
+
+    .bloque-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .bloque-titulo {
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .bloque-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tabla-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: #fff;
+    }
+
+    col.col-hora {
+      width: var(--hour-col);
+    }
+
+    col.col-slot {
+      width: calc((100% - var(--hour-col)) / 4);
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .col-hora {
+      width: var(--hour-col);
+      min-width: var(--hour-col);
+      max-width: var(--hour-col);
+      background: #f3f4f6;
+      text-align: center;
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    :root {
+      --admin-time-col: 84px;
+    }
+
+    col.col-admin-time {
+      width: var(--admin-time-col);
+    }
+
+    .admin-time-cell {
+      width: var(--admin-time-col);
+      min-width: var(--admin-time-col);
+      max-width: var(--admin-time-col);
+      text-align: center;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 700;
+      background: #f8fafc;
+      color: #374151;
+    }
+
+    .admin-actions {
+      margin: 0 0 16px;
+      text-align: center;
+    }
+
+    .share-export-wrap {
+      position: fixed;
+      left: -99999px;
+      top: 0;
+      width: 1200px;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .titulo-hoyo {
+      text-align: center;
+      font-weight: 700;
+      background: #f3f4f6;
+      padding: 10px 0;
+      border-top: 2px solid var(--line);
+      color: #374151;
+      letter-spacing: 0.2px;
+    }
+
+    .slot-cell {
+      padding: 6px;
+      transition: background 0.18s ease;
+    }
+
+    .slot-box {
+      position: relative;
+      min-height: var(--slot-height);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 6px 22px 6px 8px;
+      text-align: center;
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid transparent;
+    }
+
+    .slot-nombre {
+      display: block;
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .slot-empty .slot-box {
+      background: #fafafa;
+      color: #9ca3af;
+      font-style: italic;
+      border-color: #f1f5f9;
+    }
+
+    .slot-empty:hover .slot-box {
+      background: #eef7ef;
+    }
+
+    .slot-occupied .slot-box {
+      background: #ffffff;
+    }
+
+    .slot-self .slot-box {
+      background: var(--green-soft);
+      border-color: var(--green-dot);
+    }
+
+    .slot-guest .slot-box {
+      background: var(--orange-soft);
+      border-color: var(--orange-dot);
+    }
+
+    .slot-admin .slot-box {
+      background: var(--amber-soft);
+      border-color: #fccb87;
+    }
+
+    .slot-vmg .slot-box {
+      background: var(--green-soft);
+      border-color: var(--green-dot);
+    }
+
+    .slot-otro-club .slot-box {
+      background: var(--violet-soft);
+      border-color: var(--violet-dot);
+    }
+
+    .slot-manual .slot-box {
+      background: var(--orange-soft);
+      border-color: var(--orange-dot);
+    }
+
+    .slot-locked-other .slot-box,
+    .col-hora.slot-locked-other {
+      background: var(--lock-other);
+      color: var(--muted);
+    }
+
+    .slot-locked-mine .slot-box,
+    .col-hora.slot-locked-mine {
+      background: var(--lock-mine);
+    }
+
+    .slot-indicator {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex: 0 0 10px;
+    }
+
+    .slot-indicator-self {
+      background: var(--green-dot);
+    }
+
+    .slot-indicator-guest {
+      background: var(--orange-dot);
+    }
+
+    .slot-indicator-admin {
+      background: var(--amber-dot);
+    }
+
+    .slot-self-btn,
+    .slot-inline-manual-btn,
+    .manual-form button,
+    .slot-inline-close {
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .slot-self-btn {
+      background: var(--green);
+      color: white;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+
+    .slot-self-btn:hover {
+      background: #166534;
+    }
+
+    .slot-libre-link {
+      color: var(--muted);
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .slot-inline-editor {
+      margin-top: 10px;
+      background: #ffffff;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: left;
+    }
+
+    .slot-inline-top {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .slot-inline-input {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .slot-inline-close {
+      background: #e5e7eb;
+      color: #111827;
+      width: 30px;
+      height: 30px;
+    }
+
+    .slot-inline-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .slot-inline-manual-btn {
+      background: #0841bb;
+      color: white;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+
+    .slot-inline-results,
+    .slot-inline-manual-wrap {
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .slot-result-item {
+      margin-top: 6px;
+    }
+
+    .slot-result-btn {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line-strong);
+      background: var(--gray-soft);
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+    .slot-result-btn:hover {
+      background: #eef7ef;
+    }
+
+    .slot-result-meta {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .manual-form {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .manual-form input,
+    .manual-form select {
+      padding: 7px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--line-strong);
+      font-size: 12px;
+    }
+
+    .manual-form button {
+      background: var(--green);
+      color: white;
+      padding: 8px;
+    }
+
+    .slot-draggable {
+      cursor: grab;
+    }
+
+    .slot-draggable:active {
+      cursor: grabbing;
+    }
+
+    .gap-row {
+      height: 12px;
+      background: linear-gradient(to bottom, #f3f6f5, #738668, #f3f5f6);
+      border: none !important;
+      padding: 0 !important;
+    }
+
+    .leyenda-slots {
+      margin-top: 10px;
+      font-size: 13px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .dot-self {
+      background: var(--green-dot);
+    }
+
+    .dot-guest {
+      background: var(--orange-dot);
+    }
+
+    .dot-admin {
+      background: var(--amber-dot);
+    }
+
+    .helper-text {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 860px) {
+      :root {
+        --hour-col: 72px;
+      }
+
+      body {
+        margin: 14px;
+      }
+
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .slot-nombre {
+        font-size: 13px;
+      }
+
+      .bloque-card {
+        padding: 12px 10px 10px;
+      }
+
+      .mobile-slot.slot-vmg {
+        background: #ecfdf5;
+        border-color: #a0d3b3;
+      }
+
+      .mobile-slot.slot-otro-club {
+        background: #f3e8ff;
+        border-color: #c4a7e7;
+      }
+
+      .mobile-slot.slot-manual {
+        background: #ffefef;
+        border-color: #96b2df;
+      }
+    }
+
+    .share-sheet {
+      width: 900px;
+      background: #e6ffe9;
+      color: #031b05;
+      padding: 14px;
+      font-family: Arial, sans-serif;
+    }
+
+    .share-header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .share-title {
+      font-size: 40px;
+      font-weight: 700;
+    }
+
+    .share-sub {
+      font-size: 18px;
+      color: #3d3b3b;
+    }
+
+    .share-sheet table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .share-sheet td {
+      border: 1px solid #166534;
+      padding: 2px 2px;
+      height: 12px;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 17px;
+    }
+
+    .share-col-ref {
+      width: 70px;
+      font-weight: 700;
+      background: #f3f4f6;
+    }
+
+    .share-slot {
+      width: calc((100% - 70px) / 4);
+    }
+
+    .share-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+      font-size: 6px;
+    }
+
+    .share-empty {
+      background: #ffffff;
+      color: transparent;
+    }
+
+    .share-col-time-extra {
+      width: 68px;
+    }
+
+    .share-time-extra {
+      width: 68px;
+      min-width: 68px;
+      max-width: 68px;
+      font-size: 10px;
+      font-weight: 700;
+      background: #f8fafc;
+      color: #374151;
+      white-space: nowrap;
+    }
+
+    /* 🔹 título por hoyo */
+    .share-title-row {
+      background: #e5e7eb;
+      font-weight: 700;
+      text-align: left;
+      padding-left: 10px;
+      font-size: 12px;
+    }
+
+    /* 🔹 separador mañana / tarde */
+    .share-block-separator {
+      height: 8px;
+      background: #d1d5db;
+      border: none;
+    }
+
+    .share-blocked {
+      background: #166534;
+      border-color: #166534;
+      color: transparent;
+    }
+
+    .share-reserved {
+      background: #ebebeb;
+      border-color: #575757;
+      color: #5a5a5a;
+      font-weight: 450;
+      font-size: 6px;
+      font-style: italic;
+    }
+
+    .selector-torneos-wrap {
+      margin: 0 0 14px;
+      text-align: center;
+    }
+
+    .selector-torneos-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+
+    .selector-torneos {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .selector-torneo-btn {
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      color: #1f2937;
+      padding: 7px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .selector-torneo-btn:hover {
+      background: #f3f4f6;
+    }
+
+    .selector-torneo-btn.activo {
+      background: #166534;
+      color: #ffffff;
+      border-color: #166534;
+    }
+
+    .slot-block-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 14px;
+      height: 14px;
+      border: none;
+      border-radius: 999px;
+      background: #ffcdcd;
+      color: #ff0000;
+      font-size: 18px;
+      font-weight: 520;
+      line-height: 16px;
+      text-align: center;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .slot-block-btn:hover {
+      background: #b91c1c;
+    }
+
+    .slot-blocked .slot-box {
+      background: var(--green-soft);
+      border-color: var(--green-dot);
+    }
+
+    .slot-blocked .slot-box {
+      background: #166534;
+      border-color: #166534;
+    }
+
+    .player-search-popup {
+      position: absolute;
+      z-index: 9999;
+      width: 300px;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, .18);
+      padding: 10px;
+
+      display: flex;
+      flex-direction: column;
+
+      max-height: 360px;
+      overflow: hidden;
+    }
+
+    .player-search-popup.hidden {
+      display: none;
+    }
+
+    #playerSearchInput {
+      width: 100%;
+      flex: 0 0 auto;
+      padding: 9px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 9px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    #btnManualPopup {
+      flex: 0 0 auto;
+    }
+
+    #playerSearchResults {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    #playerManualPopup {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    #playerManualPopup .manual-form {
+      min-height: 0;
+    }
+
+    .search-result-item {
+      padding: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .search-result-item:hover {
+      background: #ecfdf5;
+    }
+
+    .home-btn {
+      position: fixed;
+      top: 30px;
+      right: 27px;
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      background: #166534;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      z-index: 9999;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .home-btn:hover {
+      background: #166534;
+      transform: scale(1.05);
+    }
+
+    /* ==============================
+    MOBILE GRILLA VMGC
+    ============================== */
+    .mobile-grid {
+      display: none;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        margin: 0;
+        padding: 12px;
+        background: #f4f8f2;
+      }
+
+      .home-btn {
+        top: 12px;
+        right: 12px;
+      }
+
+      #tituloPrincipal {
+        font-size: 24px;
+        padding: 0 44px;
+      }
+
+      #subTituloTorneo {
+        font-size: 13px;
+      }
+
+      .status-grid {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: #f4f8f2;
+        padding: 8px 0;
+        margin-bottom: 8px;
+      }
+
+      .desktop-grid {
+        display: none !important;
+      }
+
+      .mobile-grid {
+        display: block;
+      }
+
+      .bloque-card {
+        padding: 10px;
+        margin-bottom: 14px;
+      }
+
+      .mobile-line-card {
+        background: #ffffff;
+        border: 1px solid #dbe3dc;
+        border-radius: 16px;
+        margin-bottom: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, .07);
+      }
+
+      .mobile-line-head {
+        background: #166534;
+        color: white;
+        padding: 10px 12px;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .mobile-line-title {
+        font-weight: 800;
+        font-size: 16px;
+      }
+
+      .mobile-line-meta {
+        font-size: 12px;
+        opacity: .9;
+        text-align: right;
+      }
+
+      .mobile-slots {
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .mobile-slot {
+        border: 1px solid #e5e7eb;
+        border-radius: 13px;
+        padding: 10px;
+        min-height: 54px;
+        background: #fafafa;
+      }
+
+      .mobile-slot-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .mobile-slot-num {
+        font-size: 11px;
+        color: #6b7280;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .mobile-slot-name {
+        margin-top: 4px;
+        font-size: 16px;
+        font-weight: 800;
+        color: #111827;
+        line-height: 1.2;
+      }
+
+      .mobile-slot-empty {
+        color: #6b7280;
+        font-style: italic;
+      }
+
+      .mobile-slot.slot-self {
+        background: #ecfdf5;
+        border-color: #a0d3b3;
+      }
+
+      .mobile-slot.slot-guest {
+        background: #eff6ff;
+        border-color: #96b2df;
+      }
+
+      .mobile-slot.slot-admin {
+        background: #fff4e5;
+        border-color: #f5d9a8;
+      }
+
+      .mobile-slot.slot-blocked,
+      .mobile-slot.slot-locked-other {
+        background: #e5e7eb;
+        color: #6b7280;
+      }
+
+      .mobile-actions {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .mobile-actions button {
+        border: none;
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .mobile-btn-main {
+        background: #166534;
+        color: white;
+      }
+
+      .mobile-btn-soft {
+        background: #e5e7eb;
+        color: #111827;
+      }
+
+      .player-search-popup {
+        width: calc(100vw - 24px) !important;
+        left: 12px !important;
+        right: 12px !important;
+        max-height: 75vh !important;
+        border-radius: 16px;
+      }
+
+      #playerSearchInput {
+        font-size: 16px;
+        padding: 12px;
+      }
+
+      .slot-result-btn {
+        padding: 12px;
+        font-size: 14px;
+      }
+
+      .manual-form input,
+      .manual-form select {
+        font-size: 16px;
+        padding: 11px;
+      }
+
+      .manual-form button {
+        padding: 12px;
+        font-size: 15px;
+      }
+    }
+
+    .baja-toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 20000;
+      width: min(380px, calc(100vw - 28px));
+      background: #ffffff;
+      border: 1px solid #fecaca;
+      border-left: 6px solid #b91c1c;
+      border-radius: 18px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, .22);
+      padding: 16px;
+      transform: translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all .22s ease;
+    }
+
+    .baja-toast.show {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .baja-toast-title {
+      font-weight: 900;
+      color: #991b1b;
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+
+    .baja-toast-text {
+      color: #374151;
+      font-size: 14px;
+      line-height: 1.35;
+      margin-bottom: 12px;
+    }
+
+    .baja-toast-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .baja-toast-btn {
+      border: none;
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .baja-toast-whatsapp {
+      background: #16a34a;
+      color: white;
+    }
+
+    .baja-toast-close {
+      background: #e5e7eb;
+      color: #111827;
+    }
+  </style>
+<script src="./snapshot-client.js"></script>
+</head>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<body>
+
+  <div class="home-btn" id="btnHome" title="Volver al panel">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 10L12 3L21 10V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10Z" stroke="white"
+        stroke-width="2" />
+    </svg>
+  </div>
+
+  <div class="header-torneo">
+    <h1 id="tituloPrincipal">Grilla Interactiva</h1>
+    <div id="subTituloTorneo" class="sub"></div>
+  </div>
+
+  <div id="selectorTorneosWrap" class="selector-torneos-wrap" style="display:none;">
+    <div class="selector-torneos-label">Torneos abiertos</div>
+    <div id="selectorTorneos" class="selector-torneos"></div>
+  </div>
+
+  <div class="status-grid">
+    <div class="status-item" style="display:none;">
+      <strong>Torneo:</strong> <span id="torneoNombre">Cargando...</span>
+    </div>
+    <div class="status-item">
+      <strong>Estado:</strong> <span id="estado">Conectando...</span>
+    </div>
+  </div>
+
+  <div id="adminActions" class="admin-actions" style="display:none;">
+    <button id="btnExportarWhatsapp" class="slot-self-btn" type="button">
+      Exportar imagen WhatsApp
+    </button>
+  </div>
+
+  <div id="contenido"></div>
+
+  <div class="leyenda-slots">
+    <span><span class="dot dot-self"></span> Propio</span>
+    <span><span class="dot dot-guest"></span> Invitado</span>
+    <span><span class="dot dot-admin"></span> Administración</span>
+  </div>
+
+  <div id="shareExportWrap" class="share-export-wrap" aria-hidden="true"></div>
+
+  <div id="playerSearchPopup" class="player-search-popup hidden">
+    <input id="playerSearchInput" type="text" placeholder="Buscar jugador...">
+
+    <button id="btnManualPopup" type="button" class="slot-inline-manual-btn" style="width:100%; margin-top:8px;">
+      Carga manual
+    </button>
+
+    <div id="playerSearchResults"></div>
+    <div id="playerManualPopup" style="display:none; margin-top:8px;"></div>
+  </div>
+
+  <div id="bajaFueraHorarioToast" class="baja-toast" aria-live="polite">
+    <div class="baja-toast-title">Baja fuera de horario</div>
+    <div id="bajaFueraHorarioTexto" class="baja-toast-text"></div>
+    <div class="baja-toast-actions">
+      <button id="btnCerrarBajaToast" type="button" class="baja-toast-btn baja-toast-close">
+        Cerrar
+      </button>
+      <a id="btnWhatsappBaja" class="baja-toast-btn baja-toast-whatsapp" target="_blank" rel="noopener">
+        Avisar por WhatsApp
+      </a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient as createRawClient } from "https://esm.sh/@supabase/supabase-js@2";
+const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
+
+    // ==============================
+    // Configuración
+    // ==============================
+    const CONFIG = {
+      SUPABASE_URL: "https://bnnfolhrqxgxjmobclrm.supabase.co",
+      SUPABASE_ANON_KEY: "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ",
+      LOCK_MINUTES: 2,
+      MAX_GROUP_SIZE: 8,
+      SEARCH_DEBOUNCE_MS: 180,
+      SLOT_COUNT: 4,
+    };
+
+    const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+    // 🔐 PROTECCIÓN GENERAL: admin o jugador
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      window.location.href = "login.html";
+      throw new Error("No logueado");
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role, active")
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Error leyendo perfil:", profileError);
+      alert("No se pudo verificar el usuario.");
+      window.location.href = "login.html";
+      throw profileError;
+    }
+
+    if (!profile || profile.active !== true) {
+      alert("Usuario sin perfil activo.");
+      window.location.href = "login.html";
+      throw new Error("Perfil inválido");
+    }
+
+    const esAdmin = profile.role === "admin";
+
+    const params = new URLSearchParams(window.location.search);
+
+    const { data: miJugador, error: playerError } = await supabase
+      .from("players")
+      .select("id")
+      .eq("profile_id", session.user.id)
+      .maybeSingle();
+
+    if (!esAdmin && (playerError || !miJugador)) {
+      alert("Tu usuario no está vinculado a un jugador.");
+      window.location.href = "panel.html";
+      throw new Error("Usuario sin player vinculado");
+    }
+
+    const APP = {
+      torneoId: params.get("torneo_id"),
+      esAdmin,
+      miPlayerId: esAdmin ? null : miJugador.id,
+      sessionLockId: sessionStorage.getItem("vmg_lock_session") || crypto.randomUUID(),
+    };
+
+    sessionStorage.setItem("vmg_lock_session", APP.sessionLockId);
+
+    // ==============================
+    // DOM
+    // ==============================
+    const dom = {
+      torneoNombre: document.getElementById("torneoNombre"),
+      estado: document.getElementById("estado"),
+      contenido: document.getElementById("contenido"),
+      adminActions: document.getElementById("adminActions"),
+      btnExportarWhatsapp: document.getElementById("btnExportarWhatsapp"),
+      shareExportWrap: document.getElementById("shareExportWrap"),
+      selectorTorneosWrap: document.getElementById("selectorTorneosWrap"),
+      selectorTorneos: document.getElementById("selectorTorneos"),
+    };
+
+    // ==============================
+    // Estado global
+    // ==============================
+    const state = {
+      torneo: null,
+      blocks: [],
+      lines: [],
+      slots: [],
+      slotsById: new Map(),
+      linesById: new Map(),
+      slotsByLineId: new Map(),
+      blockByLineId: new Map(),
+      playerAlreadyRegistered: false,
+      dragSlotOrigen: null,
+      searchDebounceTimers: {},
+    };
+
+    const searchCache = new Map();
+    const registrationOperations = new Set();
+
+    let slotBusquedaActivo = null;
+    let activeLockedLineId = null;
+
+    let mobileMoveSlotOrigen = null;
+
+    let realtimeChannel = null;
+    let realtimeReloadTimer = null;
+    let pausaRealtimeInscripcion = false;
+
+    // Controla que una búsqueda vieja no pueda sobrescribir los resultados actuales.
+    let popupSearchSequence = 0;
+
+    // Conserva el slot y el primer jugador de la pareja fuera del DOM.
+    // Así la selección no se pierde aunque el popup se redibuje.
+    let seleccionParejaActual = {
+      slotId: null,
+      jugadorBaseId: null,
+      etapa: "primero"
+    };
+
+    function limpiarSeleccionParejaActual() {
+      seleccionParejaActual = {
+        slotId: null,
+        jugadorBaseId: null,
+        etapa: "primero"
+      };
+    }
+
+    function prepararBusquedaSegundoJugador(jugador, slotId) {
+      const popup = document.getElementById("playerSearchPopup");
+      const input = document.getElementById("playerSearchInput");
+      const results = document.getElementById("playerSearchResults");
+      const manual = document.getElementById("playerManualPopup");
+
+      seleccionParejaActual = {
+        slotId: String(slotId),
+        jugadorBaseId: String(jugador.id),
+        etapa: "segundo"
+      };
+      slotBusquedaActivo = String(slotId);
+      pausaRealtimeInscripcion = true;
+
+      // Cancela cualquier búsqueda pendiente del primer jugador.
+      window.clearTimeout(state.searchDebounceTimers.__popup);
+      window.clearTimeout(state.searchDebounceTimers.__popupWatchdog);
+      popupSearchSequence += 1;
+
+      if (input) {
+        input.dataset.jugadorBaseId = String(jugador.id);
+        input.dataset.modoPareja = "1";
+        input.value = "";
+      }
+      if (manual) {
+        manual.style.display = "none";
+        manual.innerHTML = "";
+      }
+      if (results) {
+        results.innerHTML = `
+          <div style="margin-bottom:8px; font-weight:700; color:#166534;">
+            Primer jugador elegido: ${safeText(jugador.full_name)}
+          </div>
+          <div class="helper-text" style="padding:8px;">
+            Ahora buscá al compañero.
+          </div>
+        `;
+      }
+      if (popup) {
+        popup.dataset.slotId = String(slotId);
+        popup.dataset.jugadorBaseId = String(jugador.id);
+        popup.dataset.etapaPareja = "segundo";
+        popup.classList.remove("hidden");
+        popup.style.visibility = "visible";
+      }
+      requestAnimationFrame(() => {
+        reposicionarBuscadorJugador();
+        input?.focus();
+      });
+    }
+
+    function abrirBuscadorJugador(slotId, elemento, opciones = {}) {
+      pausaRealtimeInscripcion = true;
+      slotBusquedaActivo = slotId;
+
+      seleccionParejaActual = {
+        slotId: String(slotId),
+        jugadorBaseId: opciones.jugadorBaseId
+          ? String(opciones.jugadorBaseId)
+          : null,
+        etapa: opciones.jugadorBaseId ? "segundo" : "primero"
+      };
+
+      const popup = document.getElementById("playerSearchPopup");
+      const input = document.getElementById("playerSearchInput");
+      const results = document.getElementById("playerSearchResults");
+      const manual = document.getElementById("playerManualPopup");
+
+      if (!popup || !input || !results) {
+        console.error("Falta el HTML del popup de búsqueda");
+        return;
+      }
+
+      input.value = "";
+      input.dataset.modoPareja = opciones.modoPareja || (requiresPartner() ? "1" : "0");
+      input.dataset.jugadorBaseId = opciones.jugadorBaseId || "";
+      results.innerHTML = opciones.mensaje || "";
+
+      if (manual) {
+        manual.style.display = "none";
+        manual.innerHTML = "";
+      }
+
+      const rect = elemento.getBoundingClientRect();
+      const anchoPopup = 300;
+      const margen = 10;
+
+      const left = Math.min(
+        rect.left + window.scrollX,
+        window.scrollX + window.innerWidth - anchoPopup - margen
+      );
+
+      popup.dataset.slotId = String(slotId);
+      popup.dataset.jugadorBaseId = opciones.jugadorBaseId
+        ? String(opciones.jugadorBaseId)
+        : "";
+      popup.dataset.etapaPareja = opciones.jugadorBaseId ? "segundo" : "primero";
+      popup.classList.remove("hidden");
+      popup.style.visibility = "hidden";
+      popup.style.maxHeight = "360px";
+      popup.style.overflow = "hidden";
+
+      requestAnimationFrame(() => {
+        if (window.innerWidth <= 760) {
+          const visualHeight = window.visualViewport?.height || window.innerHeight;
+          const visualTop = window.visualViewport?.offsetTop || 0;
+
+          popup.style.position = "fixed";
+          popup.style.left = "12px";
+          popup.style.right = "12px";
+          popup.style.width = "auto";
+          popup.style.top = `${visualTop + 12}px`;
+          popup.style.bottom = "auto";
+          popup.style.transform = "";
+          popup.style.maxHeight = `${Math.max(260, visualHeight - 24)}px`;
+        } else {
+          const espacioAbajo = window.innerHeight - rect.bottom;
+          const espacioArriba = rect.top;
+
+          const altoEstimadoPopup = Math.min(popup.offsetHeight || 360, 360);
+          const abrirArriba = espacioAbajo < altoEstimadoPopup + 16 && espacioArriba > espacioAbajo;
+
+          popup.style.left = `${Math.max(margen, left)}px`;
+          popup.style.maxHeight = `${Math.max(220, Math.min(360, abrirArriba ? espacioArriba - 12 : espacioAbajo - 12))}px`;
+
+          if (abrirArriba) {
+            popup.style.top = "auto";
+            popup.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+            popup.style.position = "fixed";
+          } else {
+            popup.style.bottom = "auto";
+            popup.style.top = `${rect.bottom + 6}px`;
+            popup.style.position = "fixed";
+          }
+
+          popup.style.transform = "";
+        }
+
+        popup.style.visibility = "visible";
+        input.focus();
+
+        setTimeout(reposicionarBuscadorJugador, 250);
+      });
+    }
+
+    function reposicionarBuscadorJugador() {
+      const popup = document.getElementById("playerSearchPopup");
+      const input = document.getElementById("playerSearchInput");
+
+      if (!popup || !input || popup.classList.contains("hidden")) return;
+
+      if (window.innerWidth <= 760) {
+        const visualHeight = window.visualViewport?.height || window.innerHeight;
+        const visualTop = window.visualViewport?.offsetTop || 0;
+
+        popup.style.position = "fixed";
+        popup.style.left = "12px";
+        popup.style.right = "12px";
+        popup.style.width = "auto";
+        popup.style.top = `${visualTop + 12}px`;
+        popup.style.bottom = "auto";
+        popup.style.transform = "";
+        popup.style.maxHeight = `${Math.max(260, visualHeight - 24)}px`;
+
+        return;
+      }
+
+      const slotId = slotBusquedaActivo;
+      if (!slotId) return;
+
+      const trigger = document.querySelector(`[data-open-inline="${slotId}"], [data-self-slot="${slotId}"]`);
+      if (!trigger) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const margen = 10;
+
+      const espacioAbajo = window.innerHeight - rect.bottom;
+      const espacioArriba = rect.top;
+
+      const altoActual = Math.min(popup.scrollHeight || 360, 360);
+      const abrirArriba = espacioAbajo < altoActual + 16 && espacioArriba > espacioAbajo;
+
+      popup.style.position = "fixed";
+      popup.style.maxHeight = `${Math.max(220, Math.min(360, abrirArriba ? espacioArriba - 12 : espacioAbajo - 12))}px`;
+
+      if (abrirArriba) {
+        popup.style.top = "auto";
+        popup.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+      } else {
+        popup.style.bottom = "auto";
+        popup.style.top = `${rect.bottom + 6}px`;
+      }
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", reposicionarBuscadorJugador);
+      window.visualViewport.addEventListener("scroll", reposicionarBuscadorJugador);
+    }
+
+    function abrirCargaManualPopup() {
+      const wrap = document.getElementById("playerManualPopup");
+      if (!wrap || !slotBusquedaActivo) return;
+
+      wrap.innerHTML = "";
+      wrap.style.display = "block";
+
+      const popup = document.getElementById("playerSearchPopup");
+      if (popup) {
+        popup.style.maxHeight = "360px";
+        popup.style.overflow = "hidden";
+      }
+
+      wrap.innerHTML = `
+      <div class="manual-form">
+        <input id="popup-nombre" placeholder="Nombre *" />
+        <input id="popup-apellido" placeholder="Apellido *" />
+        <input id="popup-index" placeholder="Índice" />
+        <select id="popup-genero">
+          <option value="">Género *</option>
+          <option value="male">Caballero</option>
+          <option value="female">Dama</option>
+        </select>
+        <input id="popup-pais" placeholder="País" />
+        <button id="btnGuardarManualPopup" type="button">Guardar jugador</button>
+      </div>
+    `;
+
+      reposicionarBuscadorJugador();
+    }
+
+    async function cerrarBuscadorJugador() {
+      window.clearTimeout(state.searchDebounceTimers.__popup);
+      window.clearTimeout(state.searchDebounceTimers.__popupWatchdog);
+      popupSearchSequence += 1;
+
+      const popup = document.getElementById("playerSearchPopup");
+      const input = document.getElementById("playerSearchInput");
+      const results = document.getElementById("playerSearchResults");
+
+      if (popup) popup.classList.add("hidden");
+      if (input) {
+        input.value = "";
+        input.dataset.modoPareja = "0";
+        input.dataset.jugadorBaseId = "";
+      }
+      if (results) results.innerHTML = "";
+
+      if (popup) {
+        popup.style.top = "";
+        popup.style.bottom = "";
+        popup.style.position = "";
+        popup.dataset.slotId = "";
+        popup.dataset.jugadorBaseId = "";
+        popup.dataset.etapaPareja = "";
+      }
+
+      if (slotBusquedaActivo) {
+        try { await unlockLineFromSlot(slotBusquedaActivo); } catch (error) { console.error("No se pudo liberar la línea activa:", error); }
+      }
+
+      slotBusquedaActivo = null;
+      limpiarSeleccionParejaActual();
+      pausaRealtimeInscripcion = false;
+    }
+
+    function ocultarBuscadorJugadorSinDesbloquear() {
+      window.clearTimeout(state.searchDebounceTimers.__popup);
+      window.clearTimeout(state.searchDebounceTimers.__popupWatchdog);
+      popupSearchSequence += 1;
+
+      const popup = document.getElementById("playerSearchPopup");
+      const input = document.getElementById("playerSearchInput");
+      const results = document.getElementById("playerSearchResults");
+      const manual = document.getElementById("playerManualPopup");
+
+      if (popup) {
+        popup.classList.add("hidden");
+        popup.style.top = "";
+        popup.style.bottom = "";
+        popup.style.position = "";
+        popup.style.visibility = "";
+        popup.dataset.slotId = "";
+        popup.dataset.jugadorBaseId = "";
+        popup.dataset.etapaPareja = "";
+      }
+
+      if (input) {
+        input.value = "";
+        input.dataset.modoPareja = "0";
+        input.dataset.jugadorBaseId = "";
+      }
+
+      if (results) {
+        results.innerHTML = "";
+      }
+
+      if (manual) {
+        manual.style.display = "none";
+        manual.innerHTML = "";
+      }
+
+      slotBusquedaActivo = null;
+      limpiarSeleccionParejaActual();
+      pausaRealtimeInscripcion = false;
+    }
+
+    function renderPopupSearchResults(jugadores, slotIdBusqueda = null) {
+      const cont = document.getElementById("playerSearchResults");
+      const popup = document.getElementById("playerSearchPopup");
+      const input = document.getElementById("playerSearchInput");
+
+      const slotIdFinal =
+        slotIdBusqueda ||
+        seleccionParejaActual.slotId ||
+        slotBusquedaActivo ||
+        popup?.dataset?.slotId ||
+        "";
+
+      const jugadorBaseIdFinal =
+        seleccionParejaActual.jugadorBaseId ||
+        input?.dataset?.jugadorBaseId ||
+        "";
+
+      const etapaFinal = jugadorBaseIdFinal ? "segundo" : "primero";
+
+      if (!cont) return;
+
+      // La búsqueda puede terminar después de un refresco del DOM.
+      // Recuperamos el slot de la propia búsqueda para no dejar el cartel cargando.
+      if (slotIdFinal) {
+        slotBusquedaActivo = String(slotIdFinal);
+      }
+
+      if (!jugadores?.length) {
+        cont.innerHTML = `<div class="helper-text" style="padding:8px;">No se encontraron coincidencias.</div>`;
+        return;
+      }
+
+      cont.innerHTML = jugadores.map((j) => `
+      <div class="slot-result-item">
+        <button
+          class="slot-result-btn"
+          data-pick-player="${safeText(slotIdFinal || "")}"
+          data-player-id="${safeText(j.id)}"
+          data-jugador-base-id="${safeText(jugadorBaseIdFinal)}"
+          data-etapa-pareja="${safeText(etapaFinal)}"
+        >
+          <strong>${safeText(j.full_name || `${j.first_name || ""} ${j.last_name || ""}`.trim())}</strong>
+          <span class="slot-result-meta">
+            ${j.aag_member_number ? `Matrícula: ${safeText(j.aag_member_number)}` : "Sin matrícula"}
+            ${j.current_index != null ? ` · Index: ${safeText(j.current_index)}` : ""}
+            ${j.club_name ? ` · ${safeText(j.club_name)}` : ""}
+          </span>
+        </button>
+      </div>
+    `).join("");
+
+      reposicionarBuscadorJugador();
+    }
+
+    // ==============================
+    // Helpers generales
+    // ==============================
+    function normalizarBusqueda(texto) {
+      return String(texto || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/,/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+    }
+
+    function coincideBusqueda(nombre, busqueda) {
+      const nombreNorm = normalizarBusqueda(nombre);
+      const partes = normalizarBusqueda(busqueda).split(" ").filter(Boolean);
+
+      return partes.every(p => nombreNorm.includes(p));
+    }
+
+    function setStatus(texto, tipo = "") {
+      dom.estado.textContent = texto;
+      dom.estado.className = tipo;
+    }
+
+    function showTransientMessage(texto, tipo = "error") {
+      setStatus(texto, tipo);
+      window.clearTimeout(showTransientMessage._timer);
+      showTransientMessage._timer = window.setTimeout(() => {
+        if (!state.torneo) return;
+        setStatus(statusLabelFromTournament(state.torneo.status), state.torneo.status === "open" ? "ok" : "error");
+      }, 3000);
+    }
+
+    function formatNombreCorto(fullName) {
+      if (!fullName) return "";
+
+      const partes = String(fullName).split(",");
+
+      if (partes.length < 2) return fullName;
+
+      const apellido = partes[0].trim();
+      const nombres = partes[1].trim().split(/\s+/);
+
+      const iniciales = nombres
+        .filter(Boolean)
+        .map(n => n.charAt(0).toUpperCase() + ".")
+        .join(" ");
+
+      return `${apellido}, ${iniciales}`;
+    }
+
+    function safeText(valor) {
+      return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function timeText(valor) {
+      return valor ? String(valor).slice(0, 5) : "";
+    }
+
+    function isSimultaneousTournament() {
+      return String(state.torneo?.start_type || "").toLowerCase() === "simultanea";
+    }
+
+    function normalizeBisText(value) {
+      return String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "");
+    }
+
+    function isBisLine(line) {
+      const label = normalizeBisText(line?.label || "");
+      return label.includes("bis");
+    }
+
+    function getSimultaneousLineOrderValue(line) {
+      const hole = Number(line?.starting_hole || 0);
+      const bisOffset = isBisLine(line) ? 0.5 : 0;
+      return hole + bisOffset;
+    }
+
+    function formatSimultaneousHoleLabel(line) {
+      const hole = Number(line?.starting_hole || 0);
+      if (!hole) return "";
+      return isBisLine(line) ? `${hole} BIS` : `${hole}`;
+    }
+
+    function timeTextToMinutes(value) {
+      const raw = String(value || "").slice(0, 5);
+      const [hh, mm] = raw.split(":").map(Number);
+
+      if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+      return hh * 60 + mm;
+    }
+
+    function formatFechaLargaCapitalizada(fechaStr) {
+      if (!fechaStr) return "";
+
+      const [year, month, day] = String(fechaStr).split("-").map(Number);
+      if (!year || !month || !day) return "";
+
+      const fecha = new Date(year, month - 1, day);
+
+      const weekday = fecha.toLocaleDateString("es-AR", { weekday: "long" });
+      const monthName = fecha.toLocaleDateString("es-AR", { month: "long" });
+
+      const capitalizar = (txt) => txt.charAt(0).toUpperCase() + txt.slice(1);
+
+      return `${capitalizar(weekday)} ${day} de ${capitalizar(monthName)} de ${year}`;
+    }
+
+    function getTournamentStatus() {
+      return String(state.torneo?.status || "").toLowerCase();
+    }
+
+    function canAdminEditClosedTournament() {
+      return APP.esAdmin && getTournamentStatus() === "closed";
+    }
+
+    function canEditGrid() {
+      const status = getTournamentStatus();
+
+      if (APP.esAdmin) {
+        return status === "open" || status === "closed" || status === "officialized";
+      }
+
+      return status === "open";
+    }
+
+    function isReadOnlyTournament() {
+      return getTournamentStatus() === "archived";
+    }
+
+    function capitalizarTexto(texto) {
+      return texto.replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    function getBlocksForDisplay() {
+      const blocks = [...state.blocks];
+      if (!isSimultaneousTournament()) return blocks;
+
+      // A igual horario, conservar el orden original de los bloques.
+      return blocks.sort((a, b) => {
+        const timeA = timeTextToMinutes(a.start_time) ?? Infinity;
+        const timeB = timeTextToMinutes(b.start_time) ?? Infinity;
+        if (timeA === timeB) return 0;
+        return timeA < timeB ? -1 : 1;
+      });
+    }
+
+    function getLinesForExport() {
+      if (!isSimultaneousTournament()) return sortLinesForDisplay(state.lines);
+
+      // Exportar cada bloque completo en el mismo orden que la pantalla.
+      return getBlocksForDisplay().flatMap(block => sortLinesForDisplay(
+        state.lines.filter(line => String(line.starting_block_id) === String(block.id))
+      ));
+    }
+
+    function sortLinesForDisplay(lines) {
+      const items = Array.isArray(lines) ? [...lines] : [];
+
+      if (isSimultaneousTournament()) {
+        return items.sort((a, b) => {
+          const orderA = getSimultaneousLineOrderValue(a);
+          const orderB = getSimultaneousLineOrderValue(b);
+
+          if (orderA !== orderB) return orderA - orderB;
+
+          const labelA = String(a?.label || "");
+          const labelB = String(b?.label || "");
+          return labelA.localeCompare(labelB);
+        });
+      }
+
+      return items.sort((a, b) => {
+        const holeA = Number(a?.starting_hole || 0);
+        const holeB = Number(b?.starting_hole || 0);
+
+        if (holeA !== holeB) return holeA - holeB;
+
+        const timeA = String(a?.line_time || "");
+        const timeB = String(b?.line_time || "");
+        return timeA.localeCompare(timeB);
+      });
+    }
+
+    function addMinutesToHourText(hourText, minutesToAdd) {
+      if (!hourText) return "";
+
+      const raw = String(hourText).slice(0, 5);
+      const [hh, mm] = raw.split(":").map(Number);
+
+      if (Number.isNaN(hh) || Number.isNaN(mm)) return "";
+
+      const total = (hh * 60 + mm + minutesToAdd) % (24 * 60);
+      const finalHours = Math.floor(total / 60);
+      const finalMinutes = total % 60;
+
+      return `${String(finalHours).padStart(2, "0")}:${String(finalMinutes).padStart(2, "0")}`;
+    }
+
+    function getPaso9Hoyos(lineTime) {
+      return addMinutesToHourText(lineTime, 150);
+    }
+
+    function getFinJuego(lineTime) {
+      return addMinutesToHourText(lineTime, 300);
+    }
+
+    function parseIndex(valor) {
+      const txt = String(valor || "").trim();
+      if (!txt) return null;
+      const n = Number(txt.replace(",", "."));
+      return Number.isNaN(n) ? null : n;
+    }
+
+    function nowIso() {
+      return new Date().toISOString();
+    }
+
+    function addMinutesIso(minutes) {
+      return new Date(Date.now() + minutes * 60 * 1000).toISOString();
+    }
+
+    function normalizeSlotName(slot) {
+      if (!slot) return "Libre";
+      const nombre = String(slot.display_name || "").trim();
+      if (!nombre || nombre.toUpperCase() === "LIBRE") return "Libre";
+      return nombre;
+    }
+
+    function isSlotEmpty(slot) {
+      const participantType = String(slot?.participant_type || "").toLowerCase();
+
+      if (participantType === "blocked") return false;
+      if (esReservaActiva(slot)) return false;
+
+      return normalizeSlotName(slot) === "Libre";
+    }
+
+    function isTournamentOpen() {
+      return canEditGrid();
+    }
+
+    function requiresPartner() {
+      return state.torneo?.game_modes?.requires_partner === true;
+    }
+
+    function statusLabelFromTournament(status) {
+      const s = String(status || "").toLowerCase();
+      if (s === "open") return "Inscripción abierta";
+      if (s === "closed") return "Torneo cerrado para cambios";
+      if (s === "officialized") return "Torneo ya guardado · administración habilitada";
+      if (s === "archived") return "Torneo archivado / solo lectura";
+
+      return `Estado: ${s || "desconocido"}`;
+    }
+
+    function getPartnerBlock(slotNumber) {
+      const n = Number(slotNumber);
+      if (n === 1 || n === 2) return { inicio: 1, fin: 2 };
+      if (n === 3 || n === 4) return { inicio: 3, fin: 4 };
+      return null;
+    }
+
+    function getSlotById(slotId) {
+      return state.slotsById.get(slotId) || null;
+    }
+
+    function getLineById(lineId) {
+      return state.linesById.get(lineId) || null;
+    }
+
+    function getLineSlots(lineId) {
+      return (state.slotsByLineId.get(lineId) || []).slice().sort((a, b) => a.slot_number - b.slot_number);
+    }
+
+    function getSlotCssType(slot) {
+      const type = String(slot?.participant_type || "").toLowerCase();
+
+      if (type === "blocked") return "slot-blocked";
+
+      // Jugador cargado manualmente: no tiene matrícula AAG
+      if (!slot?.aag_member_number) {
+        return "slot-manual";
+      }
+
+      const club = normalizarBusqueda(slot?.club_name || "");
+
+      // Socio Villa María Golf Club
+      if (
+        club.includes("VILLA MARIA GOLF") ||
+        club.includes("VILLA MARIA GOLF CLUB") ||
+        club === "408"
+      ) {
+        return "slot-vmg";
+      }
+
+      // Tiene matrícula pero es de otro club
+      return "slot-otro-club";
+    }
+
+    function lockActive(slot) {
+      return !!slot?.lock_expires_at && new Date(slot.lock_expires_at).getTime() > Date.now();
+    }
+
+    function esReservaSocioActiva(slot) {
+      return String(slot?.notes || "") === "RESERVA_24H_SOCIO" && lockActive(slot);
+    }
+
+    function esReservaAdminActiva(slot) {
+      return String(slot?.notes || "") === "RESERVA_ADMIN";
+    }
+
+    function esReservaActiva(slot) {
+      return esReservaSocioActiva(slot) || esReservaAdminActiva(slot);
+    }
+
+    function lockIsMine(slot) {
+      if (!slot || !lockActive(slot)) return false;
+
+      if (APP.miPlayerId && String(slot.locked_by_player_id || "") === String(APP.miPlayerId)) {
+        return true;
+      }
+
+      return slot.locked_by_session === APP.sessionLockId;
+    }
+
+    function lockIsOther(slot) {
+      if (!slot) return false;
+
+      // Reserva indefinida de Admin:
+      // para el member siempre debe verse como reservado.
+      if (String(slot.notes || "") === "RESERVA_ADMIN") {
+        return !APP.esAdmin;
+      }
+
+      // Reserva 24 hs socio
+      if (String(slot.notes || "") === "RESERVA_24H_SOCIO") {
+        if (!lockActive(slot)) return false;
+        if (APP.miPlayerId && String(slot.locked_by_player_id || "") === String(APP.miPlayerId)) return false;
+        return true;
+      }
+
+      if (!slot?.locked_by_player_id && !slot?.locked_by_session) return false;
+      if (!lockActive(slot)) return false;
+
+      if (APP.miPlayerId && String(slot.locked_by_player_id || "") === String(APP.miPlayerId)) {
+        return false;
+      }
+
+      if (slot.locked_by_session === APP.sessionLockId) {
+        return false;
+      }
+
+      return true;
+    }
+
+    function buildSlotResetPayload() {
+      return {
+        display_name: "",
+        participant_type: "self",
+        created_by_player_id: null,
+        linked_player_id: null,
+        aag_member_number: null,
+        club_name: null,
+        country: null,
+        manual_index: null,
+        needs_admin_review: false,
+        notes: null,
+        locked_by_session: null,
+        locked_by_player_id: null,
+        lock_expires_at: null,
+      };
+    }
+
+    function buildSlotPayloadFromPlayer(jugador, participantType) {
+      return {
+        display_name: jugador.full_name,
+        participant_type: participantType,
+        created_by_player_id: APP.miPlayerId || null,
+        linked_player_id: jugador.id,
+        aag_member_number: jugador.aag_member_number || null,
+        club_name: jugador.club_name || null,
+        country: jugador.country || null,
+        manual_index: jugador.current_index ?? null,
+        needs_admin_review: !jugador.aag_member_number,
+        notes: null,
+        locked_by_session: null,
+        locked_by_player_id: null,
+        lock_expires_at: null,
+      };
+    }
+
+    function participantTypeForGrid(jugador) {
+      if (APP.esAdmin) return "admin";
+      if (jugador.id === APP.miPlayerId) return "self";
+      return "guest";
+    }
+
+    function registrationTypeForPlayer(jugador, fallback = "aag_match") {
+      if (jugador.id === APP.miPlayerId) return "self";
+      return jugador.aag_member_number ? fallback : "manual_guest";
+    }
+
+    function getOccupiedCountCreatedByMe() {
+      if (APP.esAdmin || !APP.miPlayerId) return 0;
+      return state.slots.filter((slot) => slot.created_by_player_id === APP.miPlayerId && !isSlotEmpty(slot)).length;
+    }
+
+    // ==============================
+    // Consultas y carga principal
+    // ==============================
+    async function blockSlotByAdmin(slotId) {
+      if (!APP.esAdmin) throw new Error("Solo admin puede bloquear.");
+      if (!canEditGrid()) throw new Error("El torneo no permite modificaciones.");
+
+      const { error } = await supabase
+        .from("line_slots")
+        .update({
+          participant_type: "blocked",
+          display_name: "",
+          created_by_player_id: null,
+          linked_player_id: null,
+          notes: "BLOCKED_BY_ADMIN"
+        })
+        .eq("id", slotId);
+
+      if (error) throw error;
+    }
+
+    async function fetchTournament() {
+      let query = supabase
+        .from("tournaments")
+        .select(`
+      id,
+      name,
+      tournament_date,
+      status,
+      published,
+      start_type,
+      game_modes (
+        id,
+        name,
+        participation_type,
+        requires_partner
+      )
+    `)
+        .eq("id", APP.torneoId);
+
+      if (!APP.esAdmin) {
+        query = query
+          .eq("status", "open")
+          .eq("published", true);
+      }
+
+      const { data, error } = await query.single();
+
+      if (error) throw error;
+      if (!data) throw new Error("No se encontró el torneo o no tenés permiso para verlo.");
+      return data;
+    }
+
+    async function fetchOldestOpenTournaments(limit = 5) {
+      let query = supabase
+        .from("tournaments")
+        .select("id, name, tournament_date, status, published")
+        .eq("status", "open");
+
+      if (!APP.esAdmin) {
+        query = query.eq("published", true);
+      }
+
+      const { data, error } = await query
+        .order("tournament_date", { ascending: true })
+        .limit(limit);
+
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function fetchOldestOpenTournament() {
+      let query = supabase
+        .from("tournaments")
+        .select("id, name, tournament_date, status, published")
+        .eq("status", "open");
+
+      if (!APP.esAdmin) {
+        query = query.eq("published", true);
+      }
+
+      const { data, error } = await query
+        .order("tournament_date", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data || null;
+    }
+
+    function renderTournamentSelector(torneos) {
+      if (!dom.selectorTorneosWrap || !dom.selectorTorneos) return;
+
+      if (!torneos || torneos.length === 0) {
+        dom.selectorTorneosWrap.style.display = "none";
+        dom.selectorTorneos.innerHTML = "";
+        return;
+      }
+
+      dom.selectorTorneosWrap.style.display = "block";
+
+      dom.selectorTorneos.innerHTML = torneos
+        .map((torneo) => `
+        <button
+          type="button"
+          class="selector-torneo-btn ${String(torneo.id) === String(APP.torneoId) ? "activo" : ""}"
+          data-select-torneo="${safeText(torneo.id)}"
+          title="${safeText(formatFechaLargaCapitalizada(torneo.tournament_date))}"
+        >
+          ${safeText(torneo.name || "Torneo")}
+        </button>
+      `)
+        .join("");
+    }
+
+    async function fetchBlocks(tournamentId) {
+      const { data, error } = await supabase
+        .from("starting_blocks")
+        .select("id, tournament_id, name, start_time, block_type, display_order")
+        .eq("tournament_id", tournamentId)
+        .order("display_order", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+
+    function puedeReservarSlotDeSuLinea(slot) {
+      if (APP.esAdmin) {
+        return slot && isSlotEmpty(slot);
+      }
+
+      if (!APP.miPlayerId) return false;
+      if (!slot || !isSlotEmpty(slot)) return false;
+
+      const slotsLinea = getLineSlots(slot.starting_line_id);
+      const slot1 = slotsLinea.find(s => Number(s.slot_number) === 1);
+
+      return (
+        slot1 &&
+        String(slot1.linked_player_id) === String(APP.miPlayerId)
+      );
+    }
+
+    function esReservaMia(slot) {
+      if (!slot) return false;
+
+      const esReserva =
+        esReservaActiva(slot);
+
+      if (!esReserva) return false;
+
+      if (APP.esAdmin) return true;
+
+      return (
+        APP.miPlayerId &&
+        String(slot.locked_by_player_id || "") === String(APP.miPlayerId)
+      );
+    }
+
+    function addHoursIso(hours) {
+      return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    }
+
+    async function reservarSlotPor24Horas(slotId) {
+      if (!APP.esAdmin && !APP.miPlayerId) {
+        throw new Error("No hay jugador vinculado.");
+      }
+
+      const slot = await fetchSlotById(slotId);
+
+      if (!puedeReservarSlotDeSuLinea(slot)) {
+        throw new Error(
+          APP.esAdmin
+            ? "El slot no está libre."
+            : "Solo podés reservar lugares de tu misma línea si estás anotado en el slot 1."
+        );
+      }
+
+      const payload = APP.esAdmin
+        ? {
+          display_name: "Reservado",
+          participant_type: "admin",
+          created_by_player_id: null,
+          linked_player_id: null,
+          aag_member_number: null,
+          club_name: null,
+          country: null,
+          manual_index: null,
+          needs_admin_review: false,
+          locked_by_player_id: null,
+          locked_by_session: "RESERVA_ADMIN",
+          lock_expires_at: "2099-12-31T23:59:59.000Z",
+          notes: "RESERVA_ADMIN"
+        }
+        : {
+          locked_by_player_id: APP.miPlayerId,
+          locked_by_session: null,
+          lock_expires_at: addHoursIso(24),
+          notes: "RESERVA_24H_SOCIO"
+        };
+      const { error } = await supabase
+        .from("line_slots")
+        .update(payload)
+        .eq("id", slotId);
+
+      if (error) throw error;
+    }
+
+    async function liberarReservaSlot(slotId) {
+      const slot = await fetchSlotById(slotId);
+
+      if (!esReservaMia(slot)) {
+        throw new Error("Solo podés liberar tus propias reservas.");
+      }
+
+      const { error } = await supabase
+        .from("line_slots")
+        .update(buildSlotResetPayload())
+        .eq("id", slotId);
+
+      if (error) throw error;
+    }
+
+    async function fetchLines(blockIds) {
+      if (!blockIds.length) return [];
+      const { data, error } = await supabase
+        .from("starting_lines")
+        .select("id, starting_block_id, line_time, starting_hole, label, capacity, status, display_order")
+        .in("starting_block_id", blockIds)
+        .order("display_order", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function fetchSlots(lineIds) {
+      if (!lineIds.length) return [];
+      const { data, error } = await supabase
+        .from("line_slots")
+        .select(`
+          id,
+          starting_line_id,
+          slot_number,
+          participant_type,
+          created_by_player_id,
+          linked_player_id,
+          display_name,
+          aag_member_number,
+          club_name,
+          country,
+          manual_index,
+          needs_admin_review,
+          notes,
+          locked_by_session,
+          locked_by_player_id,
+          lock_expires_at
+        `)
+        .in("starting_line_id", lineIds)
+        .order("slot_number", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function fetchPlayerAlreadyRegistered(tournamentId) {
+      if (!APP.miPlayerId) return false;
+      const { count, error } = await supabase
+        .from("registrations")
+        .select("id", { count: "exact", head: true })
+        .eq("tournament_id", tournamentId)
+        .eq("linked_player_id", APP.miPlayerId);
+      if (error) {
+        console.error(error);
+        return false;
+      }
+      return (count || 0) > 0;
+    }
+
+    function rebuildIndexes() {
+      state.slotsById = new Map(state.slots.map((slot) => [slot.id, slot]));
+      state.linesById = new Map(state.lines.map((line) => [line.id, line]));
+      state.slotsByLineId = new Map();
+      state.blockByLineId = new Map();
+
+      for (const line of state.lines) {
+        state.slotsByLineId.set(line.id, []);
+      }
+
+      for (const slot of state.slots) {
+        if (!state.slotsByLineId.has(slot.starting_line_id)) state.slotsByLineId.set(slot.starting_line_id, []);
+        state.slotsByLineId.get(slot.starting_line_id).push(slot);
+      }
+
+      for (const block of state.blocks) {
+        for (const line of state.lines.filter((item) => item.starting_block_id === block.id)) {
+          state.blockByLineId.set(line.id, block);
+        }
+      }
+    }
+
+    async function recargarGrillaRealtime() {
+      if (pausaRealtimeInscripcion) return;
+      if (!state.torneo?.id || !state.lines?.length) return;
+
+      try {
+        const lineIds = state.lines.map(l => l.id);
+
+        state.slots = await fetchSlots(lineIds);
+        state.playerAlreadyRegistered = await fetchPlayerAlreadyRegistered(state.torneo.id);
+
+        rebuildIndexes();
+        renderView();
+
+      } catch (error) {
+        console.error("Error realtime grilla:", error);
+      }
+    }
+
+    function programarRecargaRealtime() {
+      clearTimeout(realtimeReloadTimer);
+
+      if (pausaRealtimeInscripcion) {
+        return;
+      }
+
+      realtimeReloadTimer = setTimeout(() => {
+        recargarGrillaRealtime();
+      }, 350);
+    }
+
+    function suscribirRealtimeGrilla() {
+      if (!state.torneo?.id) return;
+
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+      }
+
+      realtimeChannel = supabase
+        .channel(`grilla-${state.torneo.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "line_slots"
+          },
+          () => {
+            programarRecargaRealtime();
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "registrations"
+          },
+          () => {
+            programarRecargaRealtime();
+          }
+        )
+        .subscribe((status) => {
+          console.log("Realtime grilla:", status);
+        });
+    }
+
+    async function loadGrid() {
+      try {
+        setStatus("Buscando torneo...");
+        dom.torneoNombre.textContent = "Cargando...";
+
+        const torneosAbiertos = await fetchOldestOpenTournaments(5);
+
+        if (!APP.torneoId) {
+          const torneoPorDefecto = torneosAbiertos[0] || await fetchOldestOpenTournament();
+          if (!torneoPorDefecto?.id) {
+            throw new Error("Esperando el próximo Torneo.");
+          }
+          APP.torneoId = torneoPorDefecto.id;
+        }
+
+        renderTournamentSelector(torneosAbiertos);
+
+        state.torneo = await fetchTournament();
+
+        document.getElementById("tituloPrincipal").textContent = state.torneo.name || "Torneo";
+
+        document.getElementById("tituloPrincipal").textContent =
+          state.torneo?.name || "Torneo";
+
+        const sub = document.getElementById("subTituloTorneo");
+        if (sub) {
+          sub.textContent = formatFechaLargaCapitalizada(state.torneo?.tournament_date);
+        }
+
+        state.blocks = await fetchBlocks(state.torneo.id);
+        state.lines = await fetchLines(state.blocks.map((b) => b.id));
+        state.slots = await fetchSlots(state.lines.map((l) => l.id));
+        state.playerAlreadyRegistered = await fetchPlayerAlreadyRegistered(state.torneo.id);
+
+        state.showAdminSequentialTimes =
+          APP.esAdmin &&
+          String(state.torneo?.start_type || "").toLowerCase() === "secuencial";
+
+        const status = getTournamentStatus();
+
+        if (status === "open") {
+          setStatus("Inscripción abierta", "ok");
+        } else if (status === "closed") {
+          setStatus(
+            APP.esAdmin
+              ? "Torneo cerrado · administración habilitada"
+              : "Torneo cerrado para cambios",
+            "error"
+          );
+        } else if (status === "archived") {
+          setStatus("Torneo archivado / solo lectura", "error");
+        } else {
+          setStatus(`Estado: ${status || "desconocido"}`, "error");
+        }
+
+        if (dom.adminActions) {
+          dom.adminActions.style.display = APP.esAdmin ? "block" : "none";
+        }
+
+        rebuildIndexes();
+        renderView();
+        suscribirRealtimeGrilla();
+      } catch (err) {
+        console.error(err);
+        setStatus("Error", "error");
+        dom.contenido.innerHTML = `<div class="card error">${safeText(err.message || "No se pudo cargar la grilla.")}</div>`;
+      }
+    }
+
+    // ==============================
+    // Lecturas unitarias
+    // ==============================
+    async function fetchPlayerById(playerId) {
+      const { data, error } = await supabase.from("players").select("*").eq("id", playerId).single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function fetchSlotById(slotId) {
+      const { data, error } = await supabase
+        .from("line_slots")
+        .select(`
+          id,
+          starting_line_id,
+          slot_number,
+          participant_type,
+          created_by_player_id,
+          linked_player_id,
+          display_name,
+          aag_member_number,
+          club_name,
+          country,
+          manual_index,
+          needs_admin_review,
+          notes,
+          locked_by_session,
+          locked_by_player_id,
+          lock_expires_at
+        `)
+        .eq("id", slotId)
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function fetchLineSlotsFresh(startingLineId) {
+      const { data, error } = await supabase
+        .from("line_slots")
+        .select(`
+          id,
+          starting_line_id,
+          slot_number,
+          participant_type,
+          created_by_player_id,
+          linked_player_id,
+          display_name,
+          aag_member_number,
+          club_name,
+          country,
+          manual_index,
+          needs_admin_review,
+          notes,
+          locked_by_session,
+          locked_by_player_id,
+          lock_expires_at
+        `)
+        .eq("starting_line_id", startingLineId)
+        .order("slot_number", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function searchPlayers(term) {
+      const texto = String(term || "").trim();
+      if (!texto || texto.length < 2) return [];
+
+      const buscadoNormalizado = normalizarBusqueda(texto);
+      const palabras = buscadoNormalizado.split(" ").filter(Boolean);
+      const patronCompleto = `%${texto.replace(/[%_,]/g, " ").replace(/\s+/g, "%")}%`;
+      const primeraPalabra = palabras[0] || buscadoNormalizado;
+      const patronPalabra = `%${primeraPalabra}%`;
+      const matricula = texto.replace(/\s+/g, "");
+      const esMatricula = /^\d+$/.test(matricula);
+
+      const conTimeout = (promesa, milisegundos, valorFallback) =>
+        Promise.race([
+          Promise.resolve(promesa),
+          new Promise(resolve => setTimeout(() => resolve(valorFallback), milisegundos))
+        ]);
+
+      const consultaPlayers = supabase
+        .from("players")
+        .select("id, first_name, last_name, full_name, aag_member_number, current_index, gender, club_name, country, is_club_member, search_text")
+        .or([
+          `search_text.ilike.${patronCompleto}`,
+          `full_name.ilike.${patronCompleto}`,
+          `first_name.ilike.${patronPalabra}`,
+          `last_name.ilike.${patronPalabra}`,
+          ...(esMatricula ? [`aag_member_number.eq.${matricula}`] : [])
+        ].join(","))
+        .limit(40);
+
+      let consultaAag = supabase
+        .from("aag_enrolleds")
+        .select("enrollment_number, first_name, last_name, full_name, gender, current_index, option_club_id, club_name, search_text");
+
+      consultaAag = esMatricula
+        ? consultaAag.eq("enrollment_number", matricula)
+        : consultaAag.ilike("search_text", patronCompleto);
+
+      consultaAag = consultaAag.limit(40);
+
+      const fallbackRespuesta = { data: [], error: null, timedOut: true };
+      const [playersRespuesta, aagRespuesta] = await Promise.all([
+        conTimeout(consultaPlayers, 3500, fallbackRespuesta),
+        conTimeout(consultaAag, 3500, fallbackRespuesta)
+      ]);
+
+      let playersData = [];
+      let aagData = [];
+
+      if (playersRespuesta?.error) {
+        console.error("Error buscando en players:", playersRespuesta.error);
+      } else {
+        playersData = playersRespuesta?.data || [];
+      }
+
+      if (aagRespuesta?.error) {
+        console.error("Error buscando en aag_enrolleds:", aagRespuesta.error);
+      } else {
+        aagData = aagRespuesta?.data || [];
+      }
+
+      const players = playersData.map(p => ({
+        ...p,
+        origen_busqueda: "players"
+      }));
+
+      const yaEstanEnPlayers = new Set(
+        players
+          .map(p => String(p.aag_member_number || ""))
+          .filter(Boolean)
+      );
+
+      const externos = aagData
+        .filter(p => !yaEstanEnPlayers.has(String(p.enrollment_number || "")))
+        .map(p => ({
+          id: `aag:${p.enrollment_number}`,
+          origen_busqueda: "aag_enrolleds",
+          enrollment_number: p.enrollment_number,
+          aag_member_number: p.enrollment_number,
+          first_name: p.first_name,
+          last_name: p.last_name,
+          full_name: p.full_name,
+          gender: p.gender,
+          current_index: p.current_index,
+          option_club_id: p.option_club_id,
+          club_name: p.club_name,
+          country: "Argentina",
+          is_club_member: Number(p.option_club_id) === 408
+        }));
+
+      function scoreJugador(p) {
+        const nombre = normalizarBusqueda(
+          `${p.full_name || ""} ${p.last_name || ""} ${p.first_name || ""} ${p.aag_member_number || p.enrollment_number || ""}`
+        );
+
+        // Excluir resultados que no contienen todas las palabras escritas.
+        if (!palabras.every(parte => nombre.includes(parte))) return -1;
+
+        let score = 0;
+        if (Number(p.option_club_id) === 408 || p.is_club_member === true) score += 10000;
+        if (String(p.aag_member_number || p.enrollment_number || "") === texto.replace(/\s+/g, "")) score += 8000;
+        if (nombre.includes(buscadoNormalizado)) score += 4000;
+        score += palabras.filter(parte => nombre.includes(parte)).length * 500;
+        return score;
+      }
+
+      return [...players, ...externos]
+        .map(p => ({ ...p, _score: scoreJugador(p) }))
+        .filter(p => p._score >= 0)
+        .sort((a, b) => b._score - a._score)
+        .slice(0, 15);
+    }
+
+    async function asegurarJugadorEnPlayers(jugador) {
+      // Si ya viene de players, NO crear nada
+      if (
+        jugador.origen_busqueda === "players" ||
+        (jugador.id && !String(jugador.id).startsWith("aag:") && !jugador.enrollment_number)
+      ) {
+        return jugador;
+      }
+
+      const matricula = jugador.enrollment_number || jugador.aag_member_number;
+
+      if (!matricula) {
+        return jugador;
+      }
+
+      const row = {
+        aag_member_number: matricula,
+        first_name: jugador.first_name || "",
+        last_name: jugador.last_name || "",
+        gender: jugador.gender || "male",
+        current_index: jugador.current_index ?? null,
+        option_club_id: jugador.option_club_id ?? null,
+        club_name: jugador.club_name || "",
+        country: jugador.country || "Argentina",
+        source: "AAG",
+        is_club_member: Number(jugador.option_club_id) === 408,
+        aag_last_sync_at: new Date().toISOString(),
+        search_text: [
+          jugador.last_name,
+          jugador.first_name,
+          jugador.first_name,
+          jugador.last_name,
+          matricula
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toUpperCase()
+      };
+
+      const { data, error } = await supabase
+        .from("players")
+        .upsert(row, { onConflict: "aag_member_number" })
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      searchCache.clear();
+      return data;
+    }
+
+    async function validatePlayerNotDuplicated(playerId) {
+      if (!playerId) return true;
+
+      const { data: regData, error: regError } = await supabase
+        .from("registrations")
+        .select("id, display_name")
+        .eq("tournament_id", state.torneo.id)
+        .eq("linked_player_id", playerId)
+        .limit(1);
+
+      if (regError) throw regError;
+
+      if (regData?.length) {
+        throw new Error(`${regData[0].display_name || "Ese jugador"} ya está anotado en este torneo.`);
+      }
+
+      const lineIds = state.lines.map(l => l.id);
+
+      if (lineIds.length) {
+        const { data: slotData, error: slotError } = await supabase
+          .from("line_slots")
+          .select("id, display_name")
+          .in("starting_line_id", lineIds)
+          .eq("linked_player_id", playerId)
+          .limit(1);
+
+        if (slotError) throw slotError;
+
+        if (slotData?.length) {
+          throw new Error(`${slotData[0].display_name || "Ese jugador"} ya está anotado en la grilla.`);
+        }
+      }
+
+      return true;
+    }
+
+    // ==============================
+    // Locks
+    // ==============================
+    function isMyTemporaryLock(slot) {
+      if (!slot || !lockActive(slot)) return false;
+      if (String(slot.notes || "") === "RESERVA_24H_SOCIO") return false;
+
+      if (slot.locked_by_session === APP.sessionLockId) return true;
+
+      if (APP.miPlayerId && String(slot.locked_by_player_id || "") === String(APP.miPlayerId)) {
+        return true;
+      }
+
+      return false;
+    }
+
+    async function unlockMyTemporaryLocks(exceptLineId = null) {
+      const filtros = [];
+
+      filtros.push(`locked_by_session.eq.${APP.sessionLockId}`);
+
+      if (APP.miPlayerId) {
+        filtros.push(`locked_by_player_id.eq.${APP.miPlayerId}`);
+      }
+
+      let query = supabase
+        .from("line_slots")
+        .update({
+          locked_by_session: null,
+          locked_by_player_id: null,
+          lock_expires_at: null,
+        })
+        .or(filtros.join(","))
+        .neq("notes", "RESERVA_24H_SOCIO");
+
+      if (exceptLineId) {
+        query = query.neq("starting_line_id", exceptLineId);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+
+      if (!exceptLineId || String(activeLockedLineId || "") !== String(exceptLineId)) {
+        activeLockedLineId = exceptLineId || null;
+      }
+    }
+
+    async function lockLineFromSlot(slotId) {
+      const slotActual = getSlotById(slotId) || await fetchSlotById(slotId);
+      if (!slotActual) throw new Error("No se encontró el slot.");
+
+      // Regla central: un usuario solo puede tener una línea bloqueada a la vez.
+      // Antes de bloquear la nueva, libero cualquier bloqueo temporal propio en otra línea.
+      await unlockMyTemporaryLocks(slotActual.starting_line_id);
+
+      const slotsLinea = await fetchLineSlotsFresh(slotActual.starting_line_id);
+      if (slotsLinea.some(lockIsOther)) {
+        throw new Error("Esa línea está siendo seleccionada o reservada por otro usuario.");
+      }
+
+      const ids = slotsLinea
+        .filter((slot) => !esReservaActiva(slot))
+        .map((slot) => slot.id);
+
+      if (!ids.length) throw new Error("No se encontraron slots para bloquear.");
+
+      const { error } = await supabase
+        .from("line_slots")
+        .update({
+          locked_by_session: APP.sessionLockId,
+          locked_by_player_id: APP.miPlayerId || null,
+          lock_expires_at: addMinutesIso(CONFIG.LOCK_MINUTES),
+        })
+        .in("id", ids);
+
+      if (error) throw error;
+      activeLockedLineId = slotActual.starting_line_id;
+    }
+
+    async function unlockLineFromSlot(slotId) {
+      const slotActual = getSlotById(slotId) || await fetchSlotById(slotId);
+      if (!slotActual) return;
+
+      const slotsLinea = await fetchLineSlotsFresh(slotActual.starting_line_id);
+      const idsMios = slotsLinea
+        .filter(isMyTemporaryLock)
+        .map((slot) => slot.id);
+
+      if (!idsMios.length) return;
+
+      const { error } = await supabase
+        .from("line_slots")
+        .update({
+          locked_by_session: null,
+          locked_by_player_id: null,
+          lock_expires_at: null,
+        })
+        .in("id", idsMios);
+
+      if (error) throw error;
+
+      if (String(activeLockedLineId || "") === String(slotActual.starting_line_id)) {
+        activeLockedLineId = null;
+      }
+    }
+
+    // ==============================
+    // Validaciones
+    // ==============================
+    async function validateSlotPriority(slotId) {
+      const slotActual = getSlotById(slotId) || await fetchSlotById(slotId);
+      if (!slotActual) throw new Error("No se encontró el slot.");
+
+      const slotsLinea = await fetchLineSlotsFresh(slotActual.starting_line_id);
+
+      if (!requiresPartner()) {
+        for (let i = 1; i < slotActual.slot_number; i += 1) {
+          const anterior = slotsLinea.find((s) => s.slot_number === i);
+          if (anterior && isSlotEmpty(anterior)) {
+            throw new Error(`No podés ocupar el lugar ${slotActual.slot_number} mientras el lugar ${i} esté libre.`);
+          }
+        }
+        return true;
+      }
+
+      const bloqueActual = getPartnerBlock(slotActual.slot_number);
+      if (!bloqueActual) throw new Error("No se pudo determinar el bloque de pareja.");
+
+      if (bloqueActual.inicio === 3) {
+        const slot1 = slotsLinea.find((s) => s.slot_number === 1);
+        const slot2 = slotsLinea.find((s) => s.slot_number === 2);
+        if (isSlotEmpty(slot1) && isSlotEmpty(slot2)) {
+          throw new Error("No podés ocupar la pareja 3-4 mientras la pareja 1-2 esté libre.");
+        }
+      }
+
+      return true;
+    }
+
+    async function canOpenSlot(slotId) {
+      if (!canEditGrid()) {
+        return {
+          ok: false,
+          mensaje: "El torneo no permite modificaciones."
+        };
+      }
+
+      try {
+        await validateSlotPriority(slotId);
+        return { ok: true };
+      } catch (error) {
+        return {
+          ok: false,
+          mensaje: error?.message || "No se puede ocupar este lugar todavía."
+        };
+      }
+    }
+
+    function validateOwnGroupLimit(extraPlayers = 1) {
+      if (APP.esAdmin || !APP.miPlayerId) return true;
+      const total = getOccupiedCountCreatedByMe();
+      if (total + extraPlayers > CONFIG.MAX_GROUP_SIZE) {
+        throw new Error(`Ya alcanzaste el máximo de ${CONFIG.MAX_GROUP_SIZE} jugadores en tu grupo.`);
+      }
+      return true;
+    }
+
+    // ==============================
+    // Render helpers
+    // ==============================
+    function renderSearchResults(slotId, jugadores) {
+      const cont = document.getElementById(`results-${slotId}`);
+      if (!cont) return;
+      if (!jugadores?.length) {
+        cont.innerHTML = `<div class="helper-text">No se encontraron coincidencias.</div>`;
+        return;
+      }
+
+      cont.innerHTML = jugadores.map((j) => `
+        <div class="slot-result-item">
+          <button class="slot-result-btn" data-pick-player="${slotId}" data-player-id="${j.id}">
+            <strong>${safeText(j.full_name || `${j.first_name || ""} ${j.last_name || ""}`.trim())}</strong>
+            <span class="slot-result-meta">
+              ${j.aag_member_number ? `Matrícula: ${safeText(j.aag_member_number)}` : "Sin matrícula"}
+              ${j.current_index != null ? ` · Index: ${safeText(j.current_index)}` : ""}
+              ${j.gender ? ` · ${safeText(j.gender)}` : ""}
+            </span>
+          </button>
+        </div>
+      `).join("");
+    }
+
+    function renderManualInline(slotId) {
+      const wrap = document.getElementById(`manual-${slotId}`);
+      const input = document.getElementById(`input-${slotId}`);
+      const modoPareja = input?.dataset?.modoPareja === "1";
+      if (!wrap) return;
+
+      wrap.style.display = "block";
+      wrap.innerHTML = `
+        <div class="manual-form">
+          <input id="m-nombre-${slotId}" placeholder="Nombre *" />
+          <input id="m-apellido-${slotId}" placeholder="Apellido *" />  
+          <input id="m-index-${slotId}" placeholder="Índice" />
+          <select id="m-genero-${slotId}">
+            <option value="">Género *</option>
+            <option value="male">Caballero</option>
+            <option value="female">Dama</option>
+          </select>
+          <input id="m-pais-${slotId}" placeholder="País" />
+          <button data-save-manual="${slotId}">${modoPareja ? "Guardar compañero" : "Guardar"}</button>
+        </div>
+      `;
+    }
+
+    function ensureInlineSearch(slotId) {
+      const input = document.getElementById(`input-${slotId}`);
+      const results = document.getElementById(`results-${slotId}`);
+      if (!input || input.dataset.autoSearchInstalled === "1") return;
+
+      input.dataset.autoSearchInstalled = "1";
+
+      input.addEventListener("input", () => {
+        const texto = String(input.value || "").trim();
+        window.clearTimeout(state.searchDebounceTimers[slotId]);
+
+        if (!texto) {
+          if (results) results.innerHTML = "";
+          return;
+        }
+
+        if (texto.length < 3) {
+          if (results) results.innerHTML = `<div class="helper-text">Escribí al menos 2 caracteres.</div>`;
+          return;
+        }
+
+        state.searchDebounceTimers[slotId] = window.setTimeout(async () => {
+          try {
+            const jugadores = await searchPlayers(texto);
+            renderSearchResults(slotId, jugadores);
+          } catch (error) {
+            console.error(error);
+            if (results) results.innerHTML = `<div class="error">Error al buscar.</div>`;
+          }
+        }, CONFIG.SEARCH_DEBOUNCE_MS);
+      });
+    }
+
+    async function closeAllInlineEditors() {
+      const editores = document.querySelectorAll(".slot-inline-editor");
+      for (const el of editores) {
+        if (el.style.display === "block") {
+          const slotId = el.id.replace("inline-", "");
+          el.style.display = "none";
+          await unlockLineFromSlot(slotId);
+        }
+      }
+    }
+
+    function resetInlineState(slotId) {
+      const results = document.getElementById(`results-${slotId}`);
+      const manualWrap = document.getElementById(`manual-${slotId}`);
+      const input = document.getElementById(`input-${slotId}`);
+      if (results) results.innerHTML = "";
+      if (manualWrap) {
+        manualWrap.style.display = "none";
+        manualWrap.innerHTML = "";
+      }
+      if (input) {
+        input.dataset.modoPareja = "0";
+        input.dataset.jugadorBaseId = "";
+      }
+    }
+
+    async function openInline(slotId) {
+      await closeAllInlineEditors();
+      const editor = document.getElementById(`inline-${slotId}`);
+      if (!editor) return;
+      editor.style.display = "block";
+
+      ensureInlineSearch(slotId);
+      resetInlineState(slotId);
+
+      const input = document.getElementById(`input-${slotId}`);
+      const results = document.getElementById(`results-${slotId}`);
+      if (input) {
+        input.value = "";
+        input.dataset.modoPareja = requiresPartner() ? "1" : "0";
+        input.dataset.jugadorBaseId = "";
+      }
+      if (results && requiresPartner()) {
+        results.innerHTML = `<div class="helper-text">Buscá el primer jugador de la pareja. Después te pedirá el compañero.</div>`;
+      }
+    }
+
+    async function closeInline(slotId) {
+      const editor = document.getElementById(`inline-${slotId}`);
+      if (editor) editor.style.display = "none";
+      await unlockLineFromSlot(slotId);
+    }
+
+    function renderInlineEditor(slotId) {
+      return `
+        <div class="slot-inline-editor" id="inline-${slotId}" style="display:none;">
+          <div class="slot-inline-top">
+            <input class="slot-inline-input" id="input-${slotId}" placeholder="Buscar por nombre o matrícula" />
+            <button class="slot-inline-close" data-close-inline="${slotId}">×</button>
+          </div>
+          <div class="slot-inline-actions">
+            <button class="slot-inline-manual-btn" data-manual-inline="${slotId}">Carga manual</button>
+          </div>
+          <div class="slot-inline-results" id="results-${slotId}"></div>
+          <div class="slot-inline-manual-wrap" id="manual-${slotId}" style="display:none;"></div>
+        </div>
+      `;
+    }
+
+    function renderFreeSlot(slot, torneoAbierto, bloqueadoPorOtro) {
+      const participantType = String(slot?.participant_type || "");
+
+      const textoLibre = !torneoAbierto
+        ? (state.torneo.status === "closed" ? "Cerrado" : "Finalizado")
+        : (bloqueadoPorOtro ? "Reservado" : "Libre");
+
+      if (participantType === "blocked") {
+        return `
+    <td class="slot-cell slot-occupied slot-blocked" data-slot-id="${slot.id}" data-libre="0">
+      <div class="slot-box"></div>
+    </td>
+  `;
+      }
+
+      if (!torneoAbierto) {
+        return `
+        <td class="slot-cell slot-empty">
+          <div class="slot-box"><span class="slot-libre-link" style="text-decoration:none; cursor:default;">${textoLibre}</span></div>
+        </td>
+      `;
+      }
+
+      if (bloqueadoPorOtro) {
+        const esReserva24 =
+          String(slot?.notes || "") === "RESERVA_24H_SOCIO" &&
+          lockActive(slot);
+
+        if (APP.esAdmin && esReserva24) {
+          return `
+      <td class="slot-cell slot-empty slot-locked-other" data-slot-id="${slot.id}">
+        <div class="slot-box">
+          <button
+            class="slot-inline-manual-btn"
+            type="button"
+            data-release-reserve-slot="${slot.id}"
+          >
+            Liberar reserva
+          </button>
+        </div>
+      </td>
+    `;
+        }
+
+        return `
+    <td class="slot-cell slot-empty slot-locked-other">
+      <div class="slot-box"><span class="slot-libre-link" style="text-decoration:none; cursor:not-allowed;">Reservado</span></div>
+    </td>
+  `;
+      }
+
+      const botonBloquear = APP.esAdmin
+        ? `<button type="button" class="slot-block-btn" data-block-slot="${slot.id}" title="Bloquear slot">×</button>`
+        : "";
+
+      const botonAnotarme = !APP.esAdmin && APP.miPlayerId && !state.playerAlreadyRegistered
+        ? `<button class="slot-self-btn" data-self-slot="${slot.id}">Anotarme</button>`
+        : "";
+
+      const botonReservar = puedeReservarSlotDeSuLinea(slot) && !esReservaMia(slot)
+        ? `<button class="slot-self-btn" type="button" data-reserve-slot="${slot.id}">Reservar 24 hs</button>`
+        : "";
+
+      const botonLiberarReserva = esReservaMia(slot)
+        ? `<button class="slot-inline-manual-btn" type="button" data-release-reserve-slot="${slot.id}">Liberar reserva</button>`
+        : "";
+
+      const botonAgregarJugador = `<span class="slot-libre-link" data-open-inline="${slot.id}">Agregar jugador</span>`;
+
+      const accionesSlotLibre = `
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+        ${botonAnotarme}
+        ${botonReservar}
+        ${botonLiberarReserva}
+        ${botonAgregarJugador}
+      </div>
+    `;
+
+      return `
+      <td class="slot-cell slot-empty" data-slot-id="${slot.id}" data-slot-number="${slot.slot_number}" data-libre="1">
+        <div class="slot-box">
+          ${botonBloquear}
+          ${accionesSlotLibre}
+        </div>
+      </td>
+    `;
+    }
+
+    function renderOccupiedSlot(line, slot, cssLockClass) {
+      const participantType = String(slot?.participant_type || "");
+
+      if (esReservaActiva(slot)) {
+        const esReservaAdmin = String(slot.notes || "") === "RESERVA_ADMIN";
+        const puedeLiberar = APP.esAdmin || (!esReservaAdmin && esReservaMia(slot));
+
+        if (puedeLiberar) {
+          return `
+      <td class="slot-cell slot-empty slot-locked-other" data-slot-id="${slot.id}" data-libre="0">
+        <div class="slot-box">
+          <button class="slot-inline-manual-btn" type="button" data-release-reserve-slot="${slot.id}">
+            Liberar reserva
+          </button>
+        </div>
+      </td>
+    `;
+        }
+
+        return `
+    <td class="slot-cell slot-empty slot-locked-other" data-libre="0">
+      <div class="slot-box">
+        <span class="slot-libre-link" style="text-decoration:none; cursor:not-allowed;">Reservado</span>
+      </div>
+    </td>
+  `;
+      }
+
+      const indicator = participantType === "self"
+        ? `<div class="slot-indicator slot-indicator-self"></div>`
+        : participantType === "guest"
+          ? `<div class="slot-indicator slot-indicator-guest"></div>`
+          : participantType === "admin"
+            ? `<div class="slot-indicator slot-indicator-admin"></div>`
+            : "";
+
+      const textoCompleto = participantType === "blocked"
+        ? ""
+        : normalizeSlotName(slot);
+
+      const texto = participantType === "blocked"
+        ? ""
+        : formatNombreCorto(textoCompleto);
+
+      const typeClass = getSlotCssType(slot);
+      const dragClass = APP.esAdmin ? "slot-draggable" : "";
+
+      return `
+        <td
+          class="slot-cell slot-occupied ${typeClass} ${cssLockClass} ${dragClass}"
+          data-slot-id="${slot.id}"
+          data-hora="${safeText(timeText(line.line_time))}"
+          data-hoyo="${safeText(line.label || line.starting_hole)}"
+          data-slot-number="${slot.slot_number}"
+          data-texto="${safeText(texto)}"
+          data-libre="0"
+          draggable="${APP.esAdmin ? "true" : "false"}"
+        >
+          <div class="slot-box" title="${safeText(textoCompleto)}">
+            <div class="slot-nombre">${safeText(texto)}</div>
+            ${indicator}
+          </div>
+        </td>
+      `;
+    }
+
+    function renderLineRow(line) {
+      const lineSlots = getLineSlots(line.id);
+      const lineByNumber = new Map(lineSlots.map((slot) => [slot.slot_number, slot]));
+      const lineLockedByOther = lineSlots.some(lockIsOther);
+      const lineLockedByMine = isTournamentOpen() && lineSlots.some(lockIsMine);
+      const hourClass = lineLockedByOther ? "slot-locked-other" : (lineLockedByMine ? "slot-locked-mine" : "");
+      const torneoAbierto = isTournamentOpen();
+
+      const firstColumnText = isSimultaneousTournament()
+        ? formatSimultaneousHoleLabel(line)
+        : timeText(line.line_time);
+
+      let row = `<tr><td class="col-hora ${hourClass}">${safeText(firstColumnText)}</td>`;
+
+      for (let i = 1; i <= CONFIG.SLOT_COUNT; i += 1) {
+        const slot = lineByNumber.get(i) || {
+          id: "",
+          slot_number: i,
+          starting_line_id: line.id,
+          display_name: "",
+          participant_type: "empty",
+        };
+
+        const slotBloqueadoPorOtro = lockIsOther(slot) || !torneoAbierto;
+        const slotBloqueadoPorMi = torneoAbierto && lockIsMine(slot);
+
+        const cssLockClass = slotBloqueadoPorOtro
+          ? "slot-locked-other"
+          : (slotBloqueadoPorMi ? "slot-locked-mine" : "");
+
+        row += isSlotEmpty(slot)
+          ? renderFreeSlot(slot, torneoAbierto, slotBloqueadoPorOtro)
+          : renderOccupiedSlot(line, slot, cssLockClass);
+      }
+
+      if (state.showAdminSequentialTimes) {
+        row += `
+          <td class="admin-time-cell">${safeText(getPaso9Hoyos(line.line_time))}</td>
+          <td class="admin-time-cell">${safeText(getFinJuego(line.line_time))}</td>
+        `;
+      }
+
+      row += `</tr>`;
+      return row;
+    }
+
+    function renderBlock(block) {
+      const lines = sortLinesForDisplay(
+        state.lines.filter((line) => line.starting_block_id === block.id)
+      );
+
+      let html = `
+        <div class="card bloque-card">
+          <div class="bloque-header">
+          </div>
+          <div class="tabla-wrap">
+            <table>
+              <colgroup>
+                <col class="col-hora" />
+                <col class="col-slot" />
+                <col class="col-slot" />
+                <col class="col-slot" />
+                <col class="col-slot" />
+                ${state.showAdminSequentialTimes ? `
+                  <col class="col-admin-time" />
+                  <col class="col-admin-time" />
+                ` : ""}
+              </colgroup>
+              <tbody>
+      `;
+
+      if (isSimultaneousTournament()) {
+        html += `
+          <tr>
+            <td colspan="${state.showAdminSequentialTimes ? 7 : 5}" class="titulo-hoyo">
+              Salida ${safeText(timeText(block.start_time))}
+            </td>
+          </tr>
+        `;
+
+        for (const line of lines) {
+          html += renderLineRow(line);
+        }
+      } else {
+        let lastHole = null;
+
+        for (let index = 0; index < lines.length; index += 1) {
+          const line = lines[index];
+          const nextLine = lines[index + 1] || null;
+          const hole = Number(line.starting_hole || 0);
+
+          if (!isSimultaneousTournament() && hole !== lastHole) {
+            html += `<tr><td colspan="${state.showAdminSequentialTimes ? 7 : 5}" class="titulo-hoyo">Salida por Hoyo ${safeText(hole)}</td></tr>`;
+            lastHole = hole;
+          }
+
+          html += renderLineRow(line);
+
+          if (!isSimultaneousTournament() && nextLine) {
+            const sameHole =
+              Number(nextLine.starting_hole || 0) === Number(line.starting_hole || 0);
+
+            if (sameHole) {
+              const currentMinutes = timeTextToMinutes(line.line_time);
+              const nextMinutes = timeTextToMinutes(nextLine.line_time);
+
+              if (currentMinutes !== null && nextMinutes !== null) {
+                const diff = nextMinutes - currentMinutes;
+
+                if (diff > 30) {
+                  html += `
+            <tr>
+              <td colspan="${state.showAdminSequentialTimes ? 7 : 5}" class="gap-row"></td>
+            </tr>
+          `;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      html += `</tbody></table></div></div>`;
+      return html;
+    }
+
+    function renderShareGrid() {
+      const isSim = String(state.torneo?.start_type || "").toLowerCase() === "simultanea";
+
+      let html = `
+      <div class="share-sheet">
+        <div class="share-header">
+          <div class="share-title">${safeText(state.torneo?.name || "Torneo")}</div>
+          <div class="share-sub">
+            ${formatFechaLargaCapitalizada(state.torneo?.tournament_date)}
+          </div>
+        </div>
+
+        <table>
+          <colgroup>
+            <col class="share-col-ref" />
+            <col class="share-slot" />
+            <col class="share-slot" />
+            <col class="share-slot" />
+            <col class="share-slot" />
+            ${state.showAdminSequentialTimes ? `
+              <col class="share-col-time-extra" />
+              <col class="share-col-time-extra" />
+            ` : ""}
+          </colgroup>
+          <tbody>
+    `;
+
+      const lines = getLinesForExport();
+
+      let lastHole = null;
+      let lastBlockId = null;
+
+      for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        const block = state.blocks.find(b => String(b.id) === String(line.starting_block_id));
+
+        if (isSim && String(line.starting_block_id) !== String(lastBlockId)) {
+          html += `
+      <tr>
+        <td colspan="${state.showAdminSequentialTimes ? 7 : 5}" class="share-title-row">
+          Salida ${safeText(timeText(block?.start_time || line.line_time))}
+        </td>
+      </tr>
+    `;
+          lastBlockId = line.starting_block_id;
+        }
+
+        const nextLine = lines[index + 1] || null;
+        const hole = Number(line.starting_hole || 0);
+
+        if (!isSim && hole !== lastHole) {
+          html += `
+      <tr>
+        <td colspan="${state.showAdminSequentialTimes ? 7 : 5}" class="share-title-row">
+          Salida por Hoyo ${hole}
+        </td>
+      </tr>
+    `;
+          lastHole = hole;
+        }
+
+        const ref = isSim
+          ? formatSimultaneousHoleLabel(line)
+          : timeText(line.line_time);
+
+        html += `<tr>`;
+        html += `<td class="share-col-ref">${safeText(ref)}</td>`;
+
+        const lineSlots = getLineSlots(line.id);
+        const byNumber = new Map(lineSlots.map((s) => [s.slot_number, s]));
+
+        for (let i = 1; i <= CONFIG.SLOT_COUNT; i += 1) {
+          const slot = byNumber.get(i);
+
+          const participantType = String(slot?.participant_type || "").toLowerCase();
+          const isBlocked = participantType === "blocked";
+
+          const isReserved =
+            slot &&
+            esReservaActiva(slot);
+
+          const nameCompleto = slot && !isSlotEmpty(slot) && !isBlocked && !isReserved
+            ? normalizeSlotName(slot)
+            : "";
+
+          const name = nameCompleto
+            ? formatNombreCorto(nameCompleto)
+            : "";
+
+          const cellClass = isBlocked
+            ? "share-blocked"
+            : isReserved
+              ? "share-reserved"
+              : name
+                ? ""
+                : "share-empty";
+
+          const cellText = isBlocked
+            ? ""
+            : isReserved
+              ? "Reservado"
+              : safeText(name);
+
+          html += `
+  <td
+    class="share-name ${cellClass}"
+    title="${isReserved ? "Reservado" : safeText(nameCompleto)}"
+  >
+    ${cellText}
+  </td>
+`;
+        }
+
+        if (state.showAdminSequentialTimes) {
+          html += `
+      <td class="share-time-extra">${safeText(getPaso9Hoyos(line.line_time))}</td>
+      <td class="share-time-extra">${safeText(getFinJuego(line.line_time))}</td>
+    `;
+        }
+
+        html += `</tr>`;
+
+        if (!isSim && nextLine) {
+          const sameHole =
+            Number(nextLine.starting_hole || 0) === Number(line.starting_hole || 0);
+
+          if (sameHole) {
+            const currentMinutes = timeTextToMinutes(line.line_time);
+            const nextMinutes = timeTextToMinutes(nextLine.line_time);
+
+            if (currentMinutes !== null && nextMinutes !== null) {
+              const diff = nextMinutes - currentMinutes;
+
+              if (diff > 30) {
+                html += `
+            <tr>
+              <td colspan="${state.showAdminSequentialTimes ? 7 : 5}" class="share-block-separator"></td>
+            </tr>
+          `;
+              }
+            }
+          }
+        }
+      }
+
+      html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+      return html;
+    }
+
+    function renderMobileBlock(block) {
+      const lines = sortLinesForDisplay(
+        state.lines.filter((line) => line.starting_block_id === block.id)
+      );
+
+      let html = `
+    <div class="card bloque-card">
+  `;
+
+      if (isSimultaneousTournament()) {
+        html += `
+      <div class="mobile-line-card">
+        <div class="mobile-line-head">
+          <div class="mobile-line-title">Salida simultánea</div>
+          <div class="mobile-line-meta">${safeText(timeText(block.start_time))}</div>
+        </div>
+      </div>
+    `;
+      }
+
+      let lastHole = null;
+
+      for (const line of lines) {
+        const hole = Number(line.starting_hole || 0);
+
+        if (!isSimultaneousTournament() && hole !== lastHole) {
+          html += `
+        <div class="titulo-hoyo" style="border-radius:12px; margin:10px 0;">
+          Salida por Hoyo ${safeText(hole)}
+        </div>
+      `;
+          lastHole = hole;
+        }
+
+        html += renderMobileLine(line);
+      }
+
+      html += `</div>`;
+      return html;
+    }
+
+    function renderMobileLine(line) {
+      const lineSlots = getLineSlots(line.id);
+      const lineByNumber = new Map(lineSlots.map((slot) => [slot.slot_number, slot]));
+
+      const torneoAbierto = isTournamentOpen();
+
+      const lineLockedByOther = lineSlots.some(lockIsOther);
+      const lineLockedByMine = torneoAbierto && lineSlots.some(lockIsMine);
+
+      const mainTitle = isSimultaneousTournament()
+        ? `Hoyo ${formatSimultaneousHoleLabel(line)}`
+        : timeText(line.line_time);
+
+      const meta = isSimultaneousTournament()
+        ? timeText(line.line_time || state.blockByLineId.get(line.id)?.start_time)
+        : `Hoyo ${line.starting_hole || ""}`;
+
+      let html = `
+    <div class="mobile-line-card ${lineLockedByOther ? "slot-locked-other" : ""} ${lineLockedByMine ? "slot-locked-mine" : ""}">
+      <div class="mobile-line-head">
+        <div class="mobile-line-title">${safeText(mainTitle)}</div>
+        <div class="mobile-line-meta">
+          ${safeText(meta)}
+          ${state.showAdminSequentialTimes ? `<br>9 hoyos: ${safeText(getPaso9Hoyos(line.line_time))}<br>Fin: ${safeText(getFinJuego(line.line_time))}` : ""}
+        </div>
+      </div>
+
+      <div class="mobile-slots">
+  `;
+
+      for (let i = 1; i <= CONFIG.SLOT_COUNT; i += 1) {
+        const slot = lineByNumber.get(i) || {
+          id: "",
+          slot_number: i,
+          starting_line_id: line.id,
+          display_name: "",
+          participant_type: "empty",
+        };
+
+        const slotBloqueadoPorOtro = lockIsOther(slot) || !torneoAbierto;
+        const slotBloqueadoPorMi = torneoAbierto && lockIsMine(slot);
+
+        const cssLockClass = slotBloqueadoPorOtro
+          ? "slot-locked-other"
+          : (slotBloqueadoPorMi ? "slot-locked-mine" : "");
+
+        html += isSlotEmpty(slot)
+          ? renderMobileFreeSlot(slot, torneoAbierto, slotBloqueadoPorOtro, cssLockClass)
+          : renderMobileOccupiedSlot(line, slot, cssLockClass);
+      }
+
+      html += `
+      </div>
+    </div>
+  `;
+
+      return html;
+    }
+
+    function renderMobileFreeSlot(slot, torneoAbierto, slotBloqueadoPorOtro, cssLockClass = "") {
+      const puedeReservar = puedeReservarSlotDeSuLinea(slot);
+      const reservaMia = esReservaMia(slot);
+
+      let acciones = "";
+
+      if (reservaMia) {
+        acciones = `
+      <button class="mobile-btn-soft" type="button" data-release-reserve-slot="${slot.id}">
+        Liberar reserva
+      </button>
+    `;
+      } else if (slotBloqueadoPorOtro) {
+        acciones = `<span class="helper-text">No disponible</span>`;
+      } else if (torneoAbierto) {
+        acciones = "";
+
+        if (!APP.esAdmin && !state.playerAlreadyRegistered) {
+          acciones += `
+        <button class="mobile-btn-main" type="button" data-self-slot="${slot.id}">
+          Anotarme
+        </button>
+      `;
+        }
+
+        acciones += `
+        <button class="mobile-btn-soft" type="button" data-open-inline="${slot.id}">
+          Agregar jugador
+        </button>
+      `;
+
+        if (puedeReservar) {
+          acciones += `
+        <button class="mobile-btn-soft" type="button" data-reserve-slot="${slot.id}">
+          Reservar 24 hs
+        </button>
+      `;
+        }
+
+        if (APP.esAdmin) {
+          acciones += `
+        <button class="mobile-btn-soft" type="button" data-block-slot="${slot.id}">
+          Bloquear
+        </button>
+      `;
+        }
+
+        if (APP.esAdmin && mobileMoveSlotOrigen && String(mobileMoveSlotOrigen) !== String(slot.id)) {
+          acciones += `
+        <button class="mobile-btn-main" type="button" data-mobile-move-to="${slot.id}">
+          Pegar acá
+        </button>
+      `;
+        }
+      }
+
+      return `
+    <div
+      class="mobile-slot mobile-slot-empty ${cssLockClass}"
+      data-slot-id="${slot.id}"
+      data-slot-number="${slot.slot_number}"
+      data-libre="1"
+    >
+      <div class="mobile-slot-top">
+        <div class="mobile-slot-num">Lugar ${safeText(slot.slot_number)}</div>
+      </div>
+
+      <div class="mobile-slot-name mobile-slot-empty">Libre</div>
+
+      <div class="mobile-actions">
+        ${acciones}
+      </div>
+    </div>
+  `;
+    }
+
+    function renderMobileOccupiedSlot(line, slot, cssLockClass = "") {
+      const participantType = String(slot?.participant_type || "");
+
+      if (esReservaActiva(slot)) {
+        const esReservaAdmin = String(slot.notes || "") === "RESERVA_ADMIN";
+        const puedeLiberar = APP.esAdmin || (!esReservaAdmin && esReservaMia(slot));
+
+        if (puedeLiberar) {
+          return `
+      <div class="mobile-slot mobile-slot-empty slot-locked-other" data-slot-id="${slot.id}" data-libre="0">
+        <div class="mobile-slot-name mobile-slot-empty">Reservado</div>
+        <div class="mobile-actions">
+          <button class="mobile-btn-soft" type="button" data-release-reserve-slot="${slot.id}">
+            Liberar reserva
+          </button>
+        </div>
+      </div>
+    `;
+        }
+
+        return `
+    <div class="mobile-slot mobile-slot-empty slot-locked-other" data-libre="0">
+      <div class="mobile-slot-name mobile-slot-empty">Reservado</div>
+      <div class="mobile-actions">
+        <span class="helper-text">No disponible</span>
+      </div>
+    </div>
+  `;
+      }
+
+      const typeClass = getSlotCssType(slot);
+      const textoCompleto = participantType === "blocked" ? "Bloqueado" : normalizeSlotName(slot);
+      const texto = participantType === "blocked" ? "Bloqueado" : formatNombreCorto(textoCompleto);
+
+      return `
+    <div
+      class="mobile-slot ${typeClass} ${cssLockClass}"
+      data-slot-id="${slot.id}"
+      data-hora="${safeText(timeText(line.line_time))}"
+      data-hoyo="${safeText(line.label || line.starting_hole)}"
+      data-slot-number="${slot.slot_number}"
+      data-texto="${safeText(texto)}"
+      data-libre="0"
+      draggable="${APP.esAdmin ? "true" : "false"}"
+    >
+            <div class="mobile-slot-name" title="${safeText(textoCompleto)}">
+        ${safeText(texto)}
+      </div>
+
+      ${APP.esAdmin && participantType !== "blocked" ? `
+        <div class="mobile-actions">
+          <button class="mobile-btn-soft" type="button" data-mobile-move-from="${slot.id}">
+            Mover
+          </button>
+        </div>
+      ` : ""}
+    </div>
+  `;
+    }
+
+    function renderView() {
+      dom.torneoNombre.textContent = state.torneo?.name || "Sin nombre";
+      setStatus(
+        statusLabelFromTournament(state.torneo?.status),
+        state.torneo?.status === "open" ? "ok" : "error"
+      );
+
+      if (!state.blocks.length) {
+        dom.contenido.innerHTML = `<div class="card error">No hay bloques de salida cargados para este torneo.</div>`;
+        setStatus("Sin bloques", "error");
+        return;
+      }
+
+      dom.contenido.innerHTML = `
+    <div class="desktop-grid">
+      ${getBlocksForDisplay().map(renderBlock).join("")}
+    </div>
+
+    <div class="mobile-grid">
+      ${getBlocksForDisplay().map(renderMobileBlock).join("")}
+    </div>
+  `;
+    }
+
+    // ==============================
+    // Persistencia y acciones
+    // ==============================
+    async function deleteRegistrationsBySlotIds(slotIds) {
+      if (!slotIds.length) return;
+      const { error } = await supabase.from("registrations").delete().in("line_slot_id", slotIds);
+      if (error) throw error;
+    }
+
+    async function createRegistration(payload) {
+      const { data, error } = await supabase
+        .from("registrations")
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("ERROR INSERT registrations", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          payload
+        });
+
+        if (error.code === "23505") {
+          throw new Error(
+            "La inscripción ya fue realizada o el casillero acaba de ser ocupado. Actualizá la grilla."
+          );
+        }
+
+        throw error;
+      }
+
+      return data;
+    }
+
+    async function createManualPlayer({ nombre, apellido, current_index, genero, pais }) {
+      const first_name = String(nombre || "").trim();
+      const last_name = String(apellido || "").trim();
+
+      if (!first_name) throw new Error("El nombre es obligatorio.");
+      if (!last_name) throw new Error("El apellido es obligatorio.");
+      if (!genero) throw new Error("El género es obligatorio.");
+
+      const normalizar = (txt) =>
+        String(txt || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/,/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toUpperCase();
+
+      const full_name = `${last_name}, ${first_name}`;
+
+      const firstNorm = normalizar(first_name);
+      const lastNorm = normalizar(last_name);
+
+      const search_text = normalizar(
+        `${last_name} ${first_name} ${first_name} ${last_name} ${full_name}`
+      );
+
+      // Buscar jugadores manuales existentes parecidos
+      const { data: existentes, error: buscarError } = await supabase
+        .from("players")
+        .select("*")
+        .is("aag_member_number", null)
+        .ilike("search_text", `%${lastNorm}%`)
+        .limit(50);
+
+      if (buscarError) throw buscarError;
+
+      const encontrado = (existentes || []).find((p) => {
+        const pFirst = normalizar(p.first_name);
+        const pLast = normalizar(p.last_name);
+        const pFull = normalizar(p.full_name);
+        const pSearch = normalizar(p.search_text);
+
+        return (
+          (pFirst === firstNorm && pLast === lastNorm) ||
+          pFull === normalizar(full_name) ||
+          pSearch.includes(`${lastNorm} ${firstNorm}`) ||
+          pSearch.includes(`${firstNorm} ${lastNorm}`)
+        );
+      });
+
+      if (encontrado) {
+        const updatePayload = {
+          first_name,
+          last_name,
+          gender: genero,
+          country: pais || encontrado.country || null,
+          source: encontrado.source || "manual",
+          is_club_member: encontrado.is_club_member ?? false,
+          is_aag_active: encontrado.is_aag_active ?? false,
+          search_text
+        };
+
+        if (current_index !== null && current_index !== undefined) {
+          updatePayload.current_index = current_index;
+        }
+
+        const { data, error } = await supabase
+          .from("players")
+          .update(updatePayload)
+          .eq("id", encontrado.id)
+          .select("*")
+          .single();
+
+        if (error) throw error;
+
+        searchCache.clear();
+        return data;
+      }
+
+      const { data, error } = await supabase
+        .from("players")
+        .insert({
+          first_name,
+          last_name,
+          current_index,
+          gender: genero,
+          country: pais || null,
+          is_club_member: false,
+          is_aag_active: false,
+          source: "manual",
+          aag_member_number: null,
+          search_text
+        })
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      searchCache.clear();
+      return data;
+    }
+
+    async function occupySlotWithPlayer(
+      slotId,
+      jugador,
+      registrationFallbackType = "aag_match"
+    ) {
+      if (requiresPartner()) {
+        throw new Error(
+          "Este torneo es en parejas. Debés seleccionar los dos jugadores antes de guardar."
+        );
+      }
+
+      const operationKey = `${state.torneo.id}:${slotId}:${jugador.id}`;
+
+      if (registrationOperations.has(operationKey)) {
+        throw new Error("La inscripción ya se está procesando.");
+      }
+
+      registrationOperations.add(operationKey);
+
+      try {
+        setStatus("Guardando jugador...");
+
+        // Todo el contenido actual de la función.
+
+        const slotActual = await fetchSlotById(slotId);
+        await validateSlotPriority(slotId);
+        if (!isSlotEmpty(slotActual)) throw new Error("El casillero ya no está libre.");
+
+        validateOwnGroupLimit(1);
+        await validatePlayerNotDuplicated(jugador.id);
+
+        const lineId = slotActual.starting_line_id;
+        const slotPayload = buildSlotPayloadFromPlayer(jugador, participantTypeForGrid(jugador));
+
+        console.log("REGISTRO A CREAR:", {
+          nombre: jugador.full_name,
+          matricula: jugador.aag_member_number,
+          jugador
+        });
+
+        await createRegistration({
+          tournament_id: state.torneo.id,
+          starting_line_id: lineId,
+          line_slot_id: slotId,
+          linked_player_id: jugador.id,
+          created_by_player_id: APP.miPlayerId || null,
+          display_name: jugador.full_name,
+          participant_type: registrationTypeForPlayer(jugador, registrationFallbackType),
+          aag_member_number: jugador.aag_member_number || null,
+          club_name: jugador.club_name || null,
+          country: jugador.country || null,
+          reported_index: jugador.current_index ?? null,
+          registration_status: "pending",
+          needs_admin_review: !jugador.aag_member_number,
+        });
+
+        const { error: updateError } = await supabase
+          .from("line_slots")
+          .update(slotPayload)
+          .eq("id", slotId);
+
+        if (updateError) throw updateError;
+
+        await unlockLineFromSlot(slotId);
+
+        const slotActualizado = await fetchSlotById(slotId);
+
+        const index = state.slots.findIndex(s => String(s.id) === String(slotId));
+        if (index !== -1) {
+          state.slots[index] = slotActualizado;
+        }
+
+        rebuildIndexes();
+        state.playerAlreadyRegistered = await fetchPlayerAlreadyRegistered(state.torneo.id);
+
+        const popup = document.getElementById("playerSearchPopup");
+        if (popup) popup.classList.add("hidden");
+
+        renderView();
+        setStatus("Jugador agregado correctamente.", "ok");
+
+      } finally {
+        registrationOperations.delete(operationKey);
+      }
+    }
+
+    async function linkPartnerRegistrations(registrationId1, registrationId2) {
+      const { error: error1 } = await supabase.from("registrations").update({ partner_registration_id: registrationId2 }).eq("id", registrationId1);
+      if (error1) throw error1;
+      const { error: error2 } = await supabase.from("registrations").update({ partner_registration_id: registrationId1 }).eq("id", registrationId2);
+      if (error2) throw error2;
+    }
+
+    async function occupySlotWithPair(slotId, jugador1, jugador2) {
+      if (!requiresPartner()) {
+        throw new Error(
+          "Este torneo no está configurado para inscripciones en pareja."
+        );
+      }
+
+      if (!jugador1?.id || !jugador2?.id) {
+        throw new Error(
+          "No se recibieron correctamente los dos jugadores de la pareja."
+        );
+      }
+
+      if (String(jugador1.id) === String(jugador2.id)) {
+        throw new Error(
+          "No podés elegir el mismo jugador dos veces."
+        );
+      }
+
+      const idsJugadores = [jugador1.id, jugador2.id]
+        .map(String)
+        .sort()
+        .join(":");
+
+      const operationKey = `${state.torneo.id}:pair:${slotId}:${idsJugadores}`;
+
+      if (registrationOperations.has(operationKey)) {
+        throw new Error("La inscripción de la pareja ya se está procesando.");
+      }
+
+      registrationOperations.add(operationKey);
+
+      try {
+        setStatus("Guardando pareja...");
+
+        const slotActual = await fetchSlotById(slotId);
+        await validateSlotPriority(slotId);
+
+        const bloque = getPartnerBlock(slotActual.slot_number);
+
+        if (!bloque) {
+          throw new Error("No se pudo determinar el bloque de pareja.");
+        }
+
+        validateOwnGroupLimit(2);
+
+        await validatePlayerNotDuplicated(jugador1.id);
+        await validatePlayerNotDuplicated(jugador2.id);
+
+        const slotsLinea = await fetchLineSlotsFresh(
+          slotActual.starting_line_id
+        );
+
+        const slot1 = slotsLinea.find(
+          (slot) => Number(slot.slot_number) === Number(bloque.inicio)
+        );
+
+        const slot2 = slotsLinea.find(
+          (slot) => Number(slot.slot_number) === Number(bloque.fin)
+        );
+
+        if (!slot1 || !slot2) {
+          throw new Error(
+            "No se encontraron ambos casilleros de la pareja."
+          );
+        }
+
+        /*
+         * Los dos casilleros deben estar libres.
+         * No hacemos una excepción con slotId porque el casillero
+         * seleccionado también debe continuar libre.
+         */
+        if (!isSlotEmpty(slot1) || !isSlotEmpty(slot2)) {
+          throw new Error(
+            `Para anotar una pareja, los casilleros ${bloque.inicio}-${bloque.fin} deben estar ambos libres.`
+          );
+        }
+
+        const payload1 = buildSlotPayloadFromPlayer(
+          jugador1,
+          participantTypeForGrid(jugador1)
+        );
+
+        const payload2 = buildSlotPayloadFromPlayer(
+          jugador2,
+          participantTypeForGrid(jugador2)
+        );
+
+        console.log("REG1:", jugador1);
+        console.log("REG2:", jugador2);
+
+        /*
+         * No borrar previamente las inscripciones.
+         * Los índices únicos de Supabase deben impedir duplicados.
+         */
+
+        const reg1 = await createRegistration({
+          tournament_id: state.torneo.id,
+          starting_line_id: slotActual.starting_line_id,
+          line_slot_id: slot1.id,
+          linked_player_id: jugador1.id,
+          created_by_player_id: APP.miPlayerId || null,
+          display_name: jugador1.full_name,
+          participant_type: registrationTypeForPlayer(
+            jugador1,
+            "aag_match"
+          ),
+          aag_member_number: jugador1.aag_member_number || null,
+          club_name: jugador1.club_name || null,
+          country: jugador1.country || null,
+          reported_index: jugador1.current_index ?? null,
+          registration_status: "pending",
+          needs_admin_review: !jugador1.aag_member_number,
+        });
+
+        let reg2 = null;
+
+        try {
+          reg2 = await createRegistration({
+            tournament_id: state.torneo.id,
+            starting_line_id: slotActual.starting_line_id,
+            line_slot_id: slot2.id,
+            linked_player_id: jugador2.id,
+            created_by_player_id: APP.miPlayerId || null,
+            display_name: jugador2.full_name,
+            participant_type: registrationTypeForPlayer(
+              jugador2,
+              "aag_match"
+            ),
+            aag_member_number: jugador2.aag_member_number || null,
+            club_name: jugador2.club_name || null,
+            country: jugador2.country || null,
+            reported_index: jugador2.current_index ?? null,
+            registration_status: "pending",
+            needs_admin_review: !jugador2.aag_member_number,
+          });
+        } catch (error) {
+          /*
+           * Si falla el segundo jugador, retiramos el primer registro
+           * que acabamos de crear para no dejar una pareja incompleta.
+           */
+          const { error: rollbackError } = await supabase
+            .from("registrations")
+            .delete()
+            .eq("id", reg1.id);
+
+          if (rollbackError) {
+            console.error(
+              "No se pudo revertir la primera inscripción de la pareja:",
+              rollbackError
+            );
+          }
+
+          throw error;
+        }
+
+        try {
+          await linkPartnerRegistrations(reg1.id, reg2.id);
+
+          const { error: updateError1 } = await supabase
+            .from("line_slots")
+            .update(payload1)
+            .eq("id", slot1.id);
+
+          if (updateError1) throw updateError1;
+
+          const { error: updateError2 } = await supabase
+            .from("line_slots")
+            .update(payload2)
+            .eq("id", slot2.id);
+
+          if (updateError2) throw updateError2;
+        } catch (error) {
+          /*
+           * Si falla el vínculo o la actualización de los slots,
+           * eliminamos únicamente los registros creados en esta operación.
+           */
+          const { error: rollbackError } = await supabase
+            .from("registrations")
+            .delete()
+            .in("id", [reg1.id, reg2.id]);
+
+          if (rollbackError) {
+            console.error(
+              "No se pudo revertir la inscripción incompleta de la pareja:",
+              rollbackError
+            );
+          }
+
+          /*
+           * Dejamos los slots visualmente limpios por si uno llegó
+           * a actualizarse antes del error.
+           */
+          const resetPayload = buildSlotResetPayload();
+
+          const { error: resetError } = await supabase
+            .from("line_slots")
+            .update(resetPayload)
+            .in("id", [slot1.id, slot2.id]);
+
+          if (resetError) {
+            console.error(
+              "No se pudieron limpiar los slots de la pareja:",
+              resetError
+            );
+          }
+
+          throw error;
+        }
+
+        await unlockLineFromSlot(slotId);
+
+        pausaRealtimeInscripcion = false;
+        clearTimeout(realtimeReloadTimer);
+
+        await loadGrid();
+
+        setStatus("Pareja agregada correctamente.", "ok");
+
+      } finally {
+        registrationOperations.delete(operationKey);
+      }
+    }
+
+    async function startSelfRegistrationInline(slotId) {
+      const jugador = await fetchPlayerById(APP.miPlayerId);
+      if (!requiresPartner()) {
+        await occupySlotWithPlayer(slotId, jugador, "self");
+        return;
+      }
+
+      await openInline(slotId);
+      const results = document.getElementById(`results-${slotId}`);
+      const manualWrap = document.getElementById(`manual-${slotId}`);
+      const input = document.getElementById(`input-${slotId}`);
+
+      if (results) {
+        results.innerHTML = `
+          <div style="margin-bottom:8px; font-weight:700; color:#166534;">Anotándote a vos. Ahora buscá o cargá a tu compañero.</div>
+        `;
+      }
+      if (manualWrap) {
+        manualWrap.style.display = "none";
+        manualWrap.innerHTML = "";
+      }
+      if (input) {
+        input.value = "";
+        input.dataset.modoPareja = "1";
+        input.dataset.jugadorBaseId = jugador.id;
+      }
+    }
+
+    async function pickPlayerInline(slotId, playerId) {
+      const jugadorElegido = await fetchPlayerById(playerId);
+
+      const input =
+        document.getElementById(`input-${slotId}`) ||
+        document.getElementById("playerSearchInput");
+
+      const results =
+        document.getElementById(`results-${slotId}`) ||
+        document.getElementById("playerSearchResults");
+
+      const manualWrap = document.getElementById(`manual-${slotId}`);
+      const jugadorBaseId = input?.dataset?.jugadorBaseId || "";
+
+      if (!requiresPartner()) {
+        await occupySlotWithPlayer(
+          slotId,
+          jugadorElegido,
+          "aag_match"
+        );
+
+        return;
+      }
+
+      if (!jugadorBaseId) {
+        input.dataset.jugadorBaseId = String(jugadorElegido.id);
+        input.dataset.modoPareja = "1";
+        input.value = "";
+
+        if (manualWrap) {
+          manualWrap.style.display = "none";
+          manualWrap.innerHTML = "";
+        }
+
+        if (results) {
+          results.innerHTML = `
+            <div style="margin-bottom:8px; font-weight:700; color:#166534;">
+              Primer jugador seleccionado: ${safeText(jugadorElegido.full_name)}
+            </div>
+
+            <div class="helper-text">
+              Ahora buscá o cargá manualmente al compañero.
+            </div>
+          `;
+        }
+
+        return;
+      }
+
+      const jugadorBase = await fetchPlayerById(jugadorBaseId);
+
+      if (String(jugadorBase.id) === String(jugadorElegido.id)) {
+        throw new Error("No podés elegir el mismo jugador dos veces.");
+      }
+
+      await occupySlotWithPair(
+        slotId,
+        jugadorBase,
+        jugadorElegido
+      );
+    }
+
+    async function saveManualInline(slotId) {
+      const nombre = document.getElementById(`m-nombre-${slotId}`)?.value.trim() || "";
+      const apellido = document.getElementById(`m-apellido-${slotId}`)?.value.trim() || "";
+      const indexTxt = document.getElementById(`m-index-${slotId}`)?.value.trim() || "";
+      const genero = document.getElementById(`m-genero-${slotId}`)?.value || "";
+      const pais = document.getElementById(`m-pais-${slotId}`)?.value.trim() || "";
+
+      const current_index_input = document.getElementById(`m-index-${slotId}`)?.value;
+      const current_index = current_index_input ? Number(current_index_input) : null;
+
+      if (!nombre) throw new Error("El nombre es obligatorio");
+      if (!apellido) throw new Error("El apellido es obligatorio");
+      if (!genero) throw new Error("El género es obligatorio");
+      if (indexTxt && Number.isNaN(current_index)) throw new Error("El índice no es válido");
+
+      const jugadorNuevo = await createManualPlayer({
+        nombre,
+        apellido,
+        current_index,
+        genero,
+        pais
+      });
+
+      const input = document.getElementById(`input-${slotId}`);
+      const results = document.getElementById(`results-${slotId}`);
+      const manualWrap = document.getElementById(`manual-${slotId}`);
+      const jugadorBaseId = input?.dataset?.jugadorBaseId || "";
+
+      if (!requiresPartner()) {
+        await occupySlotWithPlayer(
+          slotId,
+          jugadorNuevo,
+          "manual_guest"
+        );
+
+        return;
+      }
+
+      if (!jugadorBaseId) {
+        input.dataset.jugadorBaseId = String(jugadorNuevo.id);
+        input.dataset.modoPareja = "1";
+        if (input) input.value = "";
+        if (manualWrap) {
+          manualWrap.style.display = "none";
+          manualWrap.innerHTML = "";
+        }
+        if (results) {
+          results.innerHTML = `
+            <div style="margin-bottom:8px; font-weight:700; color:#166534;">Primer jugador cargado: ${safeText(jugadorNuevo.full_name)}</div>
+            <div class="helper-text">Ahora buscá o cargá manualmente al compañero.</div>
+          `;
+        }
+        return;
+      }
+
+      const jugadorBase = await fetchPlayerById(jugadorBaseId);
+      if (String(jugadorBase.id) === String(jugadorNuevo.id)) {
+        throw new Error("No podés elegir el mismo jugador dos veces.");
+      }
+
+      await occupySlotWithPair(slotId, jugadorBase, jugadorNuevo);
+    }
+
+    function getFechaLimiteBajaMember() {
+      if (!state.torneo?.tournament_date) return null;
+
+      const [year, month, day] = String(state.torneo.tournament_date)
+        .split("-")
+        .map(Number);
+
+      if (!year || !month || !day) return null;
+
+      // Día anterior al torneo a las 12:00 del mediodía
+      const limite = new Date(year, month - 1, day, 12, 0, 0, 0);
+      limite.setDate(limite.getDate() - 1);
+
+      return limite;
+    }
+
+    function bajaMemberBloqueadaPorHorario() {
+      if (APP.esAdmin) return false;
+
+      const limite = getFechaLimiteBajaMember();
+      if (!limite) return false;
+
+      return new Date() >= limite;
+    }
+
+    function mensajeBajaFueraDeHorario() {
+      return "Fuera de tiempo. Para darte de baja, informalo a Administración.";
+    }
+
+    function buildWhatsappBajaUrl(slot) {
+      const nombre = slot?.display_name || "Jugador";
+      const matricula = slot?.aag_member_number || "Sin matrícula";
+      const torneo = state.torneo?.name || "torneo";
+      const fecha = formatFechaLargaCapitalizada(state.torneo?.tournament_date) || "";
+
+      const texto = `
+Hola, quisiera informar una baja de torneo.
+
+Torneo: ${torneo}
+Fecha: ${fecha}
+Jugador: ${nombre}
+Matrícula: ${matricula}
+
+Gracias.
+  `.trim();
+
+      return `https://api.whatsapp.com/send/?phone=5493535646926&text=${encodeURIComponent(texto)}&type=phone_number&app_absent=0`;
+    }
+
+    function mostrarTarjetaBajaFueraHorario(slot) {
+      const toast = document.getElementById("bajaFueraHorarioToast");
+      const texto = document.getElementById("bajaFueraHorarioTexto");
+      const btnWhatsapp = document.getElementById("btnWhatsappBaja");
+
+      if (!toast || !texto || !btnWhatsapp) return;
+
+      const nombre = slot?.display_name || "este jugador";
+      const matricula = slot?.aag_member_number || "Sin matrícula";
+
+      texto.innerHTML = `
+    Ya no se puede desanotar desde la web.<br>
+    Informá la baja de <strong>${safeText(nombre)}</strong>
+    <br>Matrícula: <strong>${safeText(matricula)}</strong>
+  `;
+
+      btnWhatsapp.href = buildWhatsappBajaUrl(slot);
+
+      toast.classList.add("show");
+
+      clearTimeout(mostrarTarjetaBajaFueraHorario._timer);
+      mostrarTarjetaBajaFueraHorario._timer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 6500);
+    }
+
+    document.getElementById("btnCerrarBajaToast")?.addEventListener("click", () => {
+      document.getElementById("bajaFueraHorarioToast")?.classList.remove("show");
+    });
+
+    async function releaseSlot(slotId) {
+      if (!slotId) return;
+      setStatus("Liberando lugar...");
+
+      const slot = await fetchSlotById(slotId);
+      const esMio = !!slot.linked_player_id && slot.linked_player_id === APP.miPlayerId;
+      const loCreeYo = !!slot.created_by_player_id && slot.created_by_player_id === APP.miPlayerId;
+      const puedeBorrar = APP.esAdmin || esMio || loCreeYo;
+      if (!puedeBorrar) throw new Error("No tenés permiso para borrar este jugador.");
+
+      if (!APP.esAdmin && bajaMemberBloqueadaPorHorario()) {
+        mostrarTarjetaBajaFueraHorario(slot);
+        return;
+      }
+
+      let slotsALiberar = [slot.id];
+      if (requiresPartner()) {
+        const bloque = getPartnerBlock(slot.slot_number);
+        if (bloque) {
+          const slotsLinea = await fetchLineSlotsFresh(slot.starting_line_id);
+          slotsALiberar = slotsLinea
+            .filter((s) => s.slot_number === bloque.inicio || s.slot_number === bloque.fin)
+            .map((s) => s.id);
+        }
+      }
+
+      slotsALiberar = [...new Set(slotsALiberar)];
+      await deleteRegistrationsBySlotIds(slotsALiberar);
+
+      const { error } = await supabase
+        .from("line_slots")
+        .update(buildSlotResetPayload())
+        .in("id", slotsALiberar);
+      if (error) throw error;
+
+      await loadGrid();
+    }
+
+    async function moveSlotAdmin(slotOrigenId, slotDestinoId) {
+      if (!APP.esAdmin) throw new Error("Solo el administrador puede mover jugadores.");
+      if (!slotOrigenId || !slotDestinoId) throw new Error("Falta origen o destino.");
+      if (slotOrigenId === slotDestinoId) return true;
+
+      const slotOrigen = await fetchSlotById(slotOrigenId);
+      const slotDestino = await fetchSlotById(slotDestinoId);
+      if (!slotOrigen || !slotDestino) throw new Error("No se encontraron los slots.");
+      if (isSlotEmpty(slotOrigen)) throw new Error("El slot origen está libre.");
+
+      let origenes = [slotOrigen];
+      let destinos = [slotDestino];
+
+      if (!requiresPartner()) {
+        if (!isSlotEmpty(slotDestino)) throw new Error("El slot destino no está libre.");
+      } else {
+        const bloqueOrigen = getPartnerBlock(slotOrigen.slot_number);
+        const bloqueDestino = getPartnerBlock(slotDestino.slot_number);
+        if (!bloqueOrigen || !bloqueDestino) throw new Error("No se pudo determinar el bloque de pareja.");
+
+        const slotsOrigenLinea = await fetchLineSlotsFresh(slotOrigen.starting_line_id);
+        const slotsDestinoLinea = await fetchLineSlotsFresh(slotDestino.starting_line_id);
+
+        origenes = slotsOrigenLinea.filter((s) => s.slot_number === bloqueOrigen.inicio || s.slot_number === bloqueOrigen.fin).sort((a, b) => a.slot_number - b.slot_number);
+        destinos = slotsDestinoLinea.filter((s) => s.slot_number === bloqueDestino.inicio || s.slot_number === bloqueDestino.fin).sort((a, b) => a.slot_number - b.slot_number);
+
+        if (destinos.some((slot) => !isSlotEmpty(slot))) {
+          throw new Error("El bloque destino de pareja no está completamente libre.");
+        }
+      }
+
+      const updateRegistrationDestinations = [];
+      for (let i = 0; i < origenes.length; i += 1) {
+        const origen = origenes[i];
+        const destino = destinos[i];
+        if (!destino) throw new Error("No se encontró el destino correspondiente.");
+
+        const { error: copyError } = await supabase.from("line_slots").update({
+          participant_type: origen.participant_type,
+          created_by_player_id: origen.created_by_player_id,
+          linked_player_id: origen.linked_player_id,
+          display_name: origen.display_name,
+          aag_member_number: origen.aag_member_number,
+          club_name: origen.club_name,
+          country: origen.country,
+          manual_index: origen.manual_index,
+          needs_admin_review: origen.needs_admin_review,
+          notes: origen.notes,
+          locked_by_session: null,
+          locked_by_player_id: null,
+          lock_expires_at: null,
+        }).eq("id", destino.id);
+        if (copyError) throw copyError;
+
+        const { error: clearError } = await supabase.from("line_slots").update(buildSlotResetPayload()).eq("id", origen.id);
+        if (clearError) throw clearError;
+
+        updateRegistrationDestinations.push({ origenId: origen.id, destinoId: destino.id });
+      }
+
+      for (const item of updateRegistrationDestinations) {
+        const destinoSlot = getSlotById(item.destinoId) || await fetchSlotById(item.destinoId);
+
+        const { error } = await supabase
+          .from("registrations")
+          .update({
+            line_slot_id: item.destinoId,
+            starting_line_id: destinoSlot.starting_line_id
+          })
+          .eq("line_slot_id", item.origenId);
+
+        if (error) throw error;
+      }
+
+      return true;
+    }
+
+    // ==============================
+    // Eventos
+    // ==============================
+    function installGlobalEvents() {
+      document.addEventListener("click", async (e) => {
+
+        const reserveBtn = e.target.closest("[data-reserve-slot]");
+        if (reserveBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          try {
+            await reservarSlotPor24Horas(reserveBtn.dataset.reserveSlot);
+            await recargarGrillaRealtime();
+          } catch (error) {
+            showTransientMessage(error.message || "No se pudo reservar.", "error");
+          }
+
+          return;
+        }
+
+        const btnMoveFrom = e.target.closest("[data-mobile-move-from]");
+        if (btnMoveFrom) {
+          if (!APP.esAdmin) return;
+
+          mobileMoveSlotOrigen = btnMoveFrom.dataset.mobileMoveFrom;
+          showTransientMessage("Jugador seleccionado. Tocá un lugar libre para moverlo.", "ok");
+          renderView();
+          return;
+        }
+
+        const btnMoveTo = e.target.closest("[data-mobile-move-to]");
+        if (btnMoveTo) {
+          if (!APP.esAdmin) return;
+
+          const destinoId = btnMoveTo.dataset.mobileMoveTo;
+
+          if (!mobileMoveSlotOrigen) {
+            showTransientMessage("Primero seleccioná un jugador para mover.", "error");
+            return;
+          }
+
+          try {
+            await moveSlotAdmin(mobileMoveSlotOrigen, destinoId);
+            mobileMoveSlotOrigen = null;
+            await loadGrid();
+            showTransientMessage("Jugador movido correctamente.", "ok");
+          } catch (error) {
+            console.error(error);
+            showTransientMessage(error.message || "No se pudo mover el jugador.", "error");
+          }
+
+          return;
+        }
+
+        const releaseBtn = e.target.closest("[data-release-reserve-slot]");
+        if (releaseBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          try {
+            await liberarReservaSlot(releaseBtn.dataset.releaseReserveSlot);
+            await recargarGrillaRealtime();
+          } catch (error) {
+            showTransientMessage(error.message || "No se pudo liberar la reserva.", "error");
+          }
+
+          return;
+        }
+
+        const openInlineTrigger = e.target.closest("[data-open-inline]");
+        if (openInlineTrigger) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const slotId = openInlineTrigger.dataset.openInline;
+          const validacion = await canOpenSlot(slotId);
+          if (!validacion.ok) return showTransientMessage(validacion.mensaje, "error");
+
+          try {
+            await closeAllInlineEditors();
+            if (slotBusquedaActivo && String(slotBusquedaActivo) !== String(slotId)) {
+              await cerrarBuscadorJugador();
+            }
+            await lockLineFromSlot(slotId);
+
+            abrirBuscadorJugador(slotId, openInlineTrigger, {
+              modoPareja: requiresPartner() ? "1" : "0",
+              jugadorBaseId: "",
+              mensaje: requiresPartner()
+                ? `<div style="padding:8px; font-weight:700; color:#166534;">Elegí el primer jugador de la pareja.</div>`
+                : ""
+            });
+          } catch (error) {
+            showTransientMessage(error.message || "No se pudo bloquear la línea.", "error");
+          }
+
+          return;
+        }
+
+        const manualPopupBtn = e.target.closest("#btnManualPopup");
+        if (manualPopupBtn) {
+          e.preventDefault();
+          abrirCargaManualPopup();
+          return;
+        }
+
+        const guardarManualPopupBtn = e.target.closest("#btnGuardarManualPopup");
+        if (guardarManualPopupBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (guardarManualPopupBtn.dataset.processing === "1") return;
+
+          guardarManualPopupBtn.dataset.processing = "1";
+          guardarManualPopupBtn.disabled = true;
+          const textoOriginalManual = guardarManualPopupBtn.textContent;
+
+          try {
+            guardarManualPopupBtn.textContent = "Guardando...";
+
+            const nombre = document.getElementById("popup-nombre")?.value.trim() || "";
+            const apellido = document.getElementById("popup-apellido")?.value.trim() || "";
+            const index = parseIndex(document.getElementById("popup-index")?.value || "");
+            const genero = document.getElementById("popup-genero")?.value || "";
+            const pais = document.getElementById("popup-pais")?.value.trim() || "";
+
+            const slotPareja =
+              seleccionParejaActual.slotId ||
+              slotBusquedaActivo;
+
+            if (!slotPareja) {
+              throw new Error("Se perdió el casillero elegido para la inscripción.");
+            }
+
+            const jugador = await createManualPlayer({
+              nombre,
+              apellido,
+              current_index: index,
+              genero,
+              pais
+            });
+
+            const input = document.getElementById("playerSearchInput");
+            const results = document.getElementById("playerSearchResults");
+            const manualWrap = document.getElementById("playerManualPopup");
+
+            const jugadorBaseId =
+              seleccionParejaActual.jugadorBaseId ||
+              input?.dataset?.jugadorBaseId ||
+              "";
+
+            if (!requiresPartner()) {
+              await occupySlotWithPlayer(
+                slotPareja,
+                jugador,
+                "manual_guest"
+              );
+
+              ocultarBuscadorJugadorSinDesbloquear();
+              return;
+            }
+
+            if (!jugadorBaseId) {
+              prepararBusquedaSegundoJugador(jugador, slotPareja);
+              return;
+            }
+
+            const jugadorBase = await fetchPlayerById(jugadorBaseId);
+
+            if (String(jugadorBase.id) === String(jugador.id)) {
+              throw new Error("No podés elegir el mismo jugador dos veces.");
+            }
+
+            await occupySlotWithPair(
+              slotPareja,
+              jugadorBase,
+              jugador
+            );
+
+            ocultarBuscadorJugadorSinDesbloquear();
+          } catch (error) {
+            console.error("ERROR COMPLETO CARGA MANUAL:", error);
+
+            const detalle = [
+              error?.message,
+              error?.details,
+              error?.hint,
+              error?.code
+            ]
+              .filter(Boolean)
+              .join("\n");
+
+            alert(
+              `No se pudo guardar el jugador.\n\n${detalle || "Error desconocido"}`
+            );
+
+            showTransientMessage(
+              error?.message || "No se pudo guardar el jugador manual.",
+              "error"
+            );
+          } finally {
+            if (guardarManualPopupBtn?.isConnected) {
+              guardarManualPopupBtn.dataset.processing = "0";
+              guardarManualPopupBtn.disabled = false;
+              guardarManualPopupBtn.textContent = textoOriginalManual;
+            }
+          }
+
+          return;
+        }
+
+        // acá sigue el resto de tus clicks actuales
+
+        const blockSlotTrigger = e.target.closest("[data-block-slot]");
+        if (blockSlotTrigger) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const slotId = blockSlotTrigger.dataset.blockSlot;
+
+          try {
+            await blockSlotByAdmin(slotId);
+            await loadGrid();
+          } catch (error) {
+            console.error(error);
+            alert(error.message || "No se pudo bloquear el slot.");
+          }
+
+          return;
+        }
+
+        const closeInlineTrigger = e.target.closest("[data-close-inline]");
+        if (closeInlineTrigger) {
+          e.preventDefault();
+          e.stopPropagation();
+          await closeInline(closeInlineTrigger.dataset.closeInline);
+          return;
+        }
+
+        const selfSlotTrigger = e.target.closest("[data-self-slot]");
+        if (selfSlotTrigger) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const slotId = selfSlotTrigger.dataset.selfSlot;
+          const validacion = await canOpenSlot(slotId);
+          if (!validacion.ok) return showTransientMessage(validacion.mensaje, "error");
+
+          try {
+            const jugador = await fetchPlayerById(APP.miPlayerId);
+
+            if (!requiresPartner()) {
+              await occupySlotWithPlayer(slotId, jugador, "self");
+              return;
+            }
+
+            await closeAllInlineEditors();
+            if (slotBusquedaActivo && String(slotBusquedaActivo) !== String(slotId)) {
+              await cerrarBuscadorJugador();
+            }
+            await lockLineFromSlot(slotId);
+            abrirBuscadorJugador(slotId, selfSlotTrigger, {
+              modoPareja: "1",
+              jugadorBaseId: jugador.id,
+              mensaje: `<div style="padding:8px; margin-bottom:6px; font-weight:700; color:#166534;">Anotándote a vos. Ahora buscá a tu compañero.</div>`
+            });
+          } catch (error) {
+            showTransientMessage(error.message || "No se pudo bloquear la línea.", "error");
+          }
+
+          return;
+        }
+
+        const pickPlayerTrigger = e.target.closest("[data-pick-player]");
+
+        if (pickPlayerTrigger) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (pickPlayerTrigger.dataset.processing === "1") return;
+
+          pickPlayerTrigger.dataset.processing = "1";
+          pickPlayerTrigger.disabled = true;
+
+          const textoOriginal = pickPlayerTrigger.innerHTML;
+
+          try {
+            pickPlayerTrigger.innerHTML = "<strong>Procesando...</strong>";
+
+            const popup = document.getElementById("playerSearchPopup");
+            const slotId =
+              pickPlayerTrigger.dataset.pickPlayer ||
+              seleccionParejaActual.slotId ||
+              slotBusquedaActivo ||
+              popup?.dataset?.slotId ||
+              "";
+
+            const playerId = pickPlayerTrigger.dataset.playerId;
+
+            if (!slotId) {
+              throw new Error("Se perdió el casillero elegido para la inscripción.");
+            }
+
+            if (!playerId) {
+              throw new Error("No se pudo identificar al jugador seleccionado.");
+            }
+
+            let elegido = null;
+
+            if (String(playerId).startsWith("aag:")) {
+              const matricula = String(playerId).replace("aag:", "");
+
+              const { data, error } = await supabase
+                .from("aag_enrolleds")
+                .select("enrollment_number, first_name, last_name, full_name, gender, current_index, option_club_id, club_name, search_text")
+                .eq("enrollment_number", matricula)
+                .maybeSingle();
+
+              if (error) throw error;
+              if (!data) throw new Error("No se encontró el jugador AAG seleccionado.");
+
+              elegido = {
+                id: `aag:${data.enrollment_number}`,
+                origen_busqueda: "aag_enrolleds",
+                enrollment_number: data.enrollment_number,
+                aag_member_number: data.enrollment_number,
+                first_name: data.first_name,
+                last_name: data.last_name,
+                full_name: data.full_name,
+                gender: data.gender,
+                current_index: data.current_index,
+                option_club_id: data.option_club_id,
+                club_name: data.club_name,
+                country: "Argentina",
+                is_club_member: Number(data.option_club_id) === 408
+              };
+            } else {
+              elegido = {
+                ...(await fetchPlayerById(playerId)),
+                origen_busqueda: "players"
+              };
+            }
+
+            const jugador = await asegurarJugadorEnPlayers(elegido);
+            const input = document.getElementById("playerSearchInput");
+            const results = document.getElementById("playerSearchResults");
+
+            const etapaParejaClick =
+              pickPlayerTrigger.dataset.etapaPareja ||
+              (pickPlayerTrigger.dataset.jugadorBaseId ? "segundo" : "primero");
+
+            const jugadorBaseId =
+              pickPlayerTrigger.dataset.jugadorBaseId ||
+              seleccionParejaActual.jugadorBaseId ||
+              input?.dataset?.jugadorBaseId ||
+              "";
+
+            if (!requiresPartner()) {
+              await occupySlotWithPlayer(slotId, jugador, "aag_match");
+              ocultarBuscadorJugadorSinDesbloquear();
+              return;
+            }
+
+            if (etapaParejaClick === "primero") {
+              prepararBusquedaSegundoJugador(jugador, slotId);
+              return;
+            }
+
+            if (!jugadorBaseId) {
+              throw new Error(
+                "Se perdió el primer jugador de la pareja. Cerrá el buscador y comenzá nuevamente."
+              );
+            }
+
+            const jugadorBase = await fetchPlayerById(jugadorBaseId);
+
+            if (String(jugadorBase.id) === String(jugador.id)) {
+              throw new Error("No podés elegir el mismo jugador dos veces.");
+            }
+
+            await occupySlotWithPair(
+              slotId,
+              jugadorBase,
+              jugador
+            );
+
+            ocultarBuscadorJugadorSinDesbloquear();
+          } catch (error) {
+            console.error("ERROR COMPLETO AL AGREGAR JUGADOR O PAREJA:", error);
+
+            const detalle = [
+              error?.message,
+              error?.details,
+              error?.hint,
+              error?.code
+            ]
+              .filter(Boolean)
+              .join("\n");
+
+            alert(
+              `No se pudo completar la inscripción.\n\n${detalle || "Error desconocido"}`
+            );
+
+            showTransientMessage(
+              error?.message || "No se pudo agregar el jugador.",
+              "error"
+            );
+          } finally {
+            if (pickPlayerTrigger?.isConnected) {
+              pickPlayerTrigger.dataset.processing = "0";
+              pickPlayerTrigger.disabled = false;
+              pickPlayerTrigger.innerHTML = textoOriginal;
+            }
+          }
+
+          return;
+        }
+
+        const manualInlineTrigger = e.target.closest("[data-manual-inline]");
+        if (manualInlineTrigger) {
+          e.preventDefault();
+          e.stopPropagation();
+          renderManualInline(manualInlineTrigger.dataset.manualInline);
+          return;
+        }
+
+        const saveManualTrigger = e.target.closest("[data-save-manual]");
+        if (saveManualTrigger) {
+          e.preventDefault();
+          e.stopPropagation();
+          try {
+            await saveManualInline(saveManualTrigger.dataset.saveManual);
+          } catch (error) {
+            console.error(error);
+            alert(error.message || "No se pudo guardar el jugador manual.");
+          }
+          return;
+        }
+
+        const occupiedSlot = e.target.closest("[data-slot-id][data-libre='0']");
+        if (occupiedSlot) {
+          if (!canEditGrid()) return;
+
+          const slotId = occupiedSlot.dataset.slotId;
+
+          try {
+            const slot = await fetchSlotById(slotId);
+
+            // 👉 si es reserva, admin la libera directamente con confirmación
+            if (
+              APP.esAdmin &&
+              esReservaActiva(slot)
+            ) {
+              const ok = confirm("¿Querés volver a habilitar este lugar reservado?");
+              if (!ok) return;
+
+              await liberarReservaSlot(slotId);
+              await loadGrid();
+              return;
+            }
+
+            // 👉 si está bloqueado
+            if (slot?.participant_type === "blocked") {
+              if (!APP.esAdmin) return;
+
+              await supabase
+                .from("line_slots")
+                .update(buildSlotResetPayload())
+                .eq("id", slotId);
+
+              await loadGrid();
+              return;
+            }
+
+            // 👉 slot ocupado normal
+            const esMio = !!slot.linked_player_id && String(slot.linked_player_id) === String(APP.miPlayerId);
+            const loCreeYo = !!slot.created_by_player_id && String(slot.created_by_player_id) === String(APP.miPlayerId);
+            const puedeBorrar = APP.esAdmin || esMio || loCreeYo;
+
+            // Si no es propio ni cargado por él, no hace nada.
+            if (!puedeBorrar) return;
+
+            if (!APP.esAdmin && bajaMemberBloqueadaPorHorario()) {
+              mostrarTarjetaBajaFueraHorario(slot);
+              return;
+            }
+
+            const texto = occupiedSlot.dataset.texto || "";
+            const ok = confirm(`¿Querés liberar el lugar ocupado por "${texto}"?`);
+            if (!ok) return;
+
+            await releaseSlot(slotId);
+
+          } catch (error) {
+            console.error(error);
+            alert(error.message || "No se pudo liberar el slot.");
+          }
+        }
+      });
+
+      document.addEventListener("keydown", async (e) => {
+        const input = e.target.closest(".slot-inline-input");
+        if (!input || e.key !== "Enter") return;
+        e.preventDefault();
+        const slotId = input.id.replace("input-", "");
+        const texto = String(input.value || "").trim();
+        if (texto.length < 3) return;
+        try {
+          const jugadores = await searchPlayers(texto);
+          renderSearchResults(slotId, jugadores);
+        } catch (error) {
+          console.error(error);
+          alert(error.message || "No se pudo completar la búsqueda.");
+        }
+      });
+
+      const popupInput = document.getElementById("playerSearchInput");
+      const popupResults = document.getElementById("playerSearchResults");
+
+      if (popupInput && popupInput.dataset.popupSearchInstalled !== "1") {
+        popupInput.dataset.popupSearchInstalled = "1";
+
+        popupInput.addEventListener("input", () => {
+          const texto = String(popupInput.value || "").trim();
+
+          window.clearTimeout(state.searchDebounceTimers.__popup);
+          window.clearTimeout(state.searchDebounceTimers.__popupWatchdog);
+
+          const secuenciaActual = ++popupSearchSequence;
+          const slotIdBusqueda = String(
+            seleccionParejaActual.slotId ||
+            slotBusquedaActivo ||
+            ""
+          );
+
+          if (!texto) {
+            if (popupResults) {
+              popupResults.innerHTML = seleccionParejaActual.jugadorBaseId
+                ? `<div class="helper-text" style="padding:8px;">Ahora buscá al compañero.</div>`
+                : "";
+            }
+            return;
+          }
+
+          if (texto.length < 2) {
+            if (popupResults) {
+              popupResults.innerHTML = `<div class="helper-text" style="padding:8px;">Escribí al menos 2 caracteres.</div>`;
+            }
+            return;
+          }
+
+          if (popupResults) {
+            popupResults.innerHTML = `<div class="helper-text" style="padding:8px;">Buscando jugadores...</div>`;
+          }
+
+          // Salvavidas visual: aunque una consulta o un refresco falle,
+          // el popup nunca puede quedar indefinidamente en "Buscando".
+          state.searchDebounceTimers.__popupWatchdog = window.setTimeout(() => {
+            const sigueSiendoLaMismaBusqueda =
+              secuenciaActual === popupSearchSequence &&
+              String(popupInput.value || "").trim() === texto;
+
+            if (
+              sigueSiendoLaMismaBusqueda &&
+              popupResults?.textContent?.includes("Buscando jugadores")
+            ) {
+              popupResults.innerHTML = `
+                <div class="helper-text" style="padding:8px;">
+                  La búsqueda tardó demasiado. Escribí una letra más o volvé a intentarlo.
+                </div>
+              `;
+            }
+          }, 5000);
+
+          state.searchDebounceTimers.__popup = window.setTimeout(async () => {
+            try {
+              const jugadores = await searchPlayers(texto);
+
+              const sigueSiendoLaMismaBusqueda =
+                secuenciaActual === popupSearchSequence &&
+                String(popupInput.value || "").trim() === texto;
+
+              if (!sigueSiendoLaMismaBusqueda) return;
+
+              window.clearTimeout(state.searchDebounceTimers.__popupWatchdog);
+
+              const jugadorBaseId = String(
+                seleccionParejaActual.jugadorBaseId ||
+                popupInput.dataset.jugadorBaseId ||
+                ""
+              );
+
+              const resultadosFiltrados = jugadorBaseId
+                ? jugadores.filter(j => String(j.id) !== jugadorBaseId)
+                : jugadores;
+
+              renderPopupSearchResults(resultadosFiltrados, slotIdBusqueda);
+            } catch (error) {
+              const sigueSiendoLaMismaBusqueda =
+                secuenciaActual === popupSearchSequence &&
+                String(popupInput.value || "").trim() === texto;
+
+              if (!sigueSiendoLaMismaBusqueda) return;
+
+              window.clearTimeout(state.searchDebounceTimers.__popupWatchdog);
+              console.error("Error buscando jugadores en popup:", error);
+
+              if (popupResults) {
+                popupResults.innerHTML = `
+                  <div class="error" style="padding:8px;">
+                    No se pudo completar la búsqueda.
+                  </div>
+                `;
+              }
+            }
+          }, CONFIG.SEARCH_DEBOUNCE_MS);
+        });
+      }
+
+      document.addEventListener("click", async (e) => {
+        const popup = document.getElementById("playerSearchPopup");
+
+        if (!popup || popup.classList.contains("hidden")) return;
+        if (e.target.closest("#playerSearchPopup")) return;
+        if (
+          e.target.closest("[data-open-inline]") ||
+          e.target.closest("[data-self-slot]")
+        ) {
+          return;
+        }
+
+        // Mientras falta elegir el segundo jugador, mantener abierto el popup.
+        if (requiresPartner() && seleccionParejaActual.jugadorBaseId) {
+          const input = document.getElementById("playerSearchInput");
+          popup.classList.remove("hidden");
+          requestAnimationFrame(() => input?.focus());
+          return;
+        }
+
+        await cerrarBuscadorJugador();
+      });
+
+      if (dom.selectorTorneos) {
+        dom.selectorTorneos.addEventListener("click", async (e) => {
+          const btn = e.target.closest("[data-select-torneo]");
+          if (!btn) return;
+
+          const nuevoTorneoId = btn.dataset.selectTorneo;
+          if (!nuevoTorneoId || String(nuevoTorneoId) === String(APP.torneoId)) return;
+
+          APP.torneoId = nuevoTorneoId;
+
+          const url = new URL(window.location.href);
+          url.searchParams.set("torneo_id", nuevoTorneoId);
+          window.history.replaceState({}, "", url.toString());
+
+          await loadGrid();
+        });
+      }
+
+      if (dom.btnExportarWhatsapp) {
+        dom.btnExportarWhatsapp.addEventListener("click", async () => {
+          if (!APP.esAdmin) return;
+          if (!dom.shareExportWrap) return;
+
+          const boton = dom.btnExportarWhatsapp;
+          const textoOriginal = boton.textContent;
+
+          try {
+            boton.disabled = true;
+            boton.textContent = "Generando imagen...";
+
+            dom.shareExportWrap.innerHTML = renderShareGrid();
+
+            const node = dom.shareExportWrap.firstElementChild;
+
+            if (!node) {
+              throw new Error("No se pudo generar la grilla.");
+            }
+
+            await new Promise(resolve =>
+              requestAnimationFrame(() =>
+                requestAnimationFrame(resolve)
+              )
+            );
+
+            const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+            const canvas = await html2canvas(node, {
+              backgroundColor: "#ffffff",
+              scale: esIOS ? 1.5 : 2,
+              useCORS: true,
+              logging: false,
+              windowWidth: node.scrollWidth,
+              windowHeight: node.scrollHeight
+            });
+
+            const blob = await new Promise((resolve, reject) => {
+              canvas.toBlob((resultado) => {
+                if (resultado) {
+                  resolve(resultado);
+                } else {
+                  reject(new Error("No se pudo generar la imagen PNG."));
+                }
+              }, "image/png");
+            });
+
+            const nombreTorneo = String(state.torneo?.name || "grilla")
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-zA-Z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "")
+              .toLowerCase();
+
+            const nombreArchivo = `${nombreTorneo.trim() || "grilla"}.png`;
+            const archivo = new File(
+              [blob],
+              nombreArchivo,
+              { type: "image/png" }
+            );
+
+            const esDispositivoMovil =
+              /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+              window.matchMedia("(pointer: coarse)").matches;
+
+            let compartido = false;
+
+            // En celulares y tablets intentamos abrir el menú Compartir.
+            // En PC saltamos este bloque y descargamos directamente el PNG.
+            if (
+              esDispositivoMovil &&
+              navigator.share &&
+              navigator.canShare &&
+              navigator.canShare({ files: [archivo] })
+            ) {
+              try {
+                await navigator.share({
+                  files: [archivo],
+                  title: "Planilla Actualizada ⛳",
+                  text: "Planilla Actualizada ⛳"
+                });
+
+                compartido = true;
+
+              } catch (shareError) {
+                // Si el usuario cerró voluntariamente el menú Compartir,
+                // no hacemos nada más.
+                if (shareError?.name === "AbortError") {
+                  return;
+                }
+
+                // Si Compartir falló por otro motivo,
+                // continuamos y descargamos la imagen.
+                console.warn(
+                  "No se pudo abrir Compartir. Se descargará la imagen:",
+                  shareError
+                );
+              }
+            }
+
+            if (compartido) return;
+
+            // En PC siempre llega acá.
+            // También llega un móvil cuando no soporta Compartir o cuando Compartir falla.
+            const blobUrl = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.download = nombreArchivo;
+            link.style.display = "none";
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setTimeout(() => {
+              URL.revokeObjectURL(blobUrl);
+            }, 30000);
+            console.error("Error exportando grilla:", error);
+
+            if (error?.name !== "AbortError") {
+              alert(
+                "No se pudo generar la imagen de la grilla. " +
+                "Cerrá y volvé a abrir la aplicación e intentá nuevamente."
+              );
+            }
+
+          } finally {
+            boton.disabled = false;
+            boton.textContent = textoOriginal;
+          }
+        });
+      }
+    }
+
+    function installAdminDragAndDrop() {
+      document.addEventListener("dragstart", (e) => {
+        const td = e.target.closest("td[data-slot-id][data-libre='0']");
+        if (!td || !APP.esAdmin) return;
+        state.dragSlotOrigen = {
+          slotId: td.dataset.slotId,
+          slotNumber: Number(td.dataset.slotNumber || 0),
+          texto: td.dataset.texto || "",
+        };
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", td.dataset.slotId);
+      });
+
+      document.addEventListener("dragover", (e) => {
+        const td = e.target.closest("td[data-slot-id][data-libre='1']");
+        if (!td || !APP.esAdmin) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      });
+
+      document.addEventListener("drop", async (e) => {
+        const tdDestino = e.target.closest("td[data-slot-id][data-libre='1']");
+        if (!tdDestino || !APP.esAdmin || !state.dragSlotOrigen) return;
+        e.preventDefault();
+
+        try {
+          await moveSlotAdmin(state.dragSlotOrigen.slotId, tdDestino.dataset.slotId);
+          state.dragSlotOrigen = null;
+          await loadGrid();
+        } catch (error) {
+          console.error(error);
+          alert(error.message || "No se pudo mover el jugador.");
+        }
+      });
+    }
+
+    // ==============================
+    // Init
+    // ==============================
+    installGlobalEvents();
+    installAdminDragAndDrop();
+    loadGrid();
+
+    // ===== AUTO VOLVER AL PANEL POR INACTIVIDAD =====
+    const TIEMPO_INACTIVIDAD = 30 * 60 * 1000; // 30 minutos
+    let inactivityTimer;
+
+    function reiniciarTemporizadorInactividad() {
+      clearTimeout(inactivityTimer);
+
+      inactivityTimer = setTimeout(() => {
+        window.location.href = "panel.html";
+      }, TIEMPO_INACTIVIDAD);
+    }
+
+    [
+      "mousemove",
+      "mousedown",
+      "click",
+      "keydown",
+      "touchstart",
+      "scroll"
+    ].forEach(evento => {
+      document.addEventListener(evento, reiniciarTemporizadorInactividad, true);
+    });
+
+    reiniciarTemporizadorInactividad();
+
+    document.getElementById("btnHome").addEventListener("click", () => {
+      window.location.href = "panel.html";
+    });
+
+  </script>
+
+</body>
+
+</html>

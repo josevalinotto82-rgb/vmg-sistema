@@ -76,7 +76,6 @@ async function configurarSeguridadQZ() {
 
 window.imprimirTicketQZ = async function (html) {
   try {
-    if (typeof qz === "undefined") throw new Error("No está cargada la biblioteca QZ Tray.");
     await configurarSeguridadQZ();
 
     if (!qz.websocket.isActive()) {
@@ -111,7 +110,8 @@ window.imprimirTicketQZ = async function (html) {
       printerName = opciones[index];
 
       if (!printerName) {
-        throw new Error("No se seleccionó una impresora válida. El cupón no fue impreso.");
+        alert("No elegiste una impresora válida.");
+        return;
       }
 
       localStorage.setItem("vmgc_ticket_printer", printerName);
@@ -143,6 +143,6 @@ window.imprimirTicketQZ = async function (html) {
 
   } catch (err) {
     console.error("ERROR QZ:", err);
-    throw err instanceof Error ? err : new Error(String(err));
+    alert("No se pudo imprimir el cupón por QZ Tray:\n" + (err.message || err));
   }
 };

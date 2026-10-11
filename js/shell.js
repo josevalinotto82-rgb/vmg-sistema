@@ -86,20 +86,20 @@ export function renderStageNavigation(container, activeStep = -1, tournamentId =
   if (!container) return;
   container.className = "stage-content-shell";
   container.innerHTML = `<nav class="steps stage-content-steps" aria-label="Etapas del torneo">${stages.map((stage, index) => {
-    if ((!tournamentId && index > 0) || (tournamentId && index > 1)) return `<span class="step disabled ${index===activeStep?"active":""}" data-stage-index="${index}" aria-disabled="true"><span class="num">${index + 1}</span>${stage.label}</span>`;
+    if ((!tournamentId && index > 0) || (tournamentId && index > 1)) return `<span class="step disabled ${index === activeStep ? "active" : ""}" data-stage-index="${index}" aria-disabled="true"><span class="num">${index + 1}</span>${stage.label}</span>`;
     const href = !tournamentId && index === 0 ? `${PAGES.tournaments}?nuevo=1` : tournamentUrl(stage, tournamentId);
     return `<a class="step ${index === activeStep ? "active" : ""}" data-stage-index="${index}" href="${href}"><span class="num">${index + 1}</span>${stage.label}</a>`;
   }).join("")}</nav>`;
-  if(tournamentId)hydrateStageNavigation(container,activeStep,tournamentId);
+  if (tournamentId) hydrateStageNavigation(container, activeStep, tournamentId);
 }
 
-async function stageAccess(tournamentId){
-  const count=async(table,configure)=>{let query=supabase.from(table).select("id",{count:"exact",head:true}).eq("tournament_id",tournamentId);if(configure)query=configure(query);const{count,error}=await query;if(error)throw error;return count||0};
-  const[registrations,scorecards,loaded]=await Promise.all([count("registrations",query=>query.or("registration_status.is.null,registration_status.neq.cancelled")),count("scorecards"),count("scorecards",query=>query.in("card_status",["valid","desc"]))]);
-  return{registrations,scorecards,loaded};
+async function stageAccess(tournamentId) {
+  const count = async (table, configure) => { let query = supabase.from(table).select("id", { count: "exact", head: true }).eq("tournament_id", tournamentId); if (configure) query = configure(query); const { count, error } = await query; if (error) throw error; return count || 0 };
+  const [registrations, scorecards, loaded] = await Promise.all([count("registrations", query => query.or("registration_status.is.null,registration_status.neq.cancelled")), count("scorecards"), count("scorecards", query => query.in("card_status", ["valid", "desc"]))]);
+  return { registrations, scorecards, loaded };
 }
-async function hydrateStageNavigation(container,activeStep,tournamentId){
-  try{const access=await stageAccess(tournamentId),highest=access.loaded>0?4:access.scorecards>0?3:access.registrations>0?2:1,nav=container.querySelector("nav");if(!nav||!container.isConnected)return;nav.innerHTML=stages.map((stage,index)=>{const enabled=index<=highest,active=index===activeStep,inner=`<span class="num">${index+1}</span>${stage.label}`;return enabled?`<a class="step ${active?"active":""}" data-stage-index="${index}" href="${tournamentUrl(stage,tournamentId)}">${inner}</a>`:`<span class="step disabled ${active?"active":""}" data-stage-index="${index}" aria-disabled="true" title="Completá el paso anterior para continuar">${inner}</span>`}).join("")}catch(error){console.warn("No se pudo calcular el avance del torneo",error)}
+async function hydrateStageNavigation(container, activeStep, tournamentId) {
+  try { const access = await stageAccess(tournamentId), highest = access.loaded > 0 ? 4 : access.scorecards > 0 ? 3 : access.registrations > 0 ? 2 : 1, nav = container.querySelector("nav"); if (!nav || !container.isConnected) return; nav.innerHTML = stages.map((stage, index) => { const enabled = index <= highest, active = index === activeStep, inner = `<span class="num">${index + 1}</span>${stage.label}`; return enabled ? `<a class="step ${active ? "active" : ""}" data-stage-index="${index}" href="${tournamentUrl(stage, tournamentId)}">${inner}</a>` : `<span class="step disabled ${active ? "active" : ""}" data-stage-index="${index}" aria-disabled="true" title="Completá el paso anterior para continuar">${inner}</span>` }).join("") } catch (error) { console.warn("No se pudo calcular el avance del torneo", error) }
 }
 
 function statusLabel(status) {
@@ -263,10 +263,10 @@ function settingsDetail(item) {
   return `<div class="settings-detail-head"><span class="settings-detail-icon">${item.icon}</span><div class="settings-tool-title"><div class="eyebrow">Herramienta</div><h2>${escapeHtml(item.label)}</h2></div><button type="button" class="settings-tool-close" data-settings-detail-close aria-label="Cerrar ${escapeHtml(item.label)}"><span aria-hidden="true">×</span> Cerrar</button></div><div class="notice info">${escapeHtml(notes[item.id])}</div>${content}`;
 }
 
-const dateTime = value => value ? new Intl.DateTimeFormat("es-AR", { dateStyle:"medium", timeStyle:"short", timeZone:"America/Argentina/Cordoba" }).format(new Date(value)) : "Sin registro";
+const dateTime = value => value ? new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Argentina/Cordoba" }).format(new Date(value)) : "Sin registro";
 const indexText = value => Number.isFinite(Number(value)) ? Number(value).toFixed(1) : "—";
 const localDateKey = value => {
-  const parts = new Intl.DateTimeFormat("en", { timeZone:"America/Argentina/Cordoba", year:"numeric", month:"2-digit", day:"2-digit" }).formatToParts(new Date(value));
+  const parts = new Intl.DateTimeFormat("en", { timeZone: "America/Argentina/Cordoba", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value));
   const get = type => parts.find(part => part.type === type)?.value || "";
   return `${get("year")}-${get("month")}-${get("day")}`;
 };
@@ -369,7 +369,7 @@ async function hydrateAagSettings(detail) {
     host.querySelector("[data-aag-export-search]").addEventListener("input", event => { host.querySelector("[data-aag-export-list]").innerHTML = renderRows(event.target.value); });
     host.querySelector("[data-sync-aag-fields]").addEventListener("click", async event => {
       const button = event.currentTarget;
-      if (!await confirmAction({ title:"Actualizar campos y salidas AAG", message:"Se reemplazará el catálogo local por la lista vigente informada por AAG. ¿Querés continuar?", confirmText:"Actualizar catálogo" })) return;
+      if (!await confirmAction({ title: "Actualizar campos y salidas AAG", message: "Se reemplazará el catálogo local por la lista vigente informada por AAG. ¿Querés continuar?", confirmText: "Actualizar catálogo" })) return;
       try { button.disabled = true; button.textContent = "Actualizando…"; const result = await syncAagFields(); notify(`Catálogo AAG actualizado: ${result.fields ?? "—"} campos y ${result.teeouts ?? "—"} salidas.`); await hydrateAagSettings(detail); }
       catch (error) { notify(error.message, "error"); button.disabled = false; button.textContent = "Actualizar campos y salidas AAG"; }
     });
@@ -395,7 +395,7 @@ async function hydrateStatistics(detail) {
     host.innerHTML = `<div class="statistics-controls"><div class="field"><label>Buscar torneos</label><input class="control" data-statistics-search placeholder="Nombre del torneo"></div><div class="statistics-tournament-list" data-statistics-tournaments>${tournamentRows("")}</div><div class="statistics-filter-grid"><div class="field"><label>Index mínimo</label><input class="control" data-statistics-min type="number" step="0.1" placeholder="Sin mínimo"></div><div class="field"><label>Index máximo</label><input class="control" data-statistics-max type="number" step="0.1" placeholder="Sin máximo"></div></div><div class="statistics-run-actions"><button class="btn primary" type="button" data-statistics-run>Calcular dificultad</button><button class="btn secondary" type="button" data-statistics-print disabled>Imprimir A4</button></div></div><div data-statistics-results><div class="empty-state compact">Elegí uno o varios torneos. El ranking combinará todas las tarjetas válidas seleccionadas.</div></div>`;
     let lastReport = null, lastMeta = null;
     const printButton = host.querySelector("[data-statistics-print]");
-    printButton.addEventListener("click", () => { if (lastReport) printStatisticsReport(lastReport,lastMeta); });
+    printButton.addEventListener("click", () => { if (lastReport) printStatisticsReport(lastReport, lastMeta); });
     const list = host.querySelector("[data-statistics-tournaments]");
     const bindChecks = () => list.querySelectorAll('input[type="checkbox"]').forEach(input => input.addEventListener("change", () => { input.checked ? selected.add(input.value) : selected.delete(input.value); }));
     bindChecks();
@@ -406,11 +406,11 @@ async function hydrateStatistics(detail) {
         button.disabled = true; button.textContent = "Calculando…";
         printButton.disabled = true; lastReport = null;
         const selectedIds = [...selected];
-        const reportMeta = { tournaments:tournaments.filter(item => selectedIds.includes(item.id)), indexMin:host.querySelector("[data-statistics-min]").value, indexMax:host.querySelector("[data-statistics-max]").value };
-        const report = await loadTournamentStatistics(selectedIds,reportMeta);
+        const reportMeta = { tournaments: tournaments.filter(item => selectedIds.includes(item.id)), indexMin: host.querySelector("[data-statistics-min]").value, indexMax: host.querySelector("[data-statistics-max]").value };
+        const report = await loadTournamentStatistics(selectedIds, reportMeta);
         lastReport = report;
         lastMeta = reportMeta;
-        results.innerHTML = statisticsContent(report,lastMeta);
+        results.innerHTML = statisticsContent(report, lastMeta);
         printButton.disabled = false;
       } catch (error) { results.innerHTML = `<div class="notice warn">${escapeHtml(error.message)}</div>`; }
       finally { button.disabled = false; button.textContent = "Calcular dificultad"; }
@@ -432,12 +432,12 @@ function openSettings(initialItem = "") {
     const frame = detail.querySelector("iframe.settings-tool-frame");
     if (event.origin === location.origin && frame && event.source === frame.contentWindow && event.data?.type === "vmgc:close-tool") hideDetail();
   };
-  window.addEventListener("message",onToolMessage);
-  const close = () => { window.removeEventListener("message",onToolMessage); drawer.remove(); };
+  window.addEventListener("message", onToolMessage);
+  const close = () => { window.removeEventListener("message", onToolMessage); drawer.remove(); };
   const hideDetail = () => {
     activeItem = "";
     detail.innerHTML = "";
-    detail.classList.remove("open","settings-detail-wide");
+    detail.classList.remove("open", "settings-detail-wide");
     detail.setAttribute("aria-hidden", "true");
     drawer.querySelectorAll("[data-settings-item]").forEach(button => button.classList.remove("active"));
   };
@@ -447,7 +447,7 @@ function openSettings(initialItem = "") {
     if (!item) return;
     activeItem = id;
     drawer.querySelectorAll("[data-settings-item]").forEach(button => button.classList.toggle("active", button.dataset.settingsItem === id));
-    const toolPages = { "free-card":PAGES.freeCard, "tv-control":PAGES.tvControl, "tv-media":PAGES.tvMedia, notifications:"notificaciones.html",  };
+    const toolPages = { "free-card": PAGES.freeCard, "tv-control": PAGES.tvControl, "tv-media": PAGES.tvMedia, notifications: "notificaciones.html", };
     const toolPage = toolPages[id];
     detail.classList.toggle("settings-detail-wide", !!toolPage || id === "statistics" || id === "public-results");
     detail.innerHTML = toolPage
@@ -504,7 +504,7 @@ async function startAagSync(shellHost) {
   try {
     const status = await getAagSyncStatus();
     const sourceDate = status.sourceUpdatedAt || status.lastCompletedAt;
-    const accepted = await confirmAction({ title:"Actualizar índices AAG", message:`Se sincronizarán los jugadores de VMGC con la última actualización disponible de AAG: ${dateTime(sourceDate)}. ¿Querés continuar?`, confirmText:"Actualizar Index" });
+    const accepted = await confirmAction({ title: "Actualizar índices AAG", message: `Se sincronizarán los jugadores de VMGC con la última actualización disponible de AAG: ${dateTime(sourceDate)}. ¿Querés continuar?`, confirmText: "Actualizar Index" });
     if (!accepted) return;
     document.getElementById("systemSettingsDrawer")?.remove();
     const ui = openSyncProgress();
@@ -518,7 +518,7 @@ async function startAagSync(shellHost) {
     const resolveNext = async () => {
       if (!prepared.pending.length) return finish();
       const item = prepared.pending[0];
-      ui.content.innerHTML = `<div class="notice warn"><strong>Posible jugador duplicado</strong><br>Antes de sincronizar, revisá si el nuevo jugador AAG ya existe como jugador manual.</div><div class="aag-association"><div><span>Nuevo dato AAG</span><strong>${escapeHtml(playerDisplay(item.aag))}</strong><small>Matrícula ${escapeHtml(item.aag.aag_member_number)} · Index ${indexText(item.aag.current_index)}</small></div><h3>¿Corresponde a alguno de estos jugadores?</h3>${item.candidates.map((candidate,index) => `<button type="button" class="aag-candidate" data-candidate="${index}"><span><strong>${escapeHtml(playerDisplay(candidate))}</strong><small>Index ${indexText(candidate.current_index)} · ${candidate.usage?.registrations ?? "—"} inscripciones · ${candidate.usage?.scorecards ?? "—"} tarjetas</small></span><b>Asociar</b></button>`).join("")}<button type="button" class="btn secondary" data-skip-association>Crear jugador nuevo / no asociar</button></div>`;
+      ui.content.innerHTML = `<div class="notice warn"><strong>Posible jugador duplicado</strong><br>Antes de sincronizar, revisá si el nuevo jugador AAG ya existe como jugador manual.</div><div class="aag-association"><div><span>Nuevo dato AAG</span><strong>${escapeHtml(playerDisplay(item.aag))}</strong><small>Matrícula ${escapeHtml(item.aag.aag_member_number)} · Index ${indexText(item.aag.current_index)}</small></div><h3>¿Corresponde a alguno de estos jugadores?</h3>${item.candidates.map((candidate, index) => `<button type="button" class="aag-candidate" data-candidate="${index}"><span><strong>${escapeHtml(playerDisplay(candidate))}</strong><small>Index ${indexText(candidate.current_index)} · ${candidate.usage?.registrations ?? "—"} inscripciones · ${candidate.usage?.scorecards ?? "—"} tarjetas</small></span><b>Asociar</b></button>`).join("")}<button type="button" class="btn secondary" data-skip-association>Crear jugador nuevo / no asociar</button></div>`;
       ui.content.querySelectorAll("[data-candidate]").forEach(button => button.addEventListener("click", async () => {
         try { button.disabled = true; await linkManualPlayer(item.candidates[Number(button.dataset.candidate)], item.aag); prepared.pending.shift(); await resolveNext(); }
         catch (error) { notify(error.message, "error"); button.disabled = false; }

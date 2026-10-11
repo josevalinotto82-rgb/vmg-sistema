@@ -1,354 +1,44 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="apple-touch-icon" sizes="180x180" href="icon-512-control.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="icon-512-control.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>Centro de Control TV - Villa María Golf</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f3f7f0;
-      color: #17221a;
-      padding: 22px;
-    }
-    .wrap { max-width: 980px; margin: 0 auto; }
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 18px;
-    }
-    .brand { display: flex; align-items: center; gap: 14px; }
-    .logo { width: 58px; height: 58px; object-fit: contain; }
-    h1 { margin: 0; color: #166534; font-size: 28px; }
-    .sub { color: #647068; font-weight: 700; margin-top: 4px; }
-    .card {
-      background: white;
-      border: 1px solid #d7e1d4;
-      border-radius: 22px;
-      box-shadow: 0 14px 35px rgba(20, 83, 45, .08);
-      padding: 20px;
-      margin-bottom: 16px;
-    }
-    label { font-weight: 900; color: #23412b; display: block; margin-bottom: 7px; }
-    select, input[type="number"] {
-      width: 100%;
-      border: 1px solid #cbd5c0;
-      border-radius: 14px;
-      padding: 13px 14px;
-      font-size: 16px;
-      background: #fbfdf9;
-    }
-    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-    .check {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border: 1px solid #d7e1d4;
-      background: #fbfdf9;
-      border-radius: 15px;
-      padding: 13px;
-      font-weight: 900;
-      color: #17221a;
-    }
-    .check input { transform: scale(1.25); accent-color: #166534; }
-    .section-title {
-      margin: 4px 0 12px;
-      color: #166534;
-      font-size: 14px;
-      font-weight: 950;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-    }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    button {
-      border: 0;
-      border-radius: 14px;
-      padding: 14px 18px;
-      font-size: 16px;
-      font-weight: 950;
-      cursor: pointer;
-    }
-    .primary { background: #166534; color: white; }
-    .secondary { background: #dbeafe; color: #1e3a8a; }
-    .muted { color: #65756b; font-weight: 700; font-size: 13px; margin-top: 8px; }
-    .status {
-      padding: 12px 14px;
-      border-radius: 14px;
-      background: #ecfdf5;
-      color: #166534;
-      font-weight: 900;
-      display: none;
-    }
-    .status.error { background: #fef2f2; color: #991b1b; }
-    @media (max-width: 760px) { .grid, .grid3 { grid-template-columns: 1fr; } .header { align-items: flex-start; flex-direction: column; } }
-  </style>
-<script src="./snapshot-client.js"></script>
-</head>
-<body>
-  <div class="wrap">
-    <div class="header">
-      <div class="brand">
-        <img src="escudo.png" alt="Villa María Golf" class="logo">
-        <div>
-          <h1>Centro de Control TV</h1>
-          <div class="sub">Elegí qué torneo y qué elementos muestra la pantalla del leaderboard.</div>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Control TV · VMGC</title><link rel="stylesheet" href="vmgc.css?v=encabezado-verde-20261008"></head>
+<body class="tv-tool-page">
+  <header class="tv-tool-topbar"><div class="tv-tool-brand"><img src="escudo.png" alt="VMGC"><div><small>Proyección del club</small><strong>Control TV</strong></div></div><div class="tv-tool-actions"><span class="status info" id="tvControlState">Cargando…</span><button class="btn outline" id="closeTvControl">Cerrar</button></div></header>
+  <main class="tv-tool-shell">
+    <section class="tv-control-hero"><div><div class="eyebrow">Configuración de proyección</div><h1>Elegí qué se muestra en el TV</h1><p>Este control guarda la configuración. El equipo de proyección la consulta automáticamente cada 5 segundos.</p></div></section>
+    <div class="tv-control-layout">
+      <section class="card tv-control-primary">
+        <div class="card-head"><div><div class="eyebrow">Contenido deportivo</div><h2>Torneo y resultados</h2></div></div>
+        <div class="card-body">
+          <div class="field"><label>Torneo en pantalla</label><select class="control" id="tvTournament"><option>Cargando torneos…</option></select></div>
+          <div class="field"><label>Vista de resultados</label><select class="control" id="tvSeriesMode"><option value="daily">Resultados del día</option><option value="aggregate">Acumulado de la serie</option></select><small id="tvSeriesHelp">El acumulado se habilita para torneos de una serie.</small></div>
+          <div class="tv-option-grid">
+            <label class="tv-option"><input type="checkbox" id="tvScratchMale"><span><strong>Scratch Caballeros</strong><small>Mostrar premiación scratch masculina</small></span></label>
+            <label class="tv-option"><input type="checkbox" id="tvScratchFemale"><span><strong>Scratch Damas</strong><small>Mostrar premiación scratch femenina</small></span></label>
+            <label class="tv-option"><input type="checkbox" id="tvExcludeScratch"><span><strong>Excluir scratch</strong><small>No repetir al ganador en su categoría</small></span></label>
+            <label class="tv-option"><input type="checkbox" id="tvMusic"><span><strong>Música ambiental</strong><small>Reproducir el MP3 cargado</small></span></label>
+          </div>
         </div>
-      </div>
+      </section>
+      <aside class="card tv-control-preview">
+        <div class="card-head"><div><div class="eyebrow">Resumen</div><h2>Configuración actual</h2></div></div>
+        <div class="card-body" id="tvControlSummary"></div>
+      </aside>
     </div>
-
-    <div id="status" class="status"></div>
-
     <section class="card">
-      <div class="section-title">Torneo en pantalla</div>
-      <label for="torneoSelect">Torneo</label>
-      <select id="torneoSelect"><option value="">Cargando torneos...</option></select>
-      <div style="margin-top:12px;">
-        <label for="seriesViewMode">Vista de resultados</label>
-        <select id="seriesViewMode">
-          <option value="daily">Resultados del día</option>
-          <option value="aggregate">Acumulado de la serie</option>
-        </select>
-      </div>
-      <div id="seriesViewHelp" class="muted">El acumulado se habilita cuando el torneo pertenece a una serie.</div>
-      <div class="muted">La TV debe abrir siempre <strong>tv.html</strong>. Esta pantalla solo guarda la configuración.</div>
+      <div class="card-head"><div><div class="eyebrow">Bloques visuales</div><h2>Multimedia</h2></div></div>
+      <div class="card-body"><div class="tv-option-grid">
+        <label class="tv-option"><input type="checkbox" id="tvPhotos"><span><strong>Fotos del torneo</strong><small>Carpeta leaderboard</small></span></label>
+        <label class="tv-option"><input type="checkbox" id="tvSponsors"><span><strong>Sponsors</strong><small>Rotación de patrocinadores</small></span></label>
+        <label class="tv-option"><input type="checkbox" id="tvLogo"><span><strong>Escudo / logo</strong><small>Imagen institucional fija</small></span></label>
+        <label class="tv-option"><input type="checkbox" id="tvQr"><span><strong>Código QR</strong><small>Acceso público o inscripción</small></span></label>
+      </div><label class="tv-option tv-single-mode"><input type="checkbox" id="tvSingleCategory"><span><strong>Modo una categoría</strong><small>Oculta multimedia y muestra diez posiciones completas</small></span></label></div>
     </section>
-
     <section class="card">
-      <div class="section-title">Premios / Scratch</div>
-      <div class="grid">
-        <label class="check"><input type="checkbox" id="showScratchMale"> Scratch Caballeros</label>
-        <label class="check"><input type="checkbox" id="showScratchFemale"> Scratch Damas</label>
-        <label class="check"><input type="checkbox" id="excludeScratch"> Saltear ganador scratch en categoría</label>
-        <label class="check"><input type="checkbox" id="musicEnabled"> Música</label>
-      </div>
+      <div class="card-head"><div><div class="eyebrow">Ritmo de pantalla</div><h2>Velocidad de rotación</h2></div></div>
+      <div class="card-body tv-speed-grid"><div class="field"><label>Leaderboard</label><div class="tv-number-control"><input class="control" type="number" id="tvLeaderSeconds" min="5" max="120"><span>segundos</span></div></div><div class="field"><label>Fotos y sponsors</label><div class="tv-number-control"><input class="control" type="number" id="tvMediaSeconds" min="3" max="120"><span>segundos</span></div></div></div>
     </section>
-
-    <section class="card">
-      <div class="section-title">Multimedia</div>
-      <div class="grid">
-        <label class="check"><input type="checkbox" id="showPhotos"> Fotos del torneo</label>
-        <label class="check"><input type="checkbox" id="showSponsors"> Sponsors</label>
-        <label class="check"><input type="checkbox" id="showLogoMedia"> Escudo / logo</label>
-        <label class="check"><input type="checkbox" id="showQr"> QR</label>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label class="check" style="background:#fff7ed;border-color:#fed7aa;">
-          <input type="checkbox" id="modoUnaCategoria">
-          Modo una categoría: ocultar multimedia y mostrar 10 puestos completos
-        </label>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="section-title">Velocidad de rotación</div>
-      <div class="grid3">
-        <div>
-          <label for="leaderSeconds">Leaderboard, segundos</label>
-          <input type="number" id="leaderSeconds" min="5" max="120" step="1">
-        </div>
-        <div>
-          <label for="mediaSeconds">Fotos/sponsors, segundos</label>
-          <input type="number" id="mediaSeconds" min="3" max="120" step="1">
-        </div>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="actions">
-        <button class="primary" id="btnGuardar">Guardar y actualizar TV</button>
-        <button class="secondary" id="btnAbrirTv">Abrir TV en esta compu</button>
-      </div>
-      <div class="muted" id="lastUpdate">Última actualización: -</div>
-    </section>
-  </div>
-
-  <script type="module">
-    import { createClient as createRawClient } from "https://esm.sh/@supabase/supabase-js@2";
-const createClient = (...args) => globalThis.VMGCSnapshot.wrapClient(createRawClient(...args));
-
-    const supabase = createClient(
-      "https://bnnfolhrqxgxjmobclrm.supabase.co",
-      "sb_publishable_pNxU4AFpAZPpeJ0wICLvIw_6nW90njQ"
-    );
-
-    const SETTINGS_ID = "main";
-    const $ = id => document.getElementById(id);
-
-    function mostrarEstado(texto, error = false) {
-      const el = $("status");
-      el.textContent = texto;
-      el.classList.toggle("error", !!error);
-      el.style.display = "block";
-      setTimeout(() => { el.style.display = "none"; }, 3500);
-    }
-
-    function fechaAObjeto(fecha) {
-      const texto = String(fecha || "").trim();
-      if (!texto) return null;
-      const partes = texto.split("-");
-      if (partes.length === 3) return new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
-      const f = new Date(texto);
-      return Number.isNaN(f.getTime()) ? null : f;
-    }
-
-    function formatearFecha(fecha) {
-      const f = fechaAObjeto(fecha);
-      if (!f) return String(fecha || "");
-      return `${String(f.getDate()).padStart(2,"0")}/${String(f.getMonth()+1).padStart(2,"0")}/${f.getFullYear()}`;
-    }
-
-    function aplicarModoUnaCategoria() {
-      const activo = $("modoUnaCategoria")?.checked;
-      ["showPhotos", "showSponsors", "showLogoMedia", "showQr"].forEach(id => {
-        const el = $(id);
-        if (!el) return;
-        if (activo) el.checked = false;
-        el.disabled = !!activo;
-        el.closest("label")?.style.setProperty("opacity", activo ? ".55" : "1");
-      });
-    }
-
-    function sincronizarModoUnaCategoriaDesdeMultimedia() {
-      const todosApagados =
-        !$("showPhotos").checked &&
-        !$("showSponsors").checked &&
-        !$("showLogoMedia").checked &&
-        !$("showQr").checked;
-
-      $("modoUnaCategoria").checked = todosApagados;
-      aplicarModoUnaCategoria();
-    }
-
-    async function cargarTorneos() {
-      const { data, error } = await supabase
-        .from("tournaments")
-        .select("id, name, tournament_date, status, series_id")
-        .eq("data_schema_version", 2)
-        .order("tournament_date", { ascending: false })
-        .limit(40);
-
-      if (error) throw error;
-
-      $("torneoSelect").innerHTML = `<option value="">Sin torneo seleccionado</option>` +
-        (data || []).map(t => `<option value="${t.id}" data-series="${t.series_id || ""}">${formatearFecha(t.tournament_date)} · ${t.name}</option>`).join("");
-
-      actualizarDisponibilidadAcumulado();
-    }
-
-    function actualizarDisponibilidadAcumulado() {
-      const option = $("torneoSelect").selectedOptions?.[0];
-      const perteneceSerie = !!option?.dataset?.series;
-      const selector = $("seriesViewMode");
-      selector.disabled = !perteneceSerie;
-      if (!perteneceSerie) selector.value = "daily";
-      $("seriesViewHelp").textContent = perteneceSerie
-        ? "Podés mostrar esta fecha o la suma de las fechas jugadas de la serie."
-        : "Este torneo no pertenece a una serie; se mostrará el resultado del día.";
-    }
-
-    async function cargarSettings() {
-      const { data, error } = await supabase
-        .from("tv_settings")
-        .select("*")
-        .eq("id", SETTINGS_ID)
-        .single();
-
-      if (error) throw error;
-
-      $("torneoSelect").value = data.tournament_id || "";
-      $("seriesViewMode").value = data.series_view_mode === "aggregate" ? "aggregate" : "daily";
-      actualizarDisponibilidadAcumulado();
-      $("showScratchMale").checked = data.show_scratch_male ?? true;
-      $("showScratchFemale").checked = data.show_scratch_female ?? true;
-      $("excludeScratch").checked = data.exclude_scratch_from_category ?? true;
-      $("showPhotos").checked = data.show_photos ?? true;
-      $("showSponsors").checked = data.show_sponsors ?? true;
-      $("showLogoMedia").checked = data.show_logo_media ?? true;
-      $("showQr").checked = data.show_qr ?? true;
-      sincronizarModoUnaCategoriaDesdeMultimedia();
-      $("musicEnabled").checked = data.music_enabled ?? true;
-      $("mediaSeconds").value = data.media_rotation_seconds ?? 9;
-      $("leaderSeconds").value = data.leaderboard_rotation_seconds ?? 14;
-      $("lastUpdate").textContent = `Última actualización: ${data.updated_at ? new Date(data.updated_at).toLocaleString("es-AR") : "-"}`;
-    }
-
-    async function guardarSettings() {
-      aplicarModoUnaCategoria();
-
-      const payload = {
-        tournament_id: $("torneoSelect").value || null,
-        series_view_mode: $("seriesViewMode").value,
-        show_scratch_male: $("showScratchMale").checked,
-        show_scratch_female: $("showScratchFemale").checked,
-        exclude_scratch_from_category: $("excludeScratch").checked,
-        show_photos: $("showPhotos").checked,
-        show_sponsors: $("showSponsors").checked,
-        show_logo_media: $("showLogoMedia").checked,
-        show_qr: $("showQr").checked,
-        music_enabled: $("musicEnabled").checked,
-        media_rotation_seconds: Number($("mediaSeconds").value || 9),
-        leaderboard_rotation_seconds: Number($("leaderSeconds").value || 14)
-      };
-
-      const { error } = await supabase
-        .from("tv_settings")
-        .update(payload)
-        .eq("id", SETTINGS_ID);
-
-      if (error) throw error;
-      mostrarEstado("Guardado. La TV se actualizará sola en unos segundos.");
-      await cargarSettings();
-    }
-
-    function iniciarRealtimeSettings() {
-      supabase
-        .channel(`tv-control-settings-${SETTINGS_ID}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "tv_settings", filter: `id=eq.${SETTINGS_ID}` }, () => cargarSettings())
-        .subscribe();
-    }
-
-    async function inicializar() {
-      try {
-        await cargarTorneos();
-        await cargarSettings();
-        iniciarRealtimeSettings();
-      } catch (err) {
-        console.error(err);
-        mostrarEstado(err?.message || "No se pudo cargar la configuración", true);
-      }
-
-      $("modoUnaCategoria").addEventListener("change", aplicarModoUnaCategoria);
-      $("torneoSelect").addEventListener("change", actualizarDisponibilidadAcumulado);
-
-      ["showPhotos", "showSponsors", "showLogoMedia", "showQr"].forEach(id => {
-        $(id).addEventListener("change", () => {
-          if ($(id).checked) $("modoUnaCategoria").checked = false;
-          aplicarModoUnaCategoria();
-        });
-      });
-
-      $("btnGuardar").addEventListener("click", async () => {
-        try { await guardarSettings(); }
-        catch (err) { console.error(err); mostrarEstado(err?.message || "No se pudo guardar", true); }
-      });
-
-      $("btnAbrirTv").addEventListener("click", () => {
-        window.open("tv.html", "_blank");
-      });
-    }
-
-    inicializar();
-  </script>
-</body>
+    <footer class="tv-tool-footer"><span id="tvLastUpdate">Última actualización: —</span><button class="btn primary" id="saveTvControl">Guardar y actualizar TV</button></footer>
+  </main>
+  <script type="module" src="js/tv_control_page.js"></script>
+<script type="module" src="js/embedded_tool.js"></script></body>
 </html>
