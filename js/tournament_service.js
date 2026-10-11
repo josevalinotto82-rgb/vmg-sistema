@@ -90,8 +90,13 @@ async function deleteBlocksSafe(rows){
 
 async function upsertSequentialBlock(existing,{tournamentId,name,order,hole,ranges,interval}){
   const desired=[...timesBetween(ranges.amStart,ranges.amEnd,interval),...timesBetween(ranges.pmStart,ranges.pmEnd,interval)];if(!desired.length){if(existing)await deleteBlockSafe(existing);return}
-  let block=existing;if(!block){const{data,error}=await supabase.from("starting_blocks").insert({tournament_id:tournamentId,name,start_time:`${desired[0]}:00`,block_type:"sequential",display_order:order}).select().single();if(error)throw error;block=data}else{const{error}=await supabase.from("starting_blocks").update({name,start_time:`${desired[0]}:00`,display_order:order}).eq("id",block.id);if(error)throw error}
-  const current=await lines(block.id);for(let i=0;i<desired.length;i++){const payload={line_time:desired[i],starting_hole:hole,label:`Hoyo ${hole}`,capacity:4,display_order:i+1};if(current[i]){const{error}=await supabase.from("starting_lines").update(payload).eq("id",current[i].id);if(error)throw error}else{const{data,error}=await supabase.from("starting_lines").insert({starting_block_id:block.id,...payload}).select().single();if(error)throw error;await createSlots(data.id)}}await deleteLinesSafe(current.slice(desired.length));
+  const current=existing?await lines(existing.id):[],used=new Set();
+  const matching=desired.map(time=>{const row=current.find(line=>!used.has(line.id)&&String(line.line_time||"").slice(0,5)===time&&Number(line.starting_hole)===Number(hole));if(row)used.add(row.id);return row;});
+  const removed=current.filter(line=>!used.has(line.id));
+  for(const row of removed)if(await lineOccupied(row.id))throw new Error("No se pueden quitar horarios con jugadores anotados. Conservá esos horarios en la configuración.");
+  let block=existing;if(!block){const{data,error}=await supabase.from("starting_blocks").insert({tournament_id:tournamentId,name,start_time:desired[0]+":00",block_type:"sequential",display_order:order}).select().single();if(error)throw error;block=data}else{const{error}=await supabase.from("starting_blocks").update({name,start_time:desired[0]+":00",display_order:order}).eq("id",block.id);if(error)throw error}
+  for(let i=0;i<desired.length;i++){const payload={line_time:desired[i],starting_hole:hole,label:"Hoyo "+hole,capacity:4,display_order:i+1};if(matching[i]){const{error}=await supabase.from("starting_lines").update(payload).eq("id",matching[i].id);if(error)throw error}else{const{data,error}=await supabase.from("starting_lines").insert({starting_block_id:block.id,...payload}).select().single();if(error)throw error;await createSlots(data.id)}}
+  await deleteLinesSafe(removed);
 }
 function hasSequentialTimes(ranges){return Boolean(ranges.amStart||ranges.amEnd||ranges.pmStart||ranges.pmEnd)}
 async function syncSequential(tournamentId,input){
