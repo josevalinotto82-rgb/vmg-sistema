@@ -1,4 +1,30 @@
 let qzSecurityReady = false;
+let qzClubLogoPromise;
+
+async function ticketClubHeader() {
+  if (!qzClubLogoPromise) {
+    qzClubLogoPromise = fetch("./escudo.png", { cache: "force-cache" }).then(async response => {
+      if (!response.ok) throw new Error("No se pudo cargar el escudo para el cupón.");
+      const blob = await response.blob();
+      return await new Promise((resolve,reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("No se pudo preparar el escudo."));
+        reader.readAsDataURL(blob);
+      });
+    }).catch(error => { qzClubLogoPromise = null; throw error; });
+  }
+  const logo = await qzClubLogoPromise;
+  return `<div class="ticket-club-header" style="text-align:center;margin-bottom:5px"><img src="${logo}" alt="" style="display:block;width:14mm;height:18mm;object-fit:contain;margin:0 auto 3px"><div style="font-size:14px;font-weight:700">Villa María Golf Club</div></div>`;
+}
+
+async function prepareClubTicket(html) {
+  const header = await ticketClubHeader();
+  // Replace the previous text-only club title in existing tournament/free-card coupons.
+  html = html.replace(/<div style="text-align:center;font-size:14px;font-weight:700">Villa María Golf Club<\/div>/g, "");
+  if (/<div class="ticket-80">/.test(html)) return html.replace('<div class="ticket-80">','<div class="ticket-80">'+header);
+  return '<div class="ticket-80">'+header+html+'</div>';
+}
 
 async function leerTexto(url, nombre) {
   const res = await fetch(url + "?v=" + Date.now(), { cache: "no-store" });
@@ -77,6 +103,7 @@ async function configurarSeguridadQZ() {
 window.imprimirTicketQZ = async function (html) {
   try {
     if (typeof qz === "undefined") throw new Error("No está cargada la biblioteca QZ Tray.");
+    html = await prepareClubTicket(html);
     await configurarSeguridadQZ();
 
     if (!qz.websocket.isActive()) {
@@ -119,9 +146,20 @@ window.imprimirTicketQZ = async function (html) {
 
     console.log("IMPRESORA USADA:", printerName);
 
+    let ticketHeight = 120;
+    if (typeof document !== "undefined") {
+      const measure = document.createElement("div");
+      measure.style.cssText = "position:absolute;left:-10000px;top:0;width:80mm;font:12px Arial,sans-serif;";
+      measure.innerHTML = html;
+      const ticket = measure.querySelector(".ticket-80");
+      if (ticket) ticket.style.cssText += ";width:72mm;margin:0 auto;padding:4mm;box-sizing:border-box;overflow-wrap:anywhere;word-wrap:break-word;";
+      document.body.appendChild(measure);
+      ticketHeight = Math.max(120, Math.ceil(measure.scrollHeight * 25.4 / 96 + 5));
+      measure.remove();
+    }
     const config = qz.configs.create(printerName, {
       units: "mm",
-      size: { width: 80, height: 120 },
+      size: { width: 80, height: ticketHeight },
       margins: 0,
       scaleContent: true
     });
@@ -129,7 +167,7 @@ window.imprimirTicketQZ = async function (html) {
     const contenido =
       '<html><head><style>' +
       'html,body{margin:0;padding:0;width:80mm;font-family:Arial,sans-serif;color:#000;}' +
-      '.ticket-80{width:72mm;margin:0 auto;padding:4mm;box-sizing:border-box;font-size:12px;}' +
+      '.ticket-80{width:72mm;margin:0 auto;padding:4mm;box-sizing:border-box;font-size:12px;overflow-wrap:anywhere;word-wrap:break-word;}' +
       '</style></head><body>' +
       html +
       '</body></html>';

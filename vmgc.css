@@ -7340,3 +7340,47 @@ h3 {
 .slot[draggable="true"] { cursor:grab; }
 .slot.slot-dragging { opacity:.45; cursor:grabbing; }
 .slot.slot-drop-target { outline:3px solid #166534; outline-offset:-3px; background:#dcfce7; }
+
+/* Keep the shared header and tournament context visible throughout scrolling. */
+[data-app-shell] { position:sticky; top:0; z-index:50; }
+[data-app-shell] > .topbar { position:relative; top:auto; }
+@media print { [data-app-shell] { display:none!important; } }
+.billing-actions { display:flex; gap:10px; flex-wrap:wrap; margin:0 0 18px; }
+.billing-client { margin-top:12px; padding:12px; background:#edf5ef; border-radius:12px; font-weight:700; }
+.billing-player-result, .billing-product-options button { display:flex; justify-content:space-between; gap:12px; width:100%; padding:12px; text-align:left; background:#fff; border:1px solid #dce5de; border-radius:9px; font:inherit; cursor:pointer; }
+.billing-player-result { flex-direction:column; gap:3px; }
+.billing-player-result span { color:#5d6c62; font-size:12px; }
+.billing-product-options { display:grid; gap:4px; margin-top:6px; max-height:240px; overflow:auto; }
+.billing-product-options b { white-space:nowrap; }
+.billing-line { margin:16px 0; }
+.billing-line-grid { display:grid; grid-template-columns:minmax(0,1fr) 90px 100px auto; gap:12px; align-items:start; }
+.billing-line-grid > button { margin-top:24px; }
+.billing-line-grid .field > strong { display:block; padding-top:10px; }
+.billing-total { display:flex; flex-direction:column; gap:4px; min-width:140px; }
+.billing-total strong { font-size:25px; color:#166534; }
+.billing-catalog { display:grid; gap:10px; }
+.billing-catalog-row { display:grid; grid-template-columns:75px minmax(0,1fr) 110px auto; gap:10px; align-items:end; background:#fff; border:1px solid #dce5de; padding:14px; border-radius:12px; }
+.billing-summary, .billing-method-totals { display:flex; flex-wrap:wrap; gap:14px; margin:18px 0; }
+.billing-summary span { background:#edf5ef; padding:12px; border-radius:10px; }
+.billing-method-totals span { font-size:13px; }
+.billing-sale-report { border:1px solid #dce5de; border-radius:12px; padding:14px; margin:12px 0; background:#fff; }
+.billing-sale-report header, .billing-report-item { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px; overflow-wrap:anywhere; }
+.billing-report-item { border-top:1px solid #edf0ed; padding-top:8px; }
+.misc-daily-report footer { color:#5d6c62; font-size:11px; margin-top:18px; }
+@media (max-width:700px) {
+  .billing-line-grid, .billing-catalog-row { grid-template-columns:90px minmax(0,1fr); }
+  .billing-line-grid .field:first-child { grid-column:1/-1; }
+  .billing-line-grid > button { margin-top:0; }
+}
+@media print {
+  .misc-daily-report .no-print { display:none!important; }
+  .misc-daily-report { width:100%; font-size:11px; }
+  .misc-daily-report .billing-sale-report { break-inside:avoid; margin:8px 0; padding:10px; }
+  .misc-daily-report .billing-summary span { background:none; padding:4px; }
+}
+.standalone-report-page .misc-daily-report { width:min(210mm,100%); margin:0 auto 22px; padding:12mm; background:#fff; box-shadow:0 8px 30px #0002; }
+@media print {
+  body.standalone-report-page { animation:none!important; opacity:1!important; }
+  .standalone-report-page .misc-daily-report { width:auto; margin:0; padding:0; box-shadow:none; }
+}
+@media (min-width:901px) { .settings-detail-panel:has([data-misc-billing]) { width:min(680px,calc(100% - 410px)); } }
