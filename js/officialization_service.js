@@ -1,6 +1,6 @@
 import { categoryFromRules } from "./category_snapshot.js";
 import { supabase } from "./supabase.js";
-import { OfficializationRules, baseIndex, getLine, getScorecard, getSlot, isNewCategory, memberNumber, normalizeGender } from "./officialization_rules.js";
+import { OfficializationRules, baseIndex, getLine, getScorecard, memberNumber, normalizeGender } from "./officialization_rules.js";
 
 const emptyHoles = () => Object.fromEntries(Array.from({ length: 18 }, (_, index) => [String(index + 1), null]));
 

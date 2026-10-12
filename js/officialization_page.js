@@ -2,7 +2,7 @@ import { requireSession } from "./auth.js";
 import { mountShell, getActiveTournament, setActiveTournament, renderStageNavigation } from "./shell.js";
 import { escapeHtml, formatDate, notify, setBusy, showState, confirmAction } from "./ui.js";
 import { listOfficializationTournaments, loadOfficialization, buildGroups, saveSingle, savePair, savePayment, saveTournament, nextCouponNumber, isClubMember } from "./officialization_service.js";
-import { baseIndex, getLine, getScorecard, hasOfficialIndex, isNewCategory, memberNumber, normalizeGender, toNumber, visibleTeeName } from "./officialization_rules.js";
+import { baseIndex, getLine, getScorecard, hasOfficialIndex, isNewCategory, memberNumber, toNumber, visibleTeeName } from "./officialization_rules.js";
 import { printableGroup, printPreprintedCards } from "./officialization_print.js";
 import { supabase } from "./supabase.js";
 
@@ -71,10 +71,6 @@ function groupStatus(group) {
   if (groupNeedsReview(group)) return "review";
   if (scorecardForGroup(group)?.id && groupHasPayment(group)) return "ready";
   return "pending";
-}
-
-function groupCategory(group) {
-  return groupPreview(group).category;
 }
 
 function sameNumber(first, second) { const a = toNumber(first), b = toNumber(second); return a == null && b == null || a != null && b != null && Math.abs(a - b) < .001 }

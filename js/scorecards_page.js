@@ -2,12 +2,8 @@ import { requireSession } from "./auth.js";
 import { supabase } from "./supabase.js";
 import { PAGES } from "./config.js";
 import { mountShell, getActiveTournament, setActiveTournament, renderStageNavigation } from "./shell.js";
-import { escapeHtml, formatDate, notify, showState, setBusy, confirmAction } from "./ui.js";
-import {
-  normalizeText, normalizeSegment, enabledHoles, segmentLabel, cardStatus, statusLabel, scoreMap,
-  categoryForScorecard, holeMetadata, missingCourseData, isAmerican, isGross, calculateCard,
-  loadScorecardWorkspace, saveScorecard, archiveTournament
-} from "./scorecards_service.js";
+import { escapeHtml, notify, showState, setBusy, confirmAction } from "./ui.js";
+import { normalizeText, enabledHoles, segmentLabel, cardStatus, statusLabel, scoreMap, categoryForScorecard, holeMetadata, missingCourseData, isAmerican, isGross, calculateCard, loadScorecardWorkspace, saveScorecard, archiveTournament } from "./scorecards_service.js";
 
 const context = await requireSession({ admin: true });
 mountShell({ context, activeStep: 3 });

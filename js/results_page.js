@@ -2,7 +2,7 @@ import { resultsContent, bindResultsAccordions } from "./results_view.js";
 import { requireSession } from "./auth.js";
 import { mountShell, getActiveTournament, setActiveTournament, renderStageNavigation } from "./shell.js";
 import { escapeHtml, showState } from "./ui.js";
-import { loadResultsWorkspace, saveResultsConfiguration, normalizeText, normalizeGender, isGross, isAmerican, validCard, statusText, primaryScore, compareCards, compareSeriesItems, categoryForCard, scratchEligible, aggregateSeries } from "./results_service.js";
+import { loadResultsWorkspace, saveResultsConfiguration, normalizeText, isGross, isAmerican, validCard } from "./results_service.js";
 
 const context=await requireSession({ admin: true }); mountShell({context,activeStep:4});
 const $=id=>document.getElementById(id); let bundle,view="day",query="",config;
@@ -12,7 +12,6 @@ const requestedId=()=>{const p=new URLSearchParams(location.search);return p.get
 const specialData=()=>{const raw=bundle?.tournament?.special_prizes;return raw&&typeof raw==="object"&&!Array.isArray(raw)?structuredClone(raw):{}};
 const allowsScratch=()=>!isGross(bundle)&&!isAmerican(bundle);
 const isSeries=()=>view!=="day";
-const keyOf=item=>String(item.series?item.key:item.linked_player_id||item.aag_member_number||item.id||normalizeText(item.display_name));
 function loadConfig(){const raw=specialData().results_config||{};config={categoryWinners:clamp(raw.category_winners,2,1),scratchMen:clamp(raw.scratch_men),scratchWomen:clamp(raw.scratch_women)}}
 const getPrize=(raw,type,hole)=>type==="approach"?(raw.approach?.[hole]||""):(raw[type]||"");
 function prizeEntries(){const raw=specialData();return prizeFields.map(([,label,type,hole])=>({label,winner:getPrize(raw,type,hole)})).filter(item=>item.winner)}
