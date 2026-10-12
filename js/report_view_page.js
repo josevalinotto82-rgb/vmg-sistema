@@ -1,3 +1,5 @@
+import { listDailySales, billingToday } from "./misc_billing_service.js";
+import { dailySalesContent } from "./misc_billing_report.js";
 import { requireSession } from "./auth.js";
 import { getAagSyncReport } from "./aag_sync_service.js";
 import { escapeHtml } from "./ui.js";
@@ -41,7 +43,8 @@ function renderDocument(title,content){
 }
 
 try {
-  if(type==="index")renderIndex(await getAagSyncReport(id));
+  if(type==="varios"){const date=params.get("fecha")||billingToday();renderDocument("Facturación del día",dailySalesContent(await listDailySales(date),date));}
+  else if(type==="index")renderIndex(await getAagSyncReport(id));
   else if(type==="pagos"){
     const bundle=await loadOfficialization(tournamentId);
     renderDocument(`Pagos · ${bundle.tournament.name}`,buildPaymentReport(bundle,{...paymentReportOptions(bundle.tournament.id),filter:paymentFilter}));
