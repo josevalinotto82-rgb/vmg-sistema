@@ -89,7 +89,7 @@ export function renderStageNavigation(container, activeStep = -1, tournamentId =
   if (!container) return;
   container.className = "stage-content-shell";
   container.innerHTML = `<nav class="steps stage-content-steps" aria-label="Etapas del torneo">${stages.map((stage, index) => {
-    if ((!tournamentId && index > 0) || (tournamentId && index > 1)) return `<span class="step disabled ${index===activeStep?"active":""}" data-stage-index="${index}" aria-disabled="true"><span class="num">${index + 1}</span>${stage.label}</span>`;
+    if ((!tournamentId && index > 0) || (tournamentId)) return `<span class="step disabled ${index===activeStep?"active":""}" data-stage-index="${index}" aria-disabled="true"><span class="num">${index + 1}</span>${stage.label}</span>`;
     const href = !tournamentId && index === 0 ? `${PAGES.tournaments}?nuevo=1` : tournamentUrl(stage, tournamentId);
     return `<a class="step ${index === activeStep ? "active" : ""}" data-stage-index="${index}" href="${href}"><span class="num">${index + 1}</span>${stage.label}</a>`;
   }).join("")}</nav>`;
@@ -98,11 +98,12 @@ export function renderStageNavigation(container, activeStep = -1, tournamentId =
 
 async function stageAccess(tournamentId){
   const count=async(table,configure)=>{let query=supabase.from(table).select("id",{count:"exact",head:true}).eq("tournament_id",tournamentId);if(configure)query=configure(query);const{count,error}=await query;if(error)throw error;return count||0};
-  const[registrations,scorecards,loaded]=await Promise.all([count("registrations",query=>query.or("registration_status.is.null,registration_status.neq.cancelled")),count("scorecards"),count("scorecards",query=>query.in("card_status",["valid","desc"]))]);
-  return{registrations,scorecards,loaded};
+  const[tournament,registrations,scorecards,loaded]=await Promise.all([supabase.from("tournaments").select("notes").eq("id",tournamentId).single(),count("registrations",query=>query.or("registration_status.is.null,registration_status.neq.cancelled")),count("scorecards"),count("scorecards",query=>query.in("card_status",["valid","desc"]))]);
+  if(tournament.error)throw tournament.error;
+  return{registrations,scorecards,loaded,freeDaily:String(tournament.data?.notes||"").startsWith("VMGC_FREE_SCORECARD_V2:")};
 }
 async function hydrateStageNavigation(container,activeStep,tournamentId){
-  try{const access=await stageAccess(tournamentId),highest=access.loaded>0?4:access.scorecards>0?3:access.registrations>0?2:1,nav=container.querySelector("nav");if(!nav||!container.isConnected)return;nav.innerHTML=stages.map((stage,index)=>{const enabled=index<=highest,active=index===activeStep,inner=`<span class="num">${index+1}</span>${stage.label}`;return enabled?`<a class="step ${active?"active":""}" data-stage-index="${index}" href="${tournamentUrl(stage,tournamentId)}">${inner}</a>`:`<span class="step disabled ${active?"active":""}" data-stage-index="${index}" aria-disabled="true" title="Completá el paso anterior para continuar">${inner}</span>`}).join("")}catch(error){console.warn("No se pudo calcular el avance del torneo",error)}
+  try{const access=await stageAccess(tournamentId),highest=access.loaded>0?4:access.scorecards>0?3:access.registrations>0?2:1,nav=container.querySelector("nav");if(!nav||!container.isConnected)return;nav.innerHTML=stages.map((stage,index)=>{const enabled=access.freeDaily ? index>=3 : index<=highest,active=index===activeStep,inner=`<span class="num">${index+1}</span>${stage.label}`;return enabled?`<a class="step ${active?"active":""}" data-stage-index="${index}" href="${tournamentUrl(stage,tournamentId)}">${inner}</a>`:`<span class="step disabled ${active?"active":""}" data-stage-index="${index}" aria-disabled="true" title="${access.freeDaily ? "Esta etapa no corresponde a Tarjeta Libre" : "Completá el paso anterior para continuar"}">${inner}</span>`}).join("")}catch(error){console.warn("No se pudo calcular el avance del torneo",error)}
 }
 
 function statusLabel(status) {
@@ -570,3 +571,16 @@ export function captureTournamentFromUrl(tournaments = []) {
 }
 
 export { stages };
+
+export async function redirectFreeCardStage(activeStep) {
+  if (activeStep > 2) return false;
+  const params = new URLSearchParams(location.search);
+  if (activeStep === 0 && params.get("nuevo") === "1") return false;
+  const id = params.get("torneo") || params.get("torneo_id") || getActiveTournament().id;
+  if (!id) return false;
+  const tournament = await getTournamentSummary(id);
+  if (!String(tournament?.notes || "").startsWith("VMGC_FREE_SCORECARD_V2:")) return false;
+  setActiveTournament(tournament);
+  location.replace(tournamentUrl(stages[3],id));
+  return true;
+}

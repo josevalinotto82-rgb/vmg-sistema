@@ -1,9 +1,11 @@
 import { requireSession } from "./auth.js";
-import { mountShell, getActiveTournament, setActiveTournament, captureTournamentFromUrl, renderStageNavigation } from "./shell.js";
+import { mountShell, getActiveTournament, setActiveTournament, captureTournamentFromUrl, renderStageNavigation, redirectFreeCardStage } from "./shell.js";
 import { loadTournamentCatalogs, listManagedTournaments, getTournamentForEdit, saveTournament, deleteTournament, saveCategory } from "./tournament_service.js";
 import { escapeHtml, formatDate, setBusy, showState, notify, confirmAction } from "./ui.js";
 
-const context=await requireSession({admin:true});mountShell({context,activeStep:0});
+const context=await requireSession({admin:true});
+if (await redirectFreeCardStage(0)) throw new Error("Tarjeta Libre: continuar en Tarjetas.");
+mountShell({context,activeStep:0});
 const form=document.getElementById("tournamentForm"),pageState=document.getElementById("pageState"),saveButton=document.getElementById("saveButton"),saveTop=document.getElementById("saveTop");
 let catalogs=null,tournaments=[],editingId="",editingStatus="",bis=[new Set(),new Set()],categoryFocusId="",categoryEditingId="";
 const byId=id=>document.getElementById(id),value=id=>byId(id).value,setValue=(id,v)=>byId(id).value=v??"";

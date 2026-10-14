@@ -1,10 +1,12 @@
 import { orderedGridBlocks } from "./registration_grid_order.js";
 import { requireSession } from "./auth.js";
-import { mountShell, getActiveTournament, setActiveTournament, renderStageNavigation } from "./shell.js";
+import { mountShell, getActiveTournament, setActiveTournament, renderStageNavigation, redirectFreeCardStage } from "./shell.js";
 import { escapeHtml, notify, showState, confirmAction, setBusy } from "./ui.js";
 import { listAvailableTournaments, loadGrid, getMemberPlayer, searchPlayers, ensurePlayer, createManualPlayer, lockLine, unlockLine, registerPlayers, reserveSlot, releaseSlot, blockSlot, blockEmptySlots, unblockSlots, moveRegistration, validateSlotChoice, isEmpty, isReservation, subscribeGrid } from "./registration_service.js";
 
 const context = await requireSession({ admin: true });
+if (await redirectFreeCardStage(1)) throw new Error("Tarjeta Libre: continuar en Tarjetas.");
+
 const isAdmin = context.profile.role === "admin";
 mountShell({context,activeStep:1});
 
