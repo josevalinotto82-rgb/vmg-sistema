@@ -121,7 +121,7 @@ export function calculateCard(bundle, scorecard, values, forcedStatus = "") {
 
 export async function loadScorecardWorkspace(tournamentId) {
   const [tournamentResult, categoriesResult, registrationsResult, scorecardsResult] = await Promise.all([
-    supabase.from("tournaments").select("id,name,tournament_date,status,hole_count,start_type,scoring_mode,data_schema_version,game_modes(id,name,participation_type,calculation_params)").eq("id", tournamentId).single(),
+    supabase.from("tournaments").select("id,name,tournament_date,status,hole_count,start_type,scoring_mode,data_schema_version,notes,game_modes(id,name,participation_type,calculation_params)").eq("id", tournamentId).single(),
     supabase.from("tournament_categories").select("id,tournament_id,category_id,category_system,name,display_order,hole_segment,tee_rules,playing_tee_aag_teeout_id").eq("tournament_id", tournamentId).order("display_order"),
     supabase.from("registrations").select("id,partner_registration_id").eq("tournament_id", tournamentId).neq("registration_status", "cancelled"),
     supabase.from("scorecards").select("id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,playing_handicap,player_1_playing_handicap,player_2_playing_handicap,category_id,category_name,tee_name,player_gender,hole_segment,gross,net,total,card_status,hole_scores,export_ready,aag_exportable,exported_to_aag").eq("tournament_id", tournamentId)
@@ -149,7 +149,7 @@ export async function loadScorecardWorkspace(tournamentId) {
   }
   const cardRegistrationIds = new Set(scorecards.map(card => String(card.registration_id || "")));
   const missingGroups = expectedGroups.filter(group => !group.some(id => cardRegistrationIds.has(id)));
-  if (!expectedGroups.length && !scorecards.length) {
+  if (!expectedGroups.length && !scorecards.length && !String(tournamentResult.data.notes || "").startsWith("VMGC_FREE_SCORECARD_V2:")) {
     throw new Error("El torneo todavía no tiene inscriptos ni tarjetas para cargar.");
   }
   // Las tarjetas creadas se pueden cargar sin esperar al resto de los inscriptos.
@@ -164,4 +164,16 @@ export async function saveScorecard(scorecardId, payload) {
 export async function archiveTournament(tournamentId) {
   const { error } = await supabase.from("tournaments").update({ status: "archived" }).eq("id", tournamentId);
   if (error) throw error;
+}
+
+export async function deleteFreeScorecard(tournamentId, scorecardId) {
+  const tournament = await supabase.from("tournaments").select("notes").eq("id", tournamentId).single();
+  if (tournament.error) throw tournament.error;
+  if (!String(tournament.data?.notes || "").startsWith("VMGC_FREE_SCORECARD_V2:")) throw new Error("Solo se pueden eliminar tarjetas libres desde esta opción.");
+  const current = await supabase.from("scorecards").select("id,registration_id,exported_to_aag").eq("id",scorecardId).eq("tournament_id",tournamentId).single();
+  if (current.error) throw current.error;
+  if (current.data.registration_id || current.data.exported_to_aag) throw new Error("No se puede eliminar una tarjeta vinculada a inscripciones o ya exportada a AAG.");
+  const result = await supabase.from("scorecards").delete().eq("id",scorecardId).eq("tournament_id",tournamentId).is("registration_id",null).eq("exported_to_aag",false).select("id");
+  if (result.error) throw result.error;
+  if (!result.data?.length) throw new Error("La tarjeta cambió o no tenés permiso para eliminarla. Actualizá el listado.");
 }

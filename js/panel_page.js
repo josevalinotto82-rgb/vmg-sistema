@@ -20,6 +20,7 @@ function tournamentStrip(tournament, metrics) {
 }
 
 function nextAction(active, metrics) {
+  if (String(active.notes || "").startsWith("VMGC_FREE_SCORECARD_V2:")) return { pending:0, progress:100, notice:`Hay ${metrics.scorecards} tarjeta(s) libre(s) de este día. Podés abrirlas para consultar o corregir sus resultados.`, href:tournamentUrl(stages[3],active.id), label:"Ver tarjetas libres →" };
   const pending = Math.max(0, metrics.registrations - metrics.scorecards), progress = metrics.registrations ? Math.round(metrics.scorecards * 100 / metrics.registrations) : 0;
   if (pending) return { pending, progress, notice:`Hay ${pending} jugador${pending === 1 ? "" : "es"} que necesita${pending === 1 ? "" : "n"} revisión antes de imprimir todas las tarjetas.`, href:tournamentUrl(stages[2], active.id), label:"Continuar en Adm. torneo →" };
   if (metrics.registrations && metrics.ready < metrics.registrations) return { pending:Math.max(0, metrics.registrations - metrics.ready), progress:100, notice:"Los jugadores ya están guardados. Podés continuar con la carga de tarjetas.", href:tournamentUrl(stages[3], active.id), label:"Continuar a tarjetas →" };
@@ -33,7 +34,7 @@ function mountTournamentDrawer() {
   document.body.appendChild(drawer);
   const render = () => { const query = String(drawer.querySelector("[data-search]").value || "").toLowerCase(), date = drawer.querySelector("[data-date]").value; const list = adminTournaments.filter(item => (!date || item.tournament_date === date) && `${item.name} ${item.tournament_date}`.toLowerCase().includes(query)); drawer.querySelector("[data-list]").innerHTML = list.map(item => `<button class="tournament-item ${item.id === activeTournament?.id ? "active" : ""}" data-id="${item.id}"><span class="tournament-main-button"><b>${escapeHtml(item.name)}</b><small>${formatDate(item.tournament_date)} · ${statusLabel(item)}</small></span>${item.id === activeTournament?.id ? '<span class="status open">Activo</span>' : '<span class="chev">›</span>'}</button>`).join("") || '<div class="empty-state compact">No hay coincidencias.</div>'; drawer.querySelectorAll("[data-id]").forEach(button => button.addEventListener("click", async () => { activeTournament = adminTournaments.find(item => item.id === button.dataset.id); setActiveTournament(activeTournament); drawer.classList.remove("open"); await renderAdmin(); notify(`Torneo activo: ${activeTournament.name}`); })); };
   drawer.querySelector("[data-close]").addEventListener("click", () => drawer.classList.remove("open")); drawer.querySelector("[data-search]").addEventListener("input", render); drawer.querySelector("[data-date]").addEventListener("input", render); render();
-  document.getElementById("changeTournamentButton")?.addEventListener("click", () => drawer.classList.add("open"));
+  document.getElementById("changeTournamentButton")?.addEventListener("click", async () => { drawer.classList.add("open"); try { adminTournaments = await listOperationalTournaments({ limit:500 }); if (drawer.isConnected) render(); } catch (error) { notify(error.message,"error"); } });
 }
 
 async function renderAdmin(prefetchedMetrics = null) {
@@ -56,7 +57,7 @@ async function renderAdmin(prefetchedMetrics = null) {
 
 try {
   const displayNamePromise = getUserDisplayName(context.user);
-  const tournamentsPromise = context.profile.role === "admin" ? listOperationalTournaments() : listPublishedOpenTournaments();
+  const tournamentsPromise = context.profile.role === "admin" ? listOperationalTournaments({ limit:500 }) : listPublishedOpenTournaments();
   const storedTournamentId = getActiveTournament().id;
   const metricsPromise = context.profile.role === "admin" && storedTournamentId ? getTournamentMetrics(storedTournamentId).then(value => ({ tournamentId:storedTournamentId, value })).catch(() => null) : Promise.resolve(null);
   const [displayName, tournaments, prefetchedMetrics] = await Promise.all([displayNamePromise, tournamentsPromise, metricsPromise]);

@@ -3,7 +3,7 @@ import { supabase } from "./supabase.js";
 import { PAGES } from "./config.js";
 import { mountShell, getActiveTournament, setActiveTournament, renderStageNavigation } from "./shell.js";
 import { escapeHtml, notify, showState, setBusy, confirmAction } from "./ui.js";
-import { normalizeText, enabledHoles, segmentLabel, cardStatus, statusLabel, scoreMap, categoryForScorecard, holeMetadata, missingCourseData, isAmerican, isGross, calculateCard, loadScorecardWorkspace, saveScorecard, archiveTournament } from "./scorecards_service.js";
+import { normalizeText, enabledHoles, segmentLabel, cardStatus, statusLabel, scoreMap, categoryForScorecard, holeMetadata, missingCourseData, isAmerican, isGross, calculateCard, loadScorecardWorkspace, saveScorecard, archiveTournament, deleteFreeScorecard } from "./scorecards_service.js";
 
 const context = await requireSession({ admin: true });
 mountShell({ context, activeStep: 3 });
@@ -117,7 +117,7 @@ function renderEditor({ focusFirstHole = true } = {}) {
   const holes = enabledHoles(card.hole_segment), first = holes.filter(number => number <= 9), second = holes.filter(number => number >= 10);
   const category = categoryForScorecard(bundle, card), noNet = isGross(bundle) || isAmerican(bundle);
   pageState.classList.add("hidden"); editor.classList.remove("hidden");
-  editor.innerHTML = `<div class="card-head scorecard-editor-head"><div><div class="eyebrow">Tarjeta seleccionada</div><h2>${escapeHtml(card.display_name)}</h2><div class="subtle">Matrícula ${escapeHtml(card.aag_member_number || "—")} · ${escapeHtml(category?.name || card.category_name || "Sin categoría")} · ${escapeHtml(card.tee_name || "Tee sin informar")} · ${segmentLabel(card.hole_segment)}</div></div><span class="status ${cardStatus(card) === "valid" ? "open" : cardStatus(card) === "desc" ? "danger" : "pending"}">${statusLabel(card)}</span></div><div class="card-body"><div class="scorecard-context">${isGross(bundle) ? "Torneo Gross: se suman golpes y no se descuenta HCP." : isAmerican(bundle) ? "Americana: cargá el resultado final de la pareja por hoyo; no se descuenta otro HCP." : `HCP de juego: ${card.playing_handicap ?? "—"}. El neto se calcula automáticamente.`}</div><div class="hole-groups">${first.length ? holeGroup(card, first, "Primera vuelta") : ""}${second.length ? holeGroup(card, second, "Segunda vuelta") : ""}</div><div class="score-summary scorecard-preview ${noNet ? "without-net" : ""}"><div class="score-box"><strong id="previewFirst">—</strong><span>Ida</span></div><div class="score-box"><strong id="previewSecond">—</strong><span>Vuelta</span></div><div class="score-box"><strong id="previewGross">—</strong><span>${noNet ? "Resultado" : "Gross"}</span></div>${noNet ? "" : '<div class="score-box"><strong id="previewNet">—</strong><span>Neto</span></div>'}<div class="score-box"><strong id="previewStatus">—</strong><span>Estado</span></div></div><div class="scorecard-actions"><button class="btn secondary" id="clearCardButton">Limpiar</button><button class="btn danger" id="descCardButton">${cardStatus(card) === "desc" ? "Quitar DESC" : "Marcar DESC"}</button><button class="btn primary" id="saveCardButton">Guardar tarjeta</button></div></div>`;
+  editor.innerHTML = `<div class="card-head scorecard-editor-head"><div><div class="eyebrow">Tarjeta seleccionada</div><h2>${escapeHtml(card.display_name)}</h2><div class="subtle">Matrícula ${escapeHtml(card.aag_member_number || "—")} · ${escapeHtml(category?.name || card.category_name || "Sin categoría")} · ${escapeHtml(card.tee_name || "Tee sin informar")} · ${segmentLabel(card.hole_segment)}</div></div><span class="status ${cardStatus(card) === "valid" ? "open" : cardStatus(card) === "desc" ? "danger" : "pending"}">${statusLabel(card)}</span></div><div class="card-body"><div class="scorecard-context">${isGross(bundle) ? "Torneo Gross: se suman golpes y no se descuenta HCP." : isAmerican(bundle) ? "Americana: cargá el resultado final de la pareja por hoyo; no se descuenta otro HCP." : `HCP de juego: ${card.playing_handicap ?? "—"}. El neto se calcula automáticamente.`}</div><div class="hole-groups">${first.length ? holeGroup(card, first, "Primera vuelta") : ""}${second.length ? holeGroup(card, second, "Segunda vuelta") : ""}</div><div class="score-summary scorecard-preview ${noNet ? "without-net" : ""}"><div class="score-box"><strong id="previewFirst">—</strong><span>Ida</span></div><div class="score-box"><strong id="previewSecond">—</strong><span>Vuelta</span></div><div class="score-box"><strong id="previewGross">—</strong><span>${noNet ? "Resultado" : "Gross"}</span></div>${noNet ? "" : '<div class="score-box"><strong id="previewNet">—</strong><span>Neto</span></div>'}<div class="score-box"><strong id="previewStatus">—</strong><span>Estado</span></div></div><div class="scorecard-actions">${String(bundle.tournament.notes || "").startsWith("VMGC_FREE_SCORECARD_V2:") ? `<button class="btn danger" id="deleteFreeCardButton" ${card.exported_to_aag ? 'disabled title="La tarjeta ya fue exportada a AAG"' : ""}>Eliminar tarjeta</button>` : ""}<button class="btn secondary" id="clearCardButton">Limpiar</button><button class="btn danger" id="descCardButton">${cardStatus(card) === "desc" ? "Quitar DESC" : "Marcar DESC"}</button><button class="btn primary" id="saveCardButton">Guardar tarjeta</button></div></div>`;
   editor.querySelectorAll("[data-hole-input]").forEach((input, index, inputs) => {
     input.addEventListener("input", () => { input.value = input.value.replace(/[^0-9]/g, "").slice(0, 2); updatePreview(); });
     input.addEventListener("keydown", async event => { if (event.key !== "Enter") return; event.preventDefault(); if (inputs[index + 1]) { inputs[index + 1].focus(); inputs[index + 1].select(); } else await saveCurrent({ returnToSearch: true }); });
@@ -125,6 +125,7 @@ function renderEditor({ focusFirstHole = true } = {}) {
   byId("clearCardButton").addEventListener("click", () => { editor.querySelectorAll("[data-hole-input]").forEach(input => { input.value = ""; }); updatePreview(); });
   byId("descCardButton").addEventListener("click", toggleDesc);
   byId("saveCardButton").addEventListener("click", () => saveCurrent());
+  byId("deleteFreeCardButton")?.addEventListener("click", deleteCurrentFreeCard);
   updatePreview();
   if (focusFirstHole) requestAnimationFrame(() => editor.querySelector("[data-hole-input]")?.focus());
 }
@@ -162,6 +163,8 @@ async function reload({ preserveSelection = false, focusEditor = true } = {}) {
   byId("backOfficialization").href = `oficializacion.html?torneo=${encodeURIComponent(id)}`;
   const previous = preserveSelection ? selectedId : "";
   bundle = await loadScorecardWorkspace(id); setActiveTournament(bundle.tournament);
+  const freeDaily = String(bundle.tournament.notes || "").startsWith("VMGC_FREE_SCORECARD_V2:");
+  byId("backOfficialization").hidden = freeDaily;
   selectedId = bundle.scorecards.some(card => String(card.id) === String(previous)) ? previous : sortedCards()[0]?.id || "";
   byId("backOfficialization").href = `oficializacion.html?torneo=${encodeURIComponent(id)}`;
   renderStrip(); renderKpis(); renderList(); renderEditor({ focusFirstHole: focusEditor }); subscribe(id);
@@ -199,3 +202,15 @@ try { await reload({ focusEditor: false }); focusSearchForNextPlayer(); }
 catch (error) { console.error(error); showState(pageState, error.message || "No se pudo cargar el torneo.", "error"); editor.classList.add("hidden"); }
 
 window.addEventListener("beforeunload", () => { if (realtimeChannel) supabase.removeChannel(realtimeChannel); });
+
+async function deleteCurrentFreeCard() {
+  const card = currentCard();
+  if (!card || card.exported_to_aag) return;
+  const tournamentId = bundle.tournament.id, cardId = card.id;
+  if (!await confirmAction({ title:"Eliminar tarjeta libre", message:`¿Querés eliminar la tarjeta de ${card.display_name}? Esta acción no se puede deshacer.`, confirmText:"Eliminar", danger:true })) return;
+  const button = byId("deleteFreeCardButton");
+  setBusy(button,true,"Eliminando…");
+  try { await deleteFreeScorecard(tournamentId,cardId); await reload({ focusEditor:false }); notify("Tarjeta libre eliminada."); }
+  catch (error) { notify(error.message,"error"); }
+  finally { if (button?.isConnected) setBusy(button,false); }
+}

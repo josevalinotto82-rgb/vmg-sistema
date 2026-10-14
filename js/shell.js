@@ -127,7 +127,8 @@ async function getTournamentSummary(id) {
   return data || null;
 }
 
-async function listTournaments() {
+async function listTournaments({ refresh = false } = {}) {
+  if (refresh) tournamentListPromise = null;
   if (!tournamentListPromise) {
     tournamentListPromise = (async () => {
       const pageSize = 500;
@@ -223,7 +224,7 @@ async function hydrateTournamentHeader(host, activeStep) {
       drawer.addEventListener("click", event => { if (event.target === drawer) close(); });
       let tournaments;
       try {
-        tournaments = await listTournaments();
+        tournaments = await listTournaments({ refresh: true });
       } catch (error) {
         drawer.querySelector("[data-picker-list]").innerHTML = `<div class="notice error">No se pudo cargar el historial: ${escapeHtml(error.message)}</div>`;
         return;
@@ -241,7 +242,7 @@ async function hydrateTournamentHeader(host, activeStep) {
         const picked = tournaments.find(t => t.id === button.dataset.pickTournament);
         if (!picked) return;
         setActiveTournament(picked);
-        const stage = stages[Math.max(0, activeStep)] || stages[0];
+        const stage = String(picked.notes || "").startsWith("VMGC_FREE_SCORECARD_V2:") ? stages[3] : stages[Math.max(0, activeStep)] || stages[0];
         location.href = tournamentUrl(stage, picked.id);
       });
       drawer.querySelector("[data-picker-search]").focus();

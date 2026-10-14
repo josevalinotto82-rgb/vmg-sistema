@@ -44,7 +44,7 @@ export async function listOperationalTournaments({ limit = 30 } = {}) {
     .order("tournament_date", { ascending: false })
     .limit(Math.max(limit, 100));
   if (error) throw error;
-  const tournaments=(data || []).filter(row=>!String(row.notes||"").startsWith("VMGC_FREE_SCORECARD_V2"));
+  const tournaments=data || [];
   const ids=tournaments.map(row=>row.id);
   let exportedIds=new Set();
   if(ids.length){
