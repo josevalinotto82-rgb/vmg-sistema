@@ -1,3 +1,4 @@
+import { syncSummaryHtml, syncCountsText } from "./aag_sync_report.js";
 import { mountMiscBilling } from "./misc_billing_page.js";
 import { mountDailyBilling } from "./misc_billing_report.js";
 import { mountPublicResults } from "./public_results_page.js";
@@ -5,7 +6,7 @@ import { PAGES, ACTIVE_TOURNAMENT_ID_KEY, ACTIVE_TOURNAMENT_NAME_KEY } from "./c
 import { signOut } from "./auth.js";
 import { supabase } from "./supabase.js";
 import { confirmAction, escapeHtml, formatDate, notify } from "./ui.js";
-import { executeAagSync, getAagSyncStatus, linkManualPlayer, listAagSyncReports, prepareAagSync } from "./aag_sync_service.js";
+import { cancelAagSync, executeAagSync, getAagSyncStatus, linkManualPlayer, listAagSyncReports, prepareAagSync } from "./aag_sync_service.js";
 import { listCurrentAagExports, refreshAllAagStatuses, syncAagFields } from "./aag_exports_service.js";
 import { loadTournamentStatistics } from "./statistics_service.js";
 import { statisticsContent, printStatisticsReport } from "./statistics_report.js";
@@ -270,7 +271,7 @@ function settingsDetail(item) {
 }
 
 const dateTime = value => value ? new Intl.DateTimeFormat("es-AR", { dateStyle:"medium", timeStyle:"short", timeZone:"America/Argentina/Cordoba" }).format(new Date(value)) : "Sin registro";
-const indexText = value => Number.isFinite(Number(value)) ? Number(value).toFixed(1) : "—";
+const indexText = value => value != null && String(value).trim() !== "" && Number.isFinite(Number(value)) ? Number(value).toFixed(1) : "—";
 const localDateKey = value => {
   const parts = new Intl.DateTimeFormat("en", { timeZone:"America/Argentina/Cordoba", year:"numeric", month:"2-digit", day:"2-digit" }).formatToParts(new Date(value));
   const get = type => parts.find(part => part.type === type)?.value || "";
@@ -298,7 +299,7 @@ async function hydrateReportsPanel(detail) {
     const indexRows = date => {
       const rows = reports.filter(report => !date || localDateKey(report.created_at) === date);
       if (!rows.length) return '<div class="empty-state compact">No hay actualizaciones en esa fecha.</div>';
-      return rows.map(report => `<button type="button" class="unified-report-row" data-open-index-report="${report.id}"><span class="unified-report-icon">↻</span><span><strong>${dateTime(report.created_at)}</strong><small>${report.before_vmgc ?? "—"} → ${report.after_vmgc ?? "—"} socios VMGC</small></span><span class="aag-report-counts"><b>+${report.added_count}</b><b>↕${report.updated_count}</b><b>−${report.deactivated_count}</b></span></button>`).join("");
+      return rows.map(report => `<button type="button" class="unified-report-row" data-open-index-report="${report.id}"><span class="unified-report-icon">↻</span><span><strong>${dateTime(report.created_at)}</strong><small>${report.before_vmgc ?? "—"} → ${report.after_vmgc ?? "—"} matrículas AAG activas VMGC · ${escapeHtml(syncCountsText(report.data,report))}</small></span><span class="aag-report-counts"><b>+${report.added_count}</b><b>↕${report.updated_count}</b><b>−${report.deactivated_count}</b></span></button>`).join("");
     };
     const renderBrowser = type => {
       if(type === "varios") { mountDailyBilling(host,{back:renderHome}); return; }
@@ -492,9 +493,7 @@ async function hydrateAagStatus(host) {
   }
 }
 
-function syncSummary(changes) {
-  return `<div class="aag-sync-success"><span class="status open">Sincronización correcta</span><h2>Actualización finalizada</h2><div class="aag-report-kpis"><div><strong>${changes.added.length}</strong><span>Altas</span></div><div><strong>${changes.updated.length}</strong><span>Cambios de index</span></div><div><strong>${changes.deactivated.length}</strong><span>Bajas</span></div></div><p>El informe quedó guardado y ya está disponible en <b>Configuración → Informes</b>.</p></div>`;
-}
+function syncSummary(changes) { return syncSummaryHtml(changes); }
 
 function openSyncProgress() {
   document.getElementById("aagSyncDialog")?.remove();
@@ -509,6 +508,8 @@ function openSyncProgress() {
 }
 
 async function startAagSync(shellHost) {
+  if(document.getElementById("aagSyncDialog")) return;
+  let prepared;
   try {
     const status = await getAagSyncStatus();
     const sourceDate = status.sourceUpdatedAt || status.lastCompletedAt;
@@ -516,9 +517,18 @@ async function startAagSync(shellHost) {
     if (!accepted) return;
     document.getElementById("systemSettingsDrawer")?.remove();
     const ui = openSyncProgress();
-    const prepared = await prepareAagSync(message => ui.progress(message));
+    prepared = await prepareAagSync(message => ui.progress(message));
+    ui.closeButton.disabled=false;
+    ui.closeButton.addEventListener("click",()=>cancelAagSync(prepared).catch(error=>notify(error.message,"error")));
     const finish = async () => {
-      const { changes } = await executeAagSync(message => ui.progress(message));
+      ui.closeButton.disabled=true;
+      let changes;
+      try { ({changes}=await executeAagSync(message => ui.progress(message),prepared)); }
+      catch(error) {
+        ui.content.innerHTML=`<div class="notice warn"><strong>No se pudo completar la sincronización.</strong><br>${escapeHtml(error.message)}</div>`;
+        throw error;
+      }
+      finally { ui.closeButton.disabled=false; }
       ui.content.innerHTML = syncSummary(changes);
       ui.closeButton.disabled = false;
       await hydrateAagStatus(shellHost);
@@ -528,13 +538,17 @@ async function startAagSync(shellHost) {
       const item = prepared.pending[0];
       ui.content.innerHTML = `<div class="notice warn"><strong>Posible jugador duplicado</strong><br>Antes de sincronizar, revisá si el nuevo jugador AAG ya existe como jugador manual.</div><div class="aag-association"><div><span>Nuevo dato AAG</span><strong>${escapeHtml(playerDisplay(item.aag))}</strong><small>Matrícula ${escapeHtml(item.aag.aag_member_number)} · Index ${indexText(item.aag.current_index)}</small></div><h3>¿Corresponde a alguno de estos jugadores?</h3>${item.candidates.map((candidate,index) => `<button type="button" class="aag-candidate" data-candidate="${index}"><span><strong>${escapeHtml(playerDisplay(candidate))}</strong><small>Index ${indexText(candidate.current_index)} · ${candidate.usage?.registrations ?? "—"} inscripciones · ${candidate.usage?.scorecards ?? "—"} tarjetas</small></span><b>Asociar</b></button>`).join("")}<button type="button" class="btn secondary" data-skip-association>Crear jugador nuevo / no asociar</button></div>`;
       ui.content.querySelectorAll("[data-candidate]").forEach(button => button.addEventListener("click", async () => {
-        try { button.disabled = true; await linkManualPlayer(item.candidates[Number(button.dataset.candidate)], item.aag); prepared.pending.shift(); await resolveNext(); }
+        if(prepared.busy || !button.isConnected) return;
+        prepared.busy=true;
+        try { button.disabled = true; await linkManualPlayer(item.candidates[Number(button.dataset.candidate)], item.aag,prepared); prepared.pending.shift(); await resolveNext(); }
         catch (error) { notify(error.message, "error"); button.disabled = false; }
+        finally { prepared.busy=false; }
       }));
-      ui.content.querySelector("[data-skip-association]").addEventListener("click", async () => { prepared.pending.shift(); await resolveNext(); });
+      ui.content.querySelector("[data-skip-association]").addEventListener("click", async event => { if(prepared.busy || !event.currentTarget.isConnected) return; prepared.busy=true; try { prepared.pending.shift(); await resolveNext(); } catch(error) { notify(error.message,"error"); } finally { prepared.busy=false; } });
     };
     await resolveNext();
   } catch (error) {
+    await cancelAagSync(prepared).catch(()=>{});
     const ui = document.getElementById("aagSyncDialog");
     const content = ui?.querySelector("[data-sync-content]"), close = ui?.querySelector("[data-sync-close]");
     if (content) content.innerHTML = `<div class="notice warn"><strong>No se pudo completar la sincronización.</strong><br>${escapeHtml(error.message || error)}</div>`;

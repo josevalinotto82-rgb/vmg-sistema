@@ -5,15 +5,8 @@ const CLUB_ID = 408;
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/swift-worker`;
 
 const cleanMemberNumber = value => String(value ?? "").trim();
-const indexNumber = value => {
-  const number = Number(String(value ?? "").replace(",", "."));
-  return Number.isFinite(number) ? Math.round(number * 10) / 10 : null;
-};
 const normalized = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
-const playerName = player => player?.full_name || [player?.last_name, player?.first_name].filter(Boolean).join(", ") || "Sin nombre";
 const isFemale = gender => ["female", "f", "1", "dama", "damas"].includes(String(gender || "").toLowerCase());
-const isVmgc = player => Number(player?.option_club_id) === CLUB_ID || player?.is_club_member === true;
-const isActiveVmgc = player => Boolean(player) && isVmgc(player) && player?.is_aag_active !== false;
 
 function nameKey(player) {
   const last = normalized(player?.last_name), first = normalized(player?.first_name);
@@ -59,14 +52,6 @@ async function manualPlayers() {
   });
 }
 
-async function vmgcAagPlayers() {
-  return selectAll({
-    table: "aag_enrolleds",
-    select: "enrollment_number,first_name,last_name,full_name,gender,current_index,option_club_id,club_name,search_text,born_date,doc_number,lowest_handicap_index,last_sync_at",
-    orderBy: "enrollment_number",
-    filter: query => query.eq("option_club_id", CLUB_ID)
-  });
-}
 
 async function playerUsage(playerId) {
   const definitions = [
@@ -105,94 +90,59 @@ export async function getAagSyncStatus() {
   };
 }
 
-export async function prepareAagSync(onProgress = () => {}) {
-  onProgress("Revisando jugadores manuales antes de sincronizar…");
-  const [beforeMap, manuals, enrolled] = await Promise.all([playersSnapshot(), manualPlayers(), vmgcAagPlayers()]);
-  const existingMembers = new Set([...beforeMap.keys()]);
-  const manualByKey = new Map();
-  manuals.filter(player => nameKey(player)).forEach(player => {
-    const key = `${nameKey(player)}|${isFemale(player.gender) ? "female" : "male"}`;
-    if (!manualByKey.has(key)) manualByKey.set(key, []);
-    manualByKey.get(key).push(player);
-  });
-  const pending = [];
-  for (const enrolledPlayer of enrolled) {
-    const member = cleanMemberNumber(enrolledPlayer.enrollment_number);
-    if (!member || existingMembers.has(member)) continue;
-    const candidates = manualByKey.get(`${nameKey(enrolledPlayer)}|${isFemale(enrolledPlayer.gender) ? "female" : "male"}`) || [];
-    if (!candidates.length) continue;
-    pending.push({ aag: { ...enrolledPlayer, aag_member_number: member }, candidates: candidates.slice(0, 5) });
-  }
-  await Promise.all(pending.flatMap(item => item.candidates.map(async candidate => { candidate.usage = await playerUsage(candidate.id); })));
-  return { beforeMap, pending };
-}
-
-export async function linkManualPlayer(candidate, aagPlayer) {
-  const member = cleanMemberNumber(aagPlayer.aag_member_number || aagPlayer.enrollment_number);
-  const payload = {
-    aag_member_number: member,
-    first_name: aagPlayer.first_name || candidate.first_name || null,
-    last_name: aagPlayer.last_name || candidate.last_name || null,
-    gender: aagPlayer.gender || candidate.gender || null,
-    current_index: aagPlayer.current_index ?? candidate.current_index ?? null,
-    born_date: aagPlayer.born_date || candidate.born_date || null,
-    doc_number: aagPlayer.doc_number || candidate.doc_number || null,
-    lowest_handicap_index: aagPlayer.lowest_handicap_index ?? candidate.lowest_handicap_index ?? null,
-    country: "Argentina",
-    club_name: aagPlayer.club_name || "Villa María Golf Club",
-    option_club_id: Number(aagPlayer.option_club_id) || CLUB_ID,
-    is_club_member: Number(aagPlayer.option_club_id) === CLUB_ID,
-    is_aag_active: true,
-    source: "aag",
-    index_updated_at: new Date().toISOString()
-  };
-  const { error } = await supabase.from("players").update(payload).eq("id", candidate.id);
-  if (error) throw error;
-}
-
-function buildChanges(beforeMap, afterMap, workerData = {}) {
-  const added = [], updated = [], deactivated = [];
-  for (const [member, after] of afterMap.entries()) {
-    const before = beforeMap.get(member);
-    if (!isActiveVmgc(after)) continue;
-    if (!before || !isActiveVmgc(before)) {
-      added.push({ matricula:member, nombre:playerName(after), index:indexNumber(after.current_index), club:after.club_name || "Villa María Golf Club" });
-      continue;
-    }
-    const oldIndex = indexNumber(before.current_index), newIndex = indexNumber(after.current_index);
-    if (oldIndex !== newIndex) updated.push({ matricula:member, nombre:playerName(after), old_index:oldIndex, new_index:newIndex, club:after.club_name || "Villa María Golf Club" });
-  }
-  for (const [member, before] of beforeMap.entries()) {
-    if (!isActiveVmgc(before)) continue;
-    const after = afterMap.get(member);
-    if (!after || !isActiveVmgc(after)) deactivated.push({ matricula:member, nombre:playerName(after || before), old_index:indexNumber(before.current_index), new_index:after ? indexNumber(after.current_index) : null, old_club:before.club_name || "Villa María Golf Club", new_club:after?.club_name || "Sin club VMGC", reason:!after ? "Ya no aparece en players después de sincronizar." : "Ya no figura como miembro activo del club 408." });
-  }
-  for (const rows of [added, updated, deactivated]) rows.sort((a,b) => String(a.nombre).localeCompare(String(b.nombre), "es"));
-  return { added, updated, deactivated, totals:{ before_vmgc:[...beforeMap.values()].filter(isActiveVmgc).length, after_vmgc:[...afterMap.values()].filter(isActiveVmgc).length, total_received:workerData.total_received ?? workerData.totalReceived ?? null, total_filtered:workerData.total_filtered ?? workerData.totalFiltered ?? null, total_upserted:workerData.total_upserted ?? workerData.totalUpserted ?? null } };
-}
-
-export async function executeAagSync(onProgress = () => {}) {
-  const { data:{ session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("La sesión venció. Volvé a ingresar.");
-  onProgress("Tomando la foto previa de jugadores VMGC…");
-  const beforeMap = await playersSnapshot();
-  onProgress("Sincronizando con AAG… puede tardar unos minutos.");
+async function callWorker(action, extra = {}) {
+  const {data:{session},error} = await supabase.auth.getSession();
+  if(error || !session) throw new Error("La sesión venció. Volvé a ingresar.");
   const response = await fetch(FUNCTION_URL, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json", Authorization:`Bearer ${session.access_token}`, apikey:SUPABASE_PUBLISHABLE_KEY },
-    body:JSON.stringify({ action:"sync_vmgc", club_id:CLUB_ID, detail_changes:true })
+    method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`,apikey:SUPABASE_PUBLISHABLE_KEY},
+    body:JSON.stringify({action,...extra})
   });
-  const text = await response.text();
-  let workerData = {};
-  try { workerData = text ? JSON.parse(text) : {}; } catch { workerData = { raw_response:text }; }
-  if (!response.ok || workerData.ok === false) throw new Error(workerData.error || workerData.message || text || "No se pudo sincronizar con AAG.");
-  onProgress("Comparando índices y preparando el informe…");
-  const afterMap = await playersSnapshot();
-  const changes = buildChanges(beforeMap, afterMap, workerData);
-  const payload = { club_id:CLUB_ID, generated_at:new Date().toISOString(), totals:changes.totals, added:changes.added, updated:changes.updated, deactivated:changes.deactivated, worker_response:workerData };
-  const { data:history, error } = await supabase.from("aag_sync_history").insert({ created_by:session.user.id, club_id:CLUB_ID, added_count:changes.added.length, updated_count:changes.updated.length, deactivated_count:changes.deactivated.length, before_vmgc:changes.totals.before_vmgc, after_vmgc:changes.totals.after_vmgc, data:payload }).select("*").single();
-  if (error) throw new Error(`Los índices se actualizaron, pero no se pudo guardar el informe: ${error.message}`);
-  return { history, changes };
+  const text=await response.text();
+  let result;
+  try {result=JSON.parse(text);} catch {throw new Error("El servidor no devolvió una respuesta válida. Revisá los informes antes de reintentar.");}
+  if(!response.ok || result.ok!==true) throw new Error(result.error || "No se pudo sincronizar con AAG.");
+  return result;
+}
+
+export async function prepareAagSync(onProgress = () => {}) {
+  onProgress("Descargando y validando el padrón actual de AAG…");
+  const prepared=await callWorker("prepare_sync_vmgc");
+  try {
+    onProgress("Revisando jugadores manuales contra el padrón recién recibido…");
+    const [beforeMap,manuals]=await Promise.all([playersSnapshot(),manualPlayers()]);
+    const pending=[];
+    for(const player of prepared.vmgc_players || []) {
+      const member=cleanMemberNumber(player.enrollment_number);
+      if(beforeMap.has(member)) continue;
+      const candidates=manuals.filter(p=>nameKey(p)===nameKey(player) && isFemale(p.gender)===isFemale(player.gender)).slice(0,5);
+      if(candidates.length) pending.push({aag:{...player,aag_member_number:member},candidates});
+    }
+    await Promise.all(pending.flatMap(item=>item.candidates.map(async candidate=>{candidate.usage=await playerUsage(candidate.id);}))); 
+    return {run_id:prepared.run_id,pending,links:[],completed:false};
+  } catch(error) {
+    await callWorker("cancel_sync_vmgc",{run_id:prepared.run_id}).catch(()=>{});
+    throw error;
+  }
+}
+
+export async function linkManualPlayer(candidate,aagPlayer,prepared) {
+  const member=cleanMemberNumber(aagPlayer.aag_member_number || aagPlayer.enrollment_number);
+  if(prepared.links.some(link=>link.player_id===candidate.id)) throw new Error("Ya elegiste ese jugador para otra matrícula.");
+  prepared.links.push({player_id:candidate.id,matricula:member});
+  // Se aplica junto con el padrón, dentro de la transacción del servidor.
+}
+
+export async function cancelAagSync(prepared) {
+  if(prepared?.run_id && !prepared.completed) await callWorker("cancel_sync_vmgc",{run_id:prepared.run_id});
+}
+
+export async function executeAagSync(onProgress = () => {},prepared) {
+  if(!prepared?.run_id) throw new Error("Primero hay que preparar la sincronización.");
+  onProgress("Comparando y guardando los cambios AAG…");
+  const result=await callWorker("sync_vmgc",{run_id:prepared.run_id,links:prepared.links});
+  prepared.completed=true;
+  if(result.schema_version!==2 || !result.history_id) throw new Error("La sincronización no devolvió el informe esperado.");
+  return {history:{id:result.history_id},changes:result.changes};
 }
 
 export async function listAagSyncReports(limit = 30) {

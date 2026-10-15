@@ -1366,3 +1366,6 @@ body.standalone-report-page{animation: auto ease 0s 1 normal none running none !
 @media (min-width: 901px){
 .settings-detail-panel:has([data-misc-billing]){width: min(680px, 100% - 410px);}
 }
+
+/* Informe de sincronización AAG v2 */
+.aag-report-v2>footer{position:static;margin-top:22px}.aag-report-v2 td{overflow-wrap:anywhere}.aag-report-v2 th{vertical-align:top}.aag-report-v2 thead{display:table-header-group}
