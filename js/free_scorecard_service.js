@@ -1,3 +1,4 @@
+import { queryPlayerCandidates, rankPlayerSearch } from "./player_search.js";
 import { supabase } from "./supabase.js";
 import { START_TYPE_TEMPLATE_ID, APP_TIMEZONE } from "./config.js";
 
@@ -32,16 +33,14 @@ export async function loadFreeCardCatalogs(){
 }
 
 export async function searchFreePlayers(term){
-  const raw=String(term||"").trim(),words=normalize(raw).split(" ").filter(Boolean);if(raw.length<2)return[];
-  const matricula=raw.replace(/\s/g,""),numeric=/^\d+$/.test(matricula),pattern=`%${words.join("%")}%`,first=`%${words[0]||""}%`;
-  let playersQuery=supabase.from("players").select("id,first_name,last_name,full_name,gender,current_index,aag_member_number,country,club_name,is_club_member,option_club_id,search_text").or([`search_text.ilike.${pattern}`,`full_name.ilike.${pattern}`,`first_name.ilike.${first}`,`last_name.ilike.${first}`,...(numeric?[`aag_member_number.eq.${matricula}`]:[])].join(",")).limit(35);
-  let aagQuery=supabase.from("aag_enrolleds").select("enrollment_number,first_name,last_name,full_name,gender,current_index,option_club_id,club_name,search_text");
-  aagQuery=numeric?aagQuery.eq("enrollment_number",matricula):aagQuery.ilike("search_text",pattern);
-  const[playersResult,aagResult]=await Promise.all([playersQuery,aagQuery.limit(35)]);
-  if(playersResult.error)throw playersResult.error;if(aagResult.error)throw aagResult.error;
-  const players=(playersResult.data||[]).map(p=>({...p,source:"players"})),existing=new Set(players.map(p=>String(p.aag_member_number||"")).filter(Boolean));
-  const aag=(aagResult.data||[]).filter(p=>!existing.has(String(p.enrollment_number||""))).map(p=>({id:`aag:${p.enrollment_number}`,source:"aag",aag_member_number:p.enrollment_number,first_name:p.first_name,last_name:p.last_name,full_name:p.full_name,gender:p.gender,current_index:p.current_index,option_club_id:p.option_club_id,club_name:p.club_name,country:"Argentina",is_club_member:Number(p.option_club_id)===408}));
-  return[...players,...aag].filter(p=>words.every(word=>normalize(`${p.full_name||""} ${p.last_name||""} ${p.first_name||""} ${p.aag_member_number||""}`).includes(word))).sort((a,b)=>(Number(b.is_club_member)-Number(a.is_club_member))||String(a.full_name||"").localeCompare(String(b.full_name||""),"es")).slice(0,15);
+  if(String(term||"").trim().length<2)return[];
+  const [local,aag]=await Promise.all([
+    queryPlayerCandidates(supabase,"players","id,first_name,last_name,full_name,gender,current_index,aag_member_number,country,club_name,is_club_member,option_club_id,search_text",term),
+    queryPlayerCandidates(supabase,"aag_enrolleds","enrollment_number,first_name,last_name,full_name,gender,current_index,option_club_id,club_name,search_text",term)
+  ]);
+  const players=local.map(p=>({...p,source:"players"})),existing=new Set(players.map(p=>String(p.aag_member_number||"")).filter(Boolean));
+  const external=aag.filter(p=>!existing.has(String(p.enrollment_number||""))).map(p=>({...p,id:`aag:${p.enrollment_number}`,source:"aag",aag_member_number:p.enrollment_number,country:"Argentina",is_club_member:Number(p.option_club_id)===408}));
+  return rankPlayerSearch([...players,...external],term);
 }
 
 export function playerFromResult(player){return{source:player.source,player_id:player.source==="players"?player.id:null,display_name:player.full_name||[player.last_name,player.first_name].filter(Boolean).join(", "),aag_member_number:String(player.aag_member_number||""),gender:normalizeGender(player.gender),official_index:toNumber(player.current_index),club_name:player.club_name||"",is_club_member:player.is_club_member===true||Number(player.option_club_id)===408}}

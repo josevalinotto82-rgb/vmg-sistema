@@ -1,5 +1,6 @@
+import { playerSearchRank } from "./player_search.js";
 import { requireSession } from "./auth.js";
-import { mountShell, getActiveTournament, setActiveTournament, renderStageNavigation, redirectFreeCardStage } from "./shell.js";
+import { mountShell, getActiveTournament, setActiveTournament, renderStageNavigation, redirectFreeCardStage, openMiscBilling } from "./shell.js";
 import { escapeHtml, formatDate, notify, setBusy, showState, confirmAction } from "./ui.js";
 import { listOfficializationTournaments, loadOfficialization, buildGroups, saveSingle, savePair, savePayment, saveTournament, nextCouponNumber, isClubMember } from "./officialization_service.js";
 import { baseIndex, getLine, getScorecard, hasOfficialIndex, isNewCategory, memberNumber, toNumber, visibleTeeName } from "./officialization_rules.js";
@@ -127,10 +128,10 @@ function rowPayment(group) {
 
 function renderRows() {
   const query = searchText(byId("playerSearch").value);
-  const visible = [...groups].sort((a, b) => groupSortValue(a).localeCompare(groupSortValue(b))).filter(group => {
+  const visible = [...groups].sort((a, b) => (query ? Math.min(...a.registrations.map(reg=>playerSearchRank(reg,query)))-Math.min(...b.registrations.map(reg=>playerSearchRank(reg,query))) : 0) || groupSortValue(a).localeCompare(groupSortValue(b))).filter(group => {
     const status = groupStatus(group);
     const haystack = searchText(group.registrations.map(reg => `${reg.display_name} ${memberNumber(reg) || ""} ${reg.club_name || reg.player?.club_name || ""} ${getLine(reg)?.line_time || ""} ${getLine(reg)?.starting_hole || ""}`).join(" "));
-    return (!query || haystack.includes(query)) && (currentFilter === "all" || currentFilter === status);
+    return (!query || query.split(/\s+/).every(word=>haystack.includes(word))) && (currentFilter === "all" || currentFilter === status);
   });
   rowsHost.innerHTML = visible.map(group => {
     const status = groupStatus(group), score = scorecardForGroup(group), preview = groupPreview(group), category = preview.category, line = getLine(group.registrations[0]);
@@ -181,7 +182,7 @@ function paymentFields(registration) {
   const payment = bundle.paymentMap.get(String(registration.id)) || {};
   const benefit = bundle.noPayMap?.get(String(registration.id)), suggestedMethod = payment.payment_method || (benefit?.suggestNoPay ? "no_pay" : "cash"), defaultPrice = suggestedMethod === "no_pay" ? 0 : (localStorage.getItem(priceKey(registration)) || "0");
   const benefitNotice = !payment.payment_method && benefit?.suggestNoPay ? '<div class="notice success benefit-notice">Sugerencia automática: socio VMGC en su primer torneo del mes. Se propone <b>No paga</b>, pero podés cambiarlo.</div>' : !payment.payment_method && benefit?.alreadyUsed ? `<div class="notice warn benefit-notice">Este socio ya utilizó el beneficio mensual${benefit.detail?.tournament?.name ? ` en ${escapeHtml(benefit.detail.tournament.name)}` : ""}.</div>` : "";
-  return `<section class="drawer-section"><div class="drawer-section-title">Pago y cupón</div>${benefitNotice}${activeGroup.registrations.length > 1 ? `<div class="field"><label>Jugador que paga</label><select class="control" id="paymentPlayer">${activeGroup.registrations.map(reg => `<option value="${reg.id}" ${reg.id === registration.id ? "selected" : ""}>${escapeHtml(reg.display_name)}</option>`).join("")}</select></div>` : ""}<div class="field-grid"><div class="field"><label>Forma de pago</label><select class="control" id="paymentMethod">${Object.entries(PAYMENT_METHODS).map(([value, label]) => `<option value="${value}" ${value === suggestedMethod ? "selected" : ""}>${label}</option>`).join("")}</select></div><div class="field"><label>Importe</label><input class="control" id="paymentAmount" inputmode="decimal" value="${payment.amount ?? defaultPrice}"></div><div class="field"><label>Fecha</label><input class="control" id="paymentDate" type="date" value="${payment.payment_date || new Date().toISOString().slice(0, 10)}"></div><div class="field"><label>Concepto</label><input class="control" id="paymentConcept" value="${escapeHtml(payment.concept || "Green fee / derecho de torneo")}"></div></div></section>`;
+  return `<section class="drawer-section"><div class="drawer-section-title">Pago y cupón</div>${benefitNotice}${activeGroup.registrations.length > 1 ? `<div class="field"><label>Jugador que paga</label><select class="control" id="paymentPlayer">${activeGroup.registrations.map(reg => `<option value="${reg.id}" ${reg.id === registration.id ? "selected" : ""}>${escapeHtml(reg.display_name)}</option>`).join("")}</select></div>` : ""}<div class="field-grid"><div class="field"><label>Forma de pago</label><select class="control" id="paymentMethod">${Object.entries(PAYMENT_METHODS).map(([value, label]) => `<option value="${value}" ${value === suggestedMethod ? "selected" : ""}>${label}</option>`).join("")}</select></div><div class="field"><label>Importe</label><input class="control" id="paymentAmount" inputmode="decimal" value="${payment.amount ?? defaultPrice}"></div><div class="field"><label>Fecha</label><input class="control" id="paymentDate" type="date" value="${payment.payment_date || new Date().toISOString().slice(0, 10)}"></div><div class="field"><label>Concepto</label><input class="control" id="paymentConcept" value="${escapeHtml(payment.concept || "Green fee / derecho de torneo")}"></div></div><div class="billing-actions"><button class="btn secondary" type="button" id="billOtherProduct">Facturar otro producto</button></div></section>`;
 }
 
 function classicCalculationHtml(calculated) {
@@ -215,6 +216,11 @@ function openGroup(group, registrationId = "") {
   const selectedIndex = group.registrations.findIndex(reg => String(reg.id) === String(selectedRegistration.id));
   byId("drawerContent").querySelector(`[data-player-form="${selectedIndex}"]`)?.classList.add("focused-player");
   bindDrawerCalculations();
+  byId("billOtherProduct").addEventListener("click", () => {
+    const registration = selectedPaymentRegistration();
+    if (!registration) return;
+    openMiscBilling({ display_name: registration.display_name, aag_member_number: String(memberNumber(registration) || ""), player_id: registration.linked_player_id || null });
+  });
   playerDrawer.classList.add("open"); playerDrawer.setAttribute("aria-hidden", "false");
 }
 

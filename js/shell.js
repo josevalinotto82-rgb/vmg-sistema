@@ -598,3 +598,17 @@ export async function redirectFreeCardStage(activeStep) {
   location.replace(tournamentUrl(stages[3],id));
   return true;
 }
+
+export function openMiscBilling(initialClient=null) {
+  document.getElementById("quickBillingDrawer")?.remove();
+  const drawer=document.createElement("div");
+  drawer.id="quickBillingDrawer";
+  drawer.className="drawer open";
+  drawer.setAttribute("aria-hidden","false");
+  drawer.innerHTML='<section class="drawer-panel" style="width:min(680px,100%)">'+settingsDetail(settingsItems.find(item=>item.id==="misc-billing"))+'</section>';
+  document.body.appendChild(drawer);
+  const close=()=>drawer.remove();
+  drawer.querySelector('[data-settings-detail-close]').addEventListener('click',close);
+  drawer.addEventListener('click',event=>{if(event.target===drawer){event.stopPropagation();close();}});
+  mountMiscBilling(drawer.querySelector('[data-misc-billing]'),{initialClient,onPrinted:close});
+}

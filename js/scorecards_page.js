@@ -1,3 +1,4 @@
+import { comparePlayerSearch, normalizePlayerSearch } from "./player_search.js";
 import { requireSession } from "./auth.js";
 import { supabase } from "./supabase.js";
 import { PAGES } from "./config.js";
@@ -25,12 +26,13 @@ function sortedCards() {
 
 function visibleCards() {
   const query = normalizeText(search.value);
-  return sortedCards().filter(card => {
-    const matchesText = !query || normalizeText(`${card.display_name} ${card.aag_member_number || ""}`).includes(query);
+  const visible = sortedCards().filter(card => {
+    const matchesText = !query || normalizePlayerSearch(query).split(" ").every(word=>normalizePlayerSearch(`${card.display_name} ${card.player?.last_name || ""} ${card.player?.first_name || ""} ${card.aag_member_number || ""}`).includes(word));
     const status = cardStatus(card);
     const matchesStatus = filter === "all" || filter === "pending" && status !== "valid" || filter === "valid" && status === "valid";
     return matchesText && matchesStatus;
   });
+  return query ? visible.sort(comparePlayerSearch(query)) : visible;
 }
 
 function renderStrip() {

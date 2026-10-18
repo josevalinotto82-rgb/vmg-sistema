@@ -1,3 +1,4 @@
+import { hydratePlayerSearchNames } from "./player_search.js";
 import { supabase } from "./supabase.js";
 
 export function normalizeText(value) {
@@ -124,7 +125,7 @@ export async function loadScorecardWorkspace(tournamentId) {
     supabase.from("tournaments").select("id,name,tournament_date,status,hole_count,start_type,scoring_mode,data_schema_version,notes,game_modes(id,name,participation_type,calculation_params)").eq("id", tournamentId).single(),
     supabase.from("tournament_categories").select("id,tournament_id,category_id,category_system,name,display_order,hole_segment,tee_rules,playing_tee_aag_teeout_id").eq("tournament_id", tournamentId).order("display_order"),
     supabase.from("registrations").select("id,partner_registration_id").eq("tournament_id", tournamentId).neq("registration_status", "cancelled"),
-    supabase.from("scorecards").select("id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,playing_handicap,player_1_playing_handicap,player_2_playing_handicap,category_id,category_name,tee_name,player_gender,hole_segment,gross,net,total,card_status,hole_scores,export_ready,aag_exportable,exported_to_aag").eq("tournament_id", tournamentId)
+    supabase.from("scorecards").select("id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,playing_handicap,player_1_playing_handicap,player_2_playing_handicap,category_id,category_name,tee_name,player_gender,hole_segment,gross,net,total,card_status,hole_scores,export_ready,aag_exportable,exported_to_aag,player:players!scorecards_linked_player_id_fkey(first_name,last_name)").eq("tournament_id", tournamentId)
   ]);
   for (const result of [tournamentResult, categoriesResult, registrationsResult, scorecardsResult]) if (result.error) throw result.error;
   if (Number(tournamentResult.data?.data_schema_version) !== 2) throw new Error("Esta pantalla administra únicamente torneos V2.");
@@ -132,6 +133,7 @@ export async function loadScorecardWorkspace(tournamentId) {
   if (categories.some(category => String(category.category_system || "").toLowerCase() !== "new")) throw new Error("El torneo contiene categorías que no pertenecen al sistema nuevo.");
   const registrations = registrationsResult.data || [];
   const scorecards = scorecardsResult.data || [];
+  if (scorecards.some(row=>!row.player?.last_name && row.aag_member_number)) await hydratePlayerSearchNames(supabase,scorecards);
   const registrationIds = new Set(registrations.map(item => String(item.id)));
   const used = new Set();
   const expectedGroups = [];

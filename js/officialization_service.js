@@ -1,3 +1,4 @@
+import { hydratePlayerSearchNames } from "./player_search.js";
 import { categoryFromRules } from "./category_snapshot.js";
 import { supabase } from "./supabase.js";
 import { OfficializationRules, baseIndex, getLine, getScorecard, memberNumber, normalizeGender } from "./officialization_rules.js";
@@ -16,7 +17,7 @@ export async function loadOfficialization(tournamentId) {
   const [tournamentResult, categoryResult, registrationResult, scorecardResult, paymentResult] = await Promise.all([
     supabase.from("tournaments").select("id,name,tournament_date,status,published,hole_count,start_type,scoring_mode,data_schema_version,game_mode_id,game_modes(id,name,participation_type,calculation_params)").eq("id", tournamentId).eq("data_schema_version", 2).single(),
     supabase.from("tournament_categories").select("id,category_id,category_system,name,display_order,hole_segment,tee_rules,playing_handicap_min,playing_handicap_max,playing_tee_aag_teeout_id").eq("tournament_id", tournamentId).order("display_order"),
-    supabase.from("registrations").select("id,tournament_id,linked_player_id,display_name,participant_type,aag_member_number,club_name,country,reported_index,category_id,registration_status,needs_admin_review,partner_registration_id,starting_line_id,line_slot_id,created_at,player:players!registrations_linked_player_id_fkey(gender,aag_member_number,current_index,club_name,option_club_id),line_slot:line_slots!registrations_line_slot_id_fkey(id,manual_index,aag_member_number),starting_line:starting_lines!registrations_starting_line_id_fkey(id,line_time,starting_hole,label)").eq("tournament_id", tournamentId).neq("registration_status", "cancelled").order("created_at"),
+    supabase.from("registrations").select("id,tournament_id,linked_player_id,display_name,participant_type,aag_member_number,club_name,country,reported_index,category_id,registration_status,needs_admin_review,partner_registration_id,starting_line_id,line_slot_id,created_at,player:players!registrations_linked_player_id_fkey(first_name,last_name,gender,aag_member_number,current_index,club_name,option_club_id),line_slot:line_slots!registrations_line_slot_id_fkey(id,manual_index,aag_member_number),starting_line:starting_lines!registrations_starting_line_id_fkey(id,line_time,starting_hole,label)").eq("tournament_id", tournamentId).neq("registration_status", "cancelled").order("created_at"),
     supabase.from("scorecards").select("id,tournament_id,registration_id,linked_player_id,display_name,aag_member_number,official_index,manual_index,playing_handicap,player_1_playing_handicap,player_2_playing_handicap,category_id,category_name,tee_name,card_status,aag_exportable,export_ready,hole_segment,slope,course_rating,par,hole_scores,starting_time,starting_hole").eq("tournament_id", tournamentId),
     supabase.from("tournament_payments").select("*").eq("tournament_id", tournamentId)
   ]);
@@ -24,6 +25,7 @@ export async function loadOfficialization(tournamentId) {
   if (paymentResult.error) console.warn("No se pudieron cargar los pagos", paymentResult.error);
   const tournament = tournamentResult.data;
   const registrations = registrationResult.data || [];
+  if (registrations.some(row=>!row.player?.last_name && row.aag_member_number)) await hydratePlayerSearchNames(supabase,registrations);
   const scorecards = scorecardResult.data || [];
   const scoreByRegistration = new Map(scorecards.map(card => [String(card.registration_id), card]));
   const registrationIds = new Set(registrations.map(registration => String(registration.id)));

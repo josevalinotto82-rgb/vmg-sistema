@@ -1,3 +1,4 @@
+import { queryPlayerCandidates, rankPlayerSearch } from "./player_search.js";
 import { supabase } from "./supabase.js";
 import { escapeHtml } from "./ui.js";
 
@@ -10,10 +11,8 @@ const recommended=(index,playerGender,tee)=>{if(Number(tee.aag_field_id)!==1466)
 const initials=value=>normalize(value).replace(/CLUB|GOLF|COUNTRY/g,"").split(/\s+/).filter(Boolean).slice(0,3).map(word=>word[0]).join("")||"GC";
 
 async function searchPlayers(term){
-  const raw=String(term||"").trim(),words=normalize(raw).split(" ").filter(Boolean),pattern=`%${words.join("%")}%`,numeric=/^\d+$/.test(raw.replace(/\s/g,""));
-  let query=supabase.from("aag_enrolleds").select("enrollment_number,first_name,last_name,full_name,gender,current_index,club_name,search_text");
-  query=numeric?query.eq("enrollment_number",raw.replace(/\s/g,"")):query.ilike("search_text",pattern);
-  const{data,error}=await query.limit(8);if(error)throw error;return(data||[]).filter(player=>words.every(word=>normalize(`${player.full_name} ${player.last_name} ${player.first_name} ${player.enrollment_number}`).includes(word)));
+  if(String(term||"").trim().length<2)return[];
+  return rankPlayerSearch(await queryPlayerCandidates(supabase,"aag_enrolleds","enrollment_number,first_name,last_name,full_name,gender,current_index,club_name,search_text",term),term,8);
 }
 
 async function loadTees(player){

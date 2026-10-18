@@ -1,3 +1,4 @@
+import { queryPlayerCandidates, rankPlayerSearch } from "./player_search.js";
 import { supabase } from "./supabase.js";
 import { getAuthContext } from "./auth.js";
 
@@ -53,33 +54,14 @@ export async function getMemberPlayer(userId) {
 }
 
 export async function searchPlayers(term) {
-  const text = String(term || "").trim();
-  if (text.length < 2) return [];
-  const words = norm(text).split(" ").filter(Boolean);
-  const fullPattern = `%${text.replace(/[%_,]/g," ").replace(/\s+/g,"%")}%`;
-  const firstPattern = `%${words[0] || text}%`;
-  const member = text.replace(/\s+/g, "");
-  const numeric = /^\d+$/.test(member);
-  const [playersRes, aagRes] = await Promise.all([
-    supabase.from("players").select("id,first_name,last_name,full_name,aag_member_number,current_index,gender,option_club_id,club_name,country,is_club_member,search_text").or([`search_text.ilike.${fullPattern}`,`full_name.ilike.${fullPattern}`,`first_name.ilike.${firstPattern}`,`last_name.ilike.${firstPattern}`,...(numeric ? [`aag_member_number.eq.${member}`] : [])].join(",")).limit(40),
-    numeric
-      ? supabase.from("aag_enrolleds").select("enrollment_number,first_name,last_name,full_name,gender,current_index,option_club_id,club_name,search_text").eq("enrollment_number", member).limit(40)
-      : supabase.from("aag_enrolleds").select("enrollment_number,first_name,last_name,full_name,gender,current_index,option_club_id,club_name,search_text").ilike("search_text", fullPattern).limit(40)
+  if (String(term || "").trim().length < 2) return [];
+  const [local, aag] = await Promise.all([
+    queryPlayerCandidates(supabase,"players","id,first_name,last_name,full_name,aag_member_number,current_index,gender,option_club_id,club_name,country,is_club_member,search_text",term),
+    queryPlayerCandidates(supabase,"aag_enrolleds","enrollment_number,first_name,last_name,full_name,gender,current_index,option_club_id,club_name,search_text",term)
   ]);
-  if (playersRes.error) console.warn(playersRes.error);
-  if (aagRes.error) console.warn(aagRes.error);
-  const players = (playersRes.data || []).map(p => ({...p, source_table:"players"}));
-  const known = new Set(players.map(p => String(p.aag_member_number || "")).filter(Boolean));
-  const external = (aagRes.data || []).filter(p => !known.has(String(p.enrollment_number || ""))).map(p => ({...p,id:`aag:${p.enrollment_number}`,aag_member_number:p.enrollment_number,country:"Argentina",is_club_member:Number(p.option_club_id)===408,source_table:"aag_enrolleds"}));
-  const sought = norm(text);
-  return [...players,...external].map(player => {
-    const haystack = norm(`${player.full_name || ""} ${player.last_name || ""} ${player.first_name || ""} ${player.aag_member_number || ""}`);
-    if (!words.every(word => haystack.includes(word))) return {...player,_score:-1};
-    let score = (Number(player.option_club_id)===408 || player.is_club_member ? 10000 : 0);
-    if (String(player.aag_member_number || "") === member) score += 8000;
-    if (haystack.includes(sought)) score += 4000;
-    return {...player,_score:score + words.length * 500};
-  }).filter(p => p._score >= 0).sort((a,b) => b._score-a._score).slice(0,15);
+  const players=local.map(p=>({...p,source_table:"players"})),known=new Set(players.map(p=>String(p.aag_member_number||"")).filter(Boolean));
+  const external=aag.filter(p=>!known.has(String(p.enrollment_number||""))).map(p=>({...p,id:`aag:${p.enrollment_number}`,aag_member_number:p.enrollment_number,country:"Argentina",is_club_member:Number(p.option_club_id)===408,source_table:"aag_enrolleds"}));
+  return rankPlayerSearch([...players,...external],term);
 }
 
 export async function ensurePlayer(player) {
