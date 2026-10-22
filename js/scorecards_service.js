@@ -114,7 +114,8 @@ export function calculateCard(bundle, scorecard, values, forcedStatus = "") {
   const withoutNet = isAmerican(bundle) || isGross(bundle);
   const net = gross === null ? null : withoutNet ? (isAmerican(bundle) ? gross : null) : gross - Number(scorecard.playing_handicap || 0);
   const total = isGross(bundle) ? gross : net;
-  const exportReady = status === "valid" && scorecard.aag_exportable === true && !!scorecard.aag_member_number;
+  const completeForAag = holes.every(number => Number.isFinite(values[number]) && values[number] > 0);
+  const exportReady = ["valid", "desc"].includes(status) && completeForAag && scorecard.aag_exportable === true && !!String(scorecard.aag_member_number || "").trim();
   const holeScores = {};
   holes.forEach(number => { holeScores[String(number)] = Number.isFinite(values[number]) ? Number(values[number]) : null; });
   return { gross, net, total, card_status: status, export_ready: exportReady, hole_scores: holeScores, updated_at: new Date().toISOString() };
