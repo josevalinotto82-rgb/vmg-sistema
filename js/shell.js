@@ -1,4 +1,5 @@
-import { syncSummaryHtml, syncCountsText } from "./aag_sync_report.js";
+import { startBackgroundIndex, mountBackgroundIndexMonitor } from "./aag_background.js";
+import { syncCountsText } from "./aag_sync_report.js";
 import { mountMiscBilling } from "./misc_billing_page.js";
 import { mountDailyBilling } from "./misc_billing_report.js";
 import { mountPublicResults } from "./public_results_page.js";
@@ -6,7 +7,7 @@ import { PAGES, ACTIVE_TOURNAMENT_ID_KEY, ACTIVE_TOURNAMENT_NAME_KEY } from "./c
 import { signOut } from "./auth.js";
 import { supabase } from "./supabase.js";
 import { confirmAction, escapeHtml, formatDate, notify } from "./ui.js";
-import { cancelAagSync, executeAagSync, getAagSyncStatus, linkManualPlayer, listAagSyncReports, prepareAagSync } from "./aag_sync_service.js";
+import { getAagSyncStatus, listAagSyncReports } from "./aag_sync_service.js";
 import { listCurrentAagExports, refreshAllAagStatuses, syncAagFields } from "./aag_exports_service.js";
 import { loadTournamentStatistics } from "./statistics_service.js";
 import { statisticsContent, printStatisticsReport } from "./statistics_report.js";
@@ -493,71 +494,7 @@ async function hydrateAagStatus(host) {
   }
 }
 
-function syncSummary(changes) { return syncSummaryHtml(changes); }
-
-function openSyncProgress() {
-  document.getElementById("aagSyncDialog")?.remove();
-  const dialog = document.createElement("div");
-  dialog.id = "aagSyncDialog";
-  dialog.className = "drawer open aag-sync-dialog";
-  dialog.innerHTML = `<section class="drawer-panel aag-sync-panel"><div class="drawer-head"><div><div class="eyebrow">Sincronización oficial</div><h2>Actualizar Index</h2></div><button class="btn secondary small" data-sync-close disabled>✕</button></div><div data-sync-content><div class="aag-sync-working"><span class="sync-spinner"></span><strong>Preparando sincronización…</strong></div></div></section>`;
-  document.body.appendChild(dialog);
-  const content = dialog.querySelector("[data-sync-content]"), closeButton = dialog.querySelector("[data-sync-close]");
-  closeButton.addEventListener("click", () => dialog.remove());
-  return { dialog, content, closeButton, progress(message) { content.innerHTML = `<div class="aag-sync-working"><span class="sync-spinner"></span><strong>${escapeHtml(message)}</strong><small>No cierres esta ventana.</small></div>`; } };
-}
-
-async function startAagSync(shellHost) {
-  if(document.getElementById("aagSyncDialog")) return;
-  let prepared;
-  try {
-    const status = await getAagSyncStatus();
-    const sourceDate = status.sourceUpdatedAt || status.lastCompletedAt;
-    const accepted = await confirmAction({ title:"Actualizar índices AAG", message:`Se sincronizarán los jugadores de VMGC con la última actualización disponible de AAG: ${dateTime(sourceDate)}. ¿Querés continuar?`, confirmText:"Actualizar Index" });
-    if (!accepted) return;
-    document.getElementById("systemSettingsDrawer")?.remove();
-    const ui = openSyncProgress();
-    prepared = await prepareAagSync(message => ui.progress(message));
-    ui.closeButton.disabled=false;
-    ui.closeButton.addEventListener("click",()=>cancelAagSync(prepared).catch(error=>notify(error.message,"error")));
-    const finish = async () => {
-      ui.closeButton.disabled=true;
-      let changes;
-      try { ({changes}=await executeAagSync(message => ui.progress(message),prepared)); }
-      catch(error) {
-        ui.content.innerHTML=`<div class="notice warn"><strong>No se pudo completar la sincronización.</strong><br>${escapeHtml(error.message)}</div>`;
-        throw error;
-      }
-      finally { ui.closeButton.disabled=false; }
-      ui.content.innerHTML = syncSummary(changes);
-      ui.closeButton.disabled = false;
-      await hydrateAagStatus(shellHost);
-    };
-    const resolveNext = async () => {
-      if (!prepared.pending.length) return finish();
-      const item = prepared.pending[0];
-      ui.content.innerHTML = `<div class="notice warn"><strong>Posible jugador duplicado</strong><br>Antes de sincronizar, revisá si el nuevo jugador AAG ya existe como jugador manual.</div><div class="aag-association"><div><span>Nuevo dato AAG</span><strong>${escapeHtml(playerDisplay(item.aag))}</strong><small>Matrícula ${escapeHtml(item.aag.aag_member_number)} · Index ${indexText(item.aag.current_index)}</small></div><h3>¿Corresponde a alguno de estos jugadores?</h3>${item.candidates.map((candidate,index) => `<button type="button" class="aag-candidate" data-candidate="${index}"><span><strong>${escapeHtml(playerDisplay(candidate))}</strong><small>Index ${indexText(candidate.current_index)} · ${candidate.usage?.registrations ?? "—"} inscripciones · ${candidate.usage?.scorecards ?? "—"} tarjetas</small></span><b>Asociar</b></button>`).join("")}<button type="button" class="btn secondary" data-skip-association>Crear jugador nuevo / no asociar</button></div>`;
-      ui.content.querySelectorAll("[data-candidate]").forEach(button => button.addEventListener("click", async () => {
-        if(prepared.busy || !button.isConnected) return;
-        prepared.busy=true;
-        try { button.disabled = true; await linkManualPlayer(item.candidates[Number(button.dataset.candidate)], item.aag,prepared); prepared.pending.shift(); await resolveNext(); }
-        catch (error) { notify(error.message, "error"); button.disabled = false; }
-        finally { prepared.busy=false; }
-      }));
-      ui.content.querySelector("[data-skip-association]").addEventListener("click", async event => { if(prepared.busy || !event.currentTarget.isConnected) return; prepared.busy=true; try { prepared.pending.shift(); await resolveNext(); } catch(error) { notify(error.message,"error"); } finally { prepared.busy=false; } });
-    };
-    await resolveNext();
-  } catch (error) {
-    await cancelAagSync(prepared).catch(()=>{});
-    const ui = document.getElementById("aagSyncDialog");
-    const content = ui?.querySelector("[data-sync-content]"), close = ui?.querySelector("[data-sync-close]");
-    if (content) content.innerHTML = `<div class="notice warn"><strong>No se pudo completar la sincronización.</strong><br>${escapeHtml(error.message || error)}</div>`;
-    if (close) close.disabled = false;
-    if (!ui) notify(error.message || "No se pudo sincronizar con AAG.", "error");
-  }
-}
-
-function playerDisplay(player) { return player?.full_name || [player?.last_name, player?.first_name].filter(Boolean).join(", ") || "Sin nombre"; }
+function startAagSync(){return startBackgroundIndex();}
 
 export function mountShell({ context, activeStep = -1, showSteps = true, showSettings = true } = {}) {
   enableSmoothNavigation();
@@ -569,7 +506,7 @@ export function mountShell({ context, activeStep = -1, showSteps = true, showSet
   host.querySelector("[data-logout]")?.addEventListener("click", signOut);
   host.querySelector("[data-settings]")?.addEventListener("click", () => openSettings());
   host.querySelector("[data-aag-status]")?.addEventListener("click", () => startAagSync(host));
-  if (showSettings && isAdmin) hydrateAagStatus(host);
+  if (showSettings && isAdmin) { hydrateAagStatus(host); mountBackgroundIndexMonitor(); document.addEventListener("vmgc:index-updated",()=>hydrateAagStatus(host)); }
   if (showSteps && isAdmin) {
     hydrateTournamentHeader(host, activeStep);
     document.addEventListener("vmgc:tournament-changed", () => hydrateTournamentHeader(host, activeStep));

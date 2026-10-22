@@ -74,18 +74,14 @@ export function currentThursdayStart(now = new Date()) {
 }
 
 export async function getAagSyncStatus() {
-  const [historyResult, sourceResult] = await Promise.all([
-    supabase.from("aag_sync_history").select("id,created_at,added_count,updated_count,deactivated_count,before_vmgc,after_vmgc,data").eq("club_id", CLUB_ID).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("aag_enrolleds").select("last_sync_at").eq("option_club_id", CLUB_ID).not("last_sync_at", "is", null).order("last_sync_at", { ascending: false }).limit(1).maybeSingle()
-  ]);
-  if (historyResult.error) throw historyResult.error;
-  if (sourceResult.error) throw sourceResult.error;
+  const historyResult = await supabase.from("aag_sync_history").select("id,created_at,added_count,updated_count,deactivated_count,before_vmgc,after_vmgc,data").eq("club_id",CLUB_ID).order("created_at",{ascending:false}).limit(1).maybeSingle();
+  if(historyResult.error)throw historyResult.error;
   const latest = historyResult.data;
   const lastCompletedAt = latest?.created_at ? new Date(latest.created_at) : null;
   return {
     current: Boolean(lastCompletedAt && lastCompletedAt >= currentThursdayStart()),
     lastCompletedAt,
-    sourceUpdatedAt: sourceResult.data?.last_sync_at ? new Date(sourceResult.data.last_sync_at) : null,
+    sourceUpdatedAt: latest?.data?.generated_at ? new Date(latest.data.generated_at) : lastCompletedAt,
     latest
   };
 }
@@ -157,3 +153,8 @@ export async function getAagSyncReport(id) {
   if (error) throw error;
   return data;
 }
+
+export async function getLatestIndexJob(){const {data,error}=await supabase.from('aag_sync_jobs_v3').select('id,status,message,attempts,pending,history_id,error_text,created_at,updated_at,finished_at').order('created_at',{ascending:false}).limit(1).maybeSingle();if(error)throw error;return data;}
+export const startIndexJob=()=>callWorker('start_background_sync');
+export const decideIndexJob=(jobId,matricula,playerId)=>callWorker('decide_background_sync',{job_id:jobId,matricula,player_id:playerId});
+export const retryIndexJob=jobId=>callWorker('retry_background_sync',{job_id:jobId});
