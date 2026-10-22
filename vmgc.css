@@ -1367,3 +1367,5 @@ body.standalone-report-page{animation: auto ease 0s 1 normal none running none !
 
 /* Informe de sincronización AAG v2 */
 .aag-report-v2>footer{position:static;margin-top:22px}.aag-report-v2 td{overflow-wrap:anywhere}.aag-report-v2 th{vertical-align:top}.aag-report-v2 thead{display:table-header-group}
+
+.aag-job-banner{position:fixed;right:18px;bottom:18px;z-index:80;display:flex;align-items:center;gap:8px;width:min(410px,calc(100% - 28px));padding:12px 14px;border:1px solid #b8d3c0;border-left:5px solid #176335;border-radius:14px;background:white;box-shadow:0 6px 24px #0002}.aag-job-banner button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;text-align:left}.aag-job-banner button:first-child{flex:1;min-width:0}.aag-job-banner strong,.aag-job-banner span{display:block}.aag-job-banner span{font-size:12px;margin-top:4px;color:#52665a}.aag-job-banner [data-dismiss-index-job]{font-size:24px}.aag-sync-panel [data-index-job-body]>.btn{margin:8px 8px 8px 0}
