@@ -44,6 +44,18 @@ export async function loadGrid(tournamentId, isAdmin) {
     if (response.error) throw response.error;
     slots = response.data || [];
   }
+  if (isAdmin) {
+    const creatorIds = [...new Set(slots.filter(slot => slot.participant_type === "guest" && slot.created_by_player_id).map(slot => slot.created_by_player_id))];
+    const creatorNames = new Map();
+    for (let offset = 0; offset < creatorIds.length; offset += 100) {
+      const { data, error } = await supabase.from("players").select("id,full_name,first_name,last_name").in("id", creatorIds.slice(offset, offset + 100));
+      if (!error) for (const player of data || []) {
+        const name = String(player.full_name || "").trim() || [player.last_name, player.first_name].filter(Boolean).join(", ");
+        if (name) creatorNames.set(player.id, name);
+      }
+    }
+    slots = slots.map(slot => slot.participant_type === "guest" ? { ...slot, created_by_player_name: creatorNames.get(slot.created_by_player_id) || "" } : slot);
+  }
   return { tournament, blocks:blocks || [], lines, slots };
 }
 
