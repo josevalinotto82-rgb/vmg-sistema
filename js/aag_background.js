@@ -2,7 +2,7 @@ import { getLatestIndexJob, startIndexJob, decideIndexJob, retryIndexJob, getAag
 import { syncSummaryHtml } from './aag_sync_report.js';
 import { escapeHtml, notify, confirmAction } from './ui.js';
 const active=new Set(['queued','preparing','review','ready','applying']);
-let current=null,dialog=null,timer=null,refreshing=false,started=false,seenVersion='',acting=false;
+let current=null,dialog=null,timer=null,refreshing=false,started=false,seenVersion='',acting=false,completedNoticeVisible=false;
 const key='vmgc:index-job:';
 const text=job=>job?.message||'Actualización de Index';
 const name=player=>player?.full_name||[player?.last_name,player?.first_name].filter(Boolean).join(', ');
@@ -10,6 +10,7 @@ const reportUrl=job=>'report_view.html?tipo=index&id='+encodeURIComponent(job.hi
 function notification(job){
   if(active.has(job.status)){localStorage.setItem(key+'tracking',job.id);return;}
   if(localStorage.getItem(key+'tracking')!==job.id||localStorage.getItem(key+'notified')===job.id+':'+job.status)return;
+  if(job.status==='completed')completedNoticeVisible=true;
   localStorage.setItem(key+'notified',job.id+':'+job.status);
   const message=job.status==='completed'?'La actualización de Index terminó. El informe está disponible.':'La actualización de Index necesita atención. Abrí el seguimiento para ver el detalle.';
   notify(message,job.status==='completed'?'success':'error');
@@ -21,7 +22,7 @@ function notification(job){
 }
 function renderBanner(){
   let banner=document.getElementById('aagBackgroundBanner');
-  if(!current||(!active.has(current.status)&&localStorage.getItem(key+'dismissed')===current.id)){banner?.remove();return;}
+  if(!current||(current.status==='completed'&&!completedNoticeVisible)||(!active.has(current.status)&&localStorage.getItem(key+'dismissed')===current.id)){banner?.remove();return;}
   if(!banner){banner=document.createElement('aside');banner.id='aagBackgroundBanner';banner.className='aag-job-banner';banner.setAttribute('aria-live','polite');document.body.appendChild(banner);}
   banner.innerHTML=`<button type="button" data-open-index-job><strong>Index · ${current.status==='completed'?'Finalizado':current.status==='review'?'Revisión pendiente':current.status==='failed'?'Necesita atención':'En segundo plano'}</strong><span>${escapeHtml(text(current))}</span></button>${active.has(current.status)?'':'<button type="button" data-dismiss-index-job aria-label="Ocultar aviso">×</button>'}`;
   banner.querySelector('[data-open-index-job]').onclick=openView;
