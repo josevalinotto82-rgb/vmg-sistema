@@ -55,6 +55,19 @@ export async function loadGrid(tournamentId, isAdmin) {
       }
     }
     slots = slots.map(slot => slot.participant_type === "guest" ? { ...slot, created_by_player_name: creatorNames.get(slot.created_by_player_id) || "" } : slot);
+    if (slots.some(slot => slot.participant_type === "admin" && !isEmpty(slot) && !isReservation(slot))) {
+      const { data: origins, error } = await supabase.rpc("get_registration_admin_origins", { p_tournament_id: tournamentId });
+      if (!error) {
+        const bySlot = new Map((origins || []).map(origin => [origin.line_slot_id, origin]));
+        slots = slots.map(slot => {
+          const origin = bySlot.get(slot.id);
+          return slot.participant_type === "admin" && origin && origin.linked_player_id === slot.linked_player_id
+            ? { ...slot, created_by_admin_id: origin.created_by_admin_id, created_by_admin_name: origin.admin_name }
+            : slot;
+        });
+      }
+    }
+
   }
   return { tournament, blocks:blocks || [], lines, slots };
 }
