@@ -1,3 +1,4 @@
+import { mountTeeRecommendationSettings } from "./tee_recommendation_settings.js";
 import { startBackgroundIndex, mountBackgroundIndexMonitor } from "./aag_background.js";
 import { syncCountsText } from "./aag_sync_report.js";
 import { mountMiscBilling } from "./misc_billing_page.js";
@@ -20,17 +21,21 @@ const stages = [
   { page: PAGES.results, label: "Resultados", param: "torneo" }
 ];
 
-const settingsItems = [
+export const panelTools = [
   { id: "misc-billing", icon: "▤", label: "Facturación varios", description: "Venta de productos, cupones y precios" },
-  { id: "notifications", icon: "♧", label: "Avisos a jugadores", description: "Preparar notificaciones con texto y flyer" },
+  { id: "notifications", icon: "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9\"/><path d=\"M10 21h4M12 2V1\"/></svg>", label: "Avisos a jugadores", description: "Preparar notificaciones con texto y flyer" },
   { id: "aag", icon: "↻", label: "Sincro. AAG", description: "Actualizar índices y datos oficiales" },
   { id: "free-card", icon: "▦", label: "Tarjeta Libre", description: "Cargar una tarjeta sin torneo programado" },
+];
+const settingsItems = [
+  { id: "tee-recommendations", icon: "⚑", label: "Tees recomendados", description: "Rangos de Index para recomendar el tee de salida" },
   { id: "public-results", icon: "★", label: "Resultados Públicos", description: "Publicación y consulta de clasificaciones" },
   { id: "statistics", icon: "▥", label: "Estadísticas", description: "Indicadores históricos y deportivos del club" },
   { id: "tv-control", icon: "▶", label: "Control TV", description: "Elegir el contenido de las pantallas" },
   { id: "tv-media", icon: "▣", label: "TV Multimedia", description: "Administrar fotos, logo, QR, sponsors y música" },
   { id: "reports", icon: "≡", label: "Informes", description: "Acceder a informes administrativos" }
 ];
+const allSettingsItems = [...settingsItems, ...panelTools];
 
 const prefetchedPages = new Set();
 let navigationInProgress = false;
@@ -257,6 +262,7 @@ async function hydrateTournamentHeader(host, activeStep) {
 
 function settingsDetail(item) {
   const notes = {
+    "tee-recommendations": "Estos rangos se comparten con la app y las recomendaciones generales. Las reglas de cada torneo y sus resultados se conservan.",
     "misc-billing": "Facturá productos del club y consultá las ventas diarias.",
     aag: "Estado de los torneos enviados a AAG, actualización de índices y sincronización de campos y salidas.",
     "free-card": "Acá se abrirá la carga completa de una tarjeta presentada fuera de un torneo programado.",
@@ -266,7 +272,7 @@ function settingsDetail(item) {
     "tv-media": "Acá se administrarán fotos, logo, QR, música y patrocinadores de TV.",
     reports: "Informes imprimibles de torneos y del historial de actualización de índices."
   };
-  const live = item.id === "reports" ? "reports-content" : item.id === "aag" ? "aag-settings" : item.id === "statistics" ? "statistics-settings" : item.id === "public-results" ? "public-results" : item.id === "misc-billing" ? "misc-billing" : "";
+  const live = item.id === "tee-recommendations" ? "tee-recommendations" : item.id === "reports" ? "reports-content" : item.id === "aag" ? "aag-settings" : item.id === "statistics" ? "statistics-settings" : item.id === "public-results" ? "public-results" : item.id === "misc-billing" ? "misc-billing" : "";
   const content = live ? `<div class="settings-live-content" data-${live}><div class="empty-state compact">Cargando información…</div></div>` : '<div class="settings-placeholder"><strong>Espacio preparado</strong><p>La función se incorporará acá sin mezclarla con el recorrido normal de un torneo.</p></div>';
   return `<div class="settings-detail-head"><span class="settings-detail-icon">${item.icon}</span><div class="settings-tool-title"><div class="eyebrow">Herramienta</div><h2>${escapeHtml(item.label)}</h2></div><button type="button" class="settings-tool-close" data-settings-detail-close aria-label="Cerrar ${escapeHtml(item.label)}"><span aria-hidden="true">×</span> Cerrar</button></div><div class="notice info">${escapeHtml(notes[item.id])}</div>${content}`;
 }
@@ -427,13 +433,13 @@ async function hydrateStatistics(detail) {
   } catch (error) { host.innerHTML = `<div class="notice warn">${escapeHtml(error.message)}</div>`; }
 }
 
-function openSettings(initialItem = "") {
+function openSettings(initialItem = "", {toolOnly=false} = {}) {
   document.getElementById("systemSettingsDrawer")?.remove();
   const drawer = document.createElement("div");
   drawer.id = "systemSettingsDrawer";
-  drawer.className = "drawer open settings-drawer";
+  drawer.className = "drawer open settings-drawer" + (toolOnly ? " panel-tool-drawer" : "");
   drawer.setAttribute("aria-hidden", "false");
-  drawer.innerHTML = `<section class="settings-detail-panel" data-settings-detail aria-hidden="true"></section><section class="drawer-panel settings-main-panel"><div class="drawer-head"><div><div class="eyebrow">Inicio</div><h2>Configuración y herramientas</h2><p class="subtle">Funciones independientes de la gestión de un torneo.</p></div><button class="btn secondary small" data-settings-close>✕</button></div><div class="settings-menu">${settingsItems.map(item => `<button type="button" class="settings-menu-item" data-settings-item="${item.id}"><span class="settings-menu-icon">${item.icon}</span><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.description)}</small></span><span class="chev">›</span></button>`).join("")}</div></section>`;
+  drawer.innerHTML = `<section class="settings-detail-panel" data-settings-detail aria-hidden="true"></section>${toolOnly ? "" : `<section class="drawer-panel settings-main-panel"><div class="drawer-head"><div><div class="eyebrow">Inicio</div><h2>Configuración y herramientas</h2><p class="subtle">Ajustes y consultas generales del club.</p></div><button class="btn secondary small" data-settings-close>✕</button></div><div class="settings-menu">${settingsItems.map(item => `<button type="button" class="settings-menu-item" data-settings-item="${item.id}"><span class="settings-menu-icon">${item.icon}</span><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.description)}</small></span><span class="chev">›</span></button>`).join("")}</div></section>`}`;
   document.body.appendChild(drawer);
   const detail = drawer.querySelector("[data-settings-detail]");
   let activeItem = "";
@@ -444,6 +450,7 @@ function openSettings(initialItem = "") {
   window.addEventListener("message",onToolMessage);
   const close = () => { window.removeEventListener("message",onToolMessage); drawer.remove(); };
   const hideDetail = () => {
+    if(toolOnly){close();return;}
     activeItem = "";
     detail.innerHTML = "";
     detail.classList.remove("open","settings-detail-wide");
@@ -452,7 +459,7 @@ function openSettings(initialItem = "") {
   };
   const showDetail = id => {
     if (activeItem === id && detail.classList.contains("open")) return hideDetail();
-    const item = settingsItems.find(entry => entry.id === id);
+    const item = allSettingsItems.find(entry => entry.id === id);
     if (!item) return;
     activeItem = id;
     drawer.querySelectorAll("[data-settings-item]").forEach(button => button.classList.toggle("active", button.dataset.settingsItem === id));
@@ -462,19 +469,20 @@ function openSettings(initialItem = "") {
     detail.innerHTML = toolPage
       ? '<div class="settings-detail-head"></div><iframe class="settings-tool-frame" title="' + escapeHtml(item.label) + '" src="' + toolPage + '?embedded=1"></iframe>'
       : settingsDetail(item);
-    if (toolPage || id === "statistics" || id === "public-results") {
+    if (toolOnly || toolPage || id === "statistics" || id === "public-results") {
       detail.querySelector(".settings-detail-head").outerHTML = '<header class="settings-detail-head unified-tool-header"><div class="unified-tool-brand"><img src="escudo.png" alt="Escudo VMGC"><div><small>Villa María Golf Club</small><h2>' + escapeHtml(item.label) + '</h2></div></div><button type="button" class="settings-tool-close" data-settings-detail-close aria-label="Cerrar ' + escapeHtml(item.label) + '"><span aria-hidden="true">×</span> Cerrar</button></header>';
     }
     detail.classList.add("open");
     detail.setAttribute("aria-hidden", "false");
     detail.querySelector("[data-settings-detail-close]").addEventListener("click", hideDetail);
+    if (id === "tee-recommendations") mountTeeRecommendationSettings(detail.querySelector("[data-tee-recommendations]"));
     if (id === "reports") hydrateReportsPanel(detail);
     if (id === "aag") hydrateAagSettings(detail);
     if (id === "statistics") hydrateStatistics(detail);
     if (id === "public-results") mountPublicResults(detail.querySelector("[data-public-results]"));
     if (id === "misc-billing") mountMiscBilling(detail.querySelector("[data-misc-billing]"));
   };
-  drawer.querySelector("[data-settings-close]").addEventListener("click", close);
+  drawer.querySelector("[data-settings-close]")?.addEventListener("click", close);
   drawer.addEventListener("click", event => { if (event.target === drawer) close(); });
   drawer.querySelectorAll("[data-settings-item]").forEach(button => button.addEventListener("click", () => showDetail(button.dataset.settingsItem)));
   if (initialItem) showDetail(initialItem);
@@ -542,10 +550,12 @@ export function openMiscBilling(initialClient=null) {
   drawer.id="quickBillingDrawer";
   drawer.className="drawer open";
   drawer.setAttribute("aria-hidden","false");
-  drawer.innerHTML='<section class="drawer-panel" style="width:min(680px,100%)">'+settingsDetail(settingsItems.find(item=>item.id==="misc-billing"))+'</section>';
+  drawer.innerHTML='<section class="drawer-panel" style="width:min(680px,100%)">'+settingsDetail(allSettingsItems.find(item=>item.id==="misc-billing"))+'</section>';
   document.body.appendChild(drawer);
   const close=()=>drawer.remove();
   drawer.querySelector('[data-settings-detail-close]').addEventListener('click',close);
   drawer.addEventListener('click',event=>{if(event.target===drawer){event.stopPropagation();close();}});
   mountMiscBilling(drawer.querySelector('[data-misc-billing]'),{initialClient,onPrinted:close});
 }
+
+export function openPanelTool(id){if(panelTools.some(item=>item.id===id))openSettings(id,{toolOnly:true});}

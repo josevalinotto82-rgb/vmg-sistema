@@ -1,3 +1,4 @@
+import { loadTeeRecommendations } from "./tee_recommendation_service.js";
 import { requireSession } from "./auth.js";
 import { escapeHtml, formatDate, notify } from "./ui.js";
 import { nextCouponNumber } from "./officialization_service.js";
@@ -8,7 +9,7 @@ const context=await requireSession({ admin: true });
 if(context.profile.role!=="admin"){location.replace("panel.html");throw new Error("Acceso restringido")}
 if(!localStorage.getItem("ticket_branch_code")){const email=String(context.user?.email||"").toLowerCase(),branches={"lau_m2000@hotmail.com":"S1","giselaantonino@gmail.com":"S2"};localStorage.setItem("ticket_branch_code",branches[email]||"S1")}
 const byId=id=>document.getElementById(id),search=byId("freePlayerSearch"),results=byId("freePlayerResults"),gamePanel=byId("freeGamePanel"),scorePanel=byId("freeScorePanel"),status=byId("freeCardStatus"),totals=byId("freeScoreTotals");
-let catalogs=null,players=[],player=null,configuration=null,scores={},timer=0,saving=false;
+let catalogs=null,players=[],player=null,configuration=null,scores={},timer=0,saving=false,selectionRevision=0;
 const setStatus=(text,type="info")=>{status.textContent=text;status.className=`status ${type}`};
 const indexText=value=>toNumber(value)==null?"—":Number(value).toFixed(1);
 const money=value=>new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS"}).format(Number(value||0));
@@ -37,7 +38,7 @@ function renderGame(){
   gamePanel.innerHTML=`<div class="free-game-controls"><div class="field"><label>Segmento</label><select class="control" id="freeSegment"><option value="18" ${configuration.segment==="18"?"selected":""}>18 hoyos</option><option value="front9" ${configuration.segment==="front9"?"selected":""}>Hoyos 1 al 9</option><option value="back9" ${configuration.segment==="back9"?"selected":""}>Hoyos 10 al 18</option></select></div><div class="field"><label>Tee de salida</label><select class="control" id="freeTee">${teeOptions()}</select></div></div><div class="free-game-summary"><div><span>Categoría</span><strong>${escapeHtml(configuration.category?.name||"—")}</strong></div><div><span>HCP de juego</span><strong>${configuration.playing_handicap??"—"}</strong></div><div><span>Slope</span><strong>${configuration.slope??"—"}</strong></div><div><span>Rating</span><strong>${configuration.course_rating?.toFixed?.(1)??configuration.course_rating??"—"}</strong></div><div><span>Par</span><strong>${configuration.par??"—"}</strong></div></div><div class="free-game-actions"><button class="btn secondary" id="autoFreeTee">Restablecer tee recomendado</button><button class="btn outline" id="printFreeCard">Imprimir tarjeta</button></div>`;
   byId("freeSegment").addEventListener("change",event=>changeConfiguration(configuration.tee.id,event.target.value));
   byId("freeTee").addEventListener("change",event=>changeConfiguration(event.target.value,configuration.segment));
-  byId("autoFreeTee").addEventListener("click",()=>{const automatic=suggestedCategory(catalogs,player.official_index,player.gender);if(automatic)changeConfiguration(automatic.tee.id,configuration.segment)});
+  byId("autoFreeTee").addEventListener("click",async()=>{const currentPlayer=player,revision=selectionRevision;try{const settings=await loadTeeRecommendations();if(revision!==selectionRevision||player!==currentPlayer||!configuration)return;catalogs.teeRecommendations=settings;const automatic=suggestedCategory(catalogs,player.official_index,player.gender);if(automatic)changeConfiguration(automatic.tee.id,configuration.segment);else notify("No se encontró un tee recomendado disponible.","error")}catch(error){notify(error.message,"error")}});
   byId("printFreeCard").addEventListener("click",printCard);
   byId("printFreeCoupon").disabled=false;
 }
@@ -45,11 +46,16 @@ function changeConfiguration(teeId,segment){
   const next=teeConfiguration(catalogs,player,teeId,normalizeSegment(segment));if(!next){notify("No se pudo calcular el HCP para ese tee y segmento.","error");return}
   configuration=next;scores={};renderGame();renderScore();
 }
-function selectPlayer(item){
-  player=playerFromResult(item);
-  if(player.official_index==null){notify("El jugador no tiene un Index vigente cargado.","error");return}
-  const automatic=suggestedCategory(catalogs,player.official_index,player.gender);if(!automatic){notify("No se encontró una categoría automática para este jugador.","error");return}
-  configuration=teeConfiguration(catalogs,player,automatic.tee.id,"18");scores={};search.value="";results.innerHTML='<div class="empty-state compact">Jugador seleccionado. Buscador listo para una nueva consulta.</div>';renderGame();renderScore();setStatus(`Tarjeta preparada para ${player.display_name}.`,"open");
+async function selectPlayer(item){
+  const request=++selectionRevision,candidate=playerFromResult(item);
+  if(candidate.official_index==null){notify("El jugador no tiene un Index vigente cargado.","error");return;}
+  try{
+    const settings=await loadTeeRecommendations();if(request!==selectionRevision)return;
+    catalogs.teeRecommendations=settings;const automatic=suggestedCategory(catalogs,candidate.official_index,candidate.gender);
+    if(!automatic){notify("No se encontró un tee recomendado con categoría disponible para este jugador.","error");return;}
+    const next=teeConfiguration(catalogs,candidate,automatic.tee.id,"18");if(!next){notify("No se pudo calcular el HCP de ese tee.","error");return;}
+    player=candidate;configuration=next;scores={};search.value="";results.innerHTML='<div class="empty-state compact">Jugador seleccionado. Buscador listo para una nueva consulta.</div>';renderGame();renderScore();setStatus(`Tarjeta preparada para ${player.display_name}.`,"open");
+  }catch(error){notify(error.message,"error");}
 }
 function renderScore(){
   if(!configuration)return;
@@ -83,7 +89,7 @@ function formatCouponAmount(){const amount=couponAmount();byId("freeCouponAmount
 async function printCoupon(){
   if(!player)return;
   try{const number=await nextCouponNumber(),amount=couponAmount(),method=byId("freeCouponMethod").value,html=`<div class="ticket-80"><div style="text-align:center;font-size:14px;font-weight:700">Villa María Golf Club</div><div style="text-align:center;font-size:12px">Cupón de pago NO FISCAL</div><div style="border-top:1px dashed #000;margin:6px 0"></div><div style="font-size:12px;line-height:1.5"><div><b>Cupón:</b> ${escapeHtml(number)}</div><div><b>Fecha:</b> ${escapeHtml(new Date().toLocaleDateString("es-AR"))}</div><div><b>Torneo:</b> Green Fee ${escapeHtml(weekday())}</div><div><b>Jugador:</b> ${escapeHtml(player.display_name)}</div><div><b>Matrícula:</b> ${escapeHtml(memberNumber(player.aag_member_number)||"—")}</div><div><b>Concepto:</b> Green fee</div><div><b>Importe:</b> ${money(amount)}</div><div><b>Forma de pago:</b> ${escapeHtml(method)}</div></div><div style="border-top:1px dashed #000;margin:6px 0"></div><div style="font-size:11px;text-align:center">NO VÁLIDO COMO FACTURA</div></div>`;if(typeof window.imprimirTicketQZ!=="function")throw new Error("No se encontró la conexión con QZ Tray.");await window.imprimirTicketQZ(html);setStatus(`Cupón ${number} impreso para ${player.display_name}.`,"open")}catch(error){notify(error.message||"No se pudo imprimir el cupón.","error")}}
-function resetAll(focus=false){player=null;configuration=null;scores={};search.value="";players=[];results.innerHTML='<div class="empty-state compact">Escribí al menos dos caracteres.</div>';byId("freePlayerName").textContent="Seleccioná un jugador";byId("freePlayerMeta").textContent="El sistema asignará categoría, tee y HCP automáticamente.";gamePanel.innerHTML='<div class="empty-state">Primero seleccioná un jugador.</div>';scorePanel.innerHTML='<div class="empty-state">La carga de hoyos aparecerá al seleccionar un jugador.</div>';totals.innerHTML="";byId("printFreeCoupon").disabled=true;setStatus("Lista para una nueva tarjeta.","info");if(focus){search.focus();search.select()}}
+function resetAll(focus=false){selectionRevision++;player=null;configuration=null;scores={};search.value="";players=[];results.innerHTML='<div class="empty-state compact">Escribí al menos dos caracteres.</div>';byId("freePlayerName").textContent="Seleccioná un jugador";byId("freePlayerMeta").textContent="El sistema asignará categoría, tee y HCP automáticamente.";gamePanel.innerHTML='<div class="empty-state">Primero seleccioná un jugador.</div>';scorePanel.innerHTML='<div class="empty-state">La carga de hoyos aparecerá al seleccionar un jugador.</div>';totals.innerHTML="";byId("printFreeCoupon").disabled=true;setStatus("Lista para una nueva tarjeta.","info");if(focus){search.focus();search.select()}}
 
 results.addEventListener("click",event=>{const button=event.target.closest("[data-player]");if(button)selectPlayer(players[Number(button.dataset.player)])});
 search.addEventListener("input",()=>{clearTimeout(timer);timer=setTimeout(runSearch,280)});search.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();if(players.length===1)selectPlayer(players[0]);else runSearch()}});

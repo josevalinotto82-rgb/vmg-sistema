@@ -1,3 +1,4 @@
+import { loadTeeRecommendations, recommendedTeeName, normalizeTee } from "./tee_recommendation_service.js";
 import { queryPlayerCandidates, rankPlayerSearch } from "./player_search.js";
 import { supabase } from "./supabase.js";
 import { START_TYPE_TEMPLATE_ID, APP_TIMEZONE } from "./config.js";
@@ -22,14 +23,15 @@ const teeReference=tee=>({aag_field_id:tee.aag_field_id??null,aag_id:tee.aag_tee
 const normalizeRule=raw=>({...raw,aag_teeout_id:String(raw?.aag_teeout_id||raw?.teeout_id||raw?.id||""),index_min:toNumber(raw?.index_min),index_max:toNumber(raw?.index_max)});
 
 export async function loadFreeCardCatalogs(){
-  const[categoriesResult,teesResult]=await Promise.all([
+  const[categoriesResult,teesResult,teeRecommendations]=await Promise.all([
     supabase.from("categories").select("id,name,display_order,playing_handicap_min,playing_handicap_max,playing_tee_aag_teeout_id,tee_rules").eq("active",true).lte("display_order",5).order("display_order"),
-    supabase.from("aag_teeouts").select("id,aag_teeout_id,aag_field_id,tee_name,category,slope_in,slope_out,slope_total,calification_in,calification_out,calification_total,holes").in("aag_field_id",[1466,2048]).order("aag_field_id").order("category").order("tee_name")
+    supabase.from("aag_teeouts").select("id,aag_teeout_id,aag_field_id,tee_name,category,slope_in,slope_out,slope_total,calification_in,calification_out,calification_total,holes").in("aag_field_id",[1466,2048]).order("aag_field_id").order("category").order("tee_name"),
+    loadTeeRecommendations()
   ]);
   if(categoriesResult.error)throw categoriesResult.error;if(teesResult.error)throw teesResult.error;
   const tees=teesResult.data||[],teeMap=new Map(tees.map(tee=>[String(tee.id),tee]));
   const categories=(categoriesResult.data||[]).map(category=>({...category,tee_rules:(category.tee_rules||[]).map(normalizeRule).map(rule=>({...rule,reference:teeReference(teeMap.get(rule.aag_teeout_id))}))}));
-  return{categories,tees,teeMap};
+  return{categories,tees,teeMap,teeRecommendations};
 }
 
 export async function searchFreePlayers(term){
@@ -47,9 +49,11 @@ export function playerFromResult(player){return{source:player.source,player_id:p
 
 const ruleGender=rule=>Number(rule?.reference?.category)===1?"female":"male";
 export function suggestedCategory(catalogs,index,gender){
-  const idx=toNumber(index);if(idx==null)return null;
-  for(const category of catalogs.categories){const rule=(category.tee_rules||[]).find(item=>ruleGender(item)===gender&&idx>=toNumber(item.index_min)&&idx<=toNumber(item.index_max));if(rule)return{category,rule,tee:catalogs.teeMap.get(String(rule.aag_teeout_id))}}
-  return null;
+  const name=recommendedTeeName(catalogs.teeRecommendations,toNumber(index),gender);if(!name)return null;
+  const tee=catalogs.tees.find(item=>Number(item.aag_field_id)===1466&&(Number(item.category)===1?"female":"male")===gender&&normalizeTee(item.tee_name)===normalizeTee(name));if(!tee)return null;
+  const matchesIndex=rule=>ruleGender(rule)===gender&&toNumber(index)>=toNumber(rule.index_min)&&toNumber(index)<=toNumber(rule.index_max);
+  const category=catalogs.categories.find(item=>(item.tee_rules||[]).some(rule=>String(rule.aag_teeout_id)===String(tee.id)&&matchesIndex(rule)))||catalogs.categories.find(item=>(item.tee_rules||[]).some(rule=>String(rule.aag_teeout_id)===String(tee.id)&&ruleGender(rule)===gender))||catalogs.categories.find(item=>(item.tee_rules||[]).some(matchesIndex));
+  return category?{category,rule:category.tee_rules.find(rule=>String(rule.aag_teeout_id)===String(tee.id)),tee}:null;
 }
 export function teeConfiguration(catalogs,player,teeId,segment){
   const tee=catalogs.teeMap.get(String(teeId));if(!tee)return null;segment=normalizeSegment(segment);
